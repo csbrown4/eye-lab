@@ -1,0 +1,33 @@
+name: Build Android app
+on:
+  push: { branches: [main] }
+  workflow_dispatch: {}
+permissions: { contents: write }
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: '8.7' }
+      - name: Put the test suite inside the app
+        run: |
+          mkdir -p android/app/src/main/assets/icons
+          cp index.html manifest.webmanifest android/app/src/main/assets/
+          cp icons/* android/app/src/main/assets/icons/
+      - name: Build
+        working-directory: android
+        run: gradle assembleRelease --no-daemon
+      - run: cp android/app/build/outputs/apk/release/app-release.apk EyeLab.apk
+      - uses: actions/upload-artifact@v4
+        with: { name: EyeLab-apk, path: EyeLab.apk }
+      - name: Publish as a release (download link on the repo's Releases page)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Eye Lab build ${{ github.run_number }}
+          files: EyeLab.apk
+          make_latest: true

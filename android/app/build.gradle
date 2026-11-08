@@ -1,0 +1,20 @@
+plugins { id 'com.android.application' }
+android {
+  namespace 'au.charlie.eyelab'
+  compileSdk 34
+  defaultConfig {
+    applicationId 'au.charlie.eyelab'
+    minSdk 24
+    targetSdk 34
+    versionCode((System.getenv('GITHUB_RUN_NUMBER') ?: '1').toInteger())
+    versionName "1.${System.getenv('GITHUB_RUN_NUMBER') ?: '0'}"
+  }
+  // one fixed signing key, so each new build installs over the last one instead of needing an uninstall
+  signingConfigs { fixed { storeFile file('../eyelab.keystore'); storePassword 'eyelab'; keyAlias 'eyelab'; keyPassword 'eyelab' } }
+  buildTypes {
+    debug { signingConfig signingConfigs.fixed }
+    release { signingConfig signingConfigs.fixed; minifyEnabled false }
+  }
+  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+dependencies { implementation 'androidx.webkit:webkit:1.11.0' }

@@ -384,6 +384,7 @@ body.quiet #hud, body.quiet #stage > button, body.quiet #resCard, body.quiet #st
         <select id="fdMethod"><option value="flash">Flashed nonius, adaptive (precise)</option><option value="card">Graded pairs card (Sheedy-style)</option></select>
       </label>
       <label data-modes="F" class="fd-flash">Prism demands for the curve (Δ, BO +)<input id="fdDems" type="text" inputmode="numeric" placeholder="0, 3, 6, -3, -6"></label>
+      <label data-modes="F" class="fd-flash">Fusion lock<select id="fdLock"><option value="full">Strong: dot field + faded edges (recommended)</option><option value="min">Minimal: OXO and frame only</option></select></label>
       <label data-modes="F" class="fd-flash">Flash
         <select id="fdDur"><option value="150">150 ms</option><option value="200">200 ms (default)</option><option value="300">300 ms</option></select>
       </label>
@@ -1668,6 +1669,13 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
   const FDX={active:false,ad:null,x:0,show:false,dems:[],di:0,dem:0};
   try{ window.__thorTest = window.__thorTest || {}; window.__thorTest.FDX=FDX; }catch(e){}
   const fdExo=()=> S.eye.F==="OD"?1:-1;                       // + = red line to the right for an exo disparity
+  function fdDots(W2,H2,ix,iy,d){ const key=[W2,H2,ix,iy].map(v=>v.toFixed(1)).join(","); if(fdDots.k===key) return fdDots.v;
+    let seed=97531; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; }; const out=[], deg=a=>d*Math.tan(a*Math.PI/180);
+    for(let i=0;i<4000&&out.length<260;i++){ const x=(rnd()*2-1)*W2, y=(rnd()*2-1)*H2; if(Math.abs(x)<ix&&Math.abs(y)<iy) continue; const r=deg(0.12+rnd()*0.22);
+      if(out.every(([a,b,rr])=>Math.hypot(a-x,b-y)>rr+r+deg(0.15))) out.push([x,y,r]); }
+    fdDots.k=key; fdDots.v=out; return out; }
+  const env_w_mm=()=>{ const st=$("stage"); return (st?st.clientWidth:1000)*(typeof mmpp==="function"?mmpp():0.2); };
+  const env_h_mm=()=>{ const st=$("stage"); return (st?st.clientHeight:700)*(typeof mmpp==="function"?mmpp():0.2); };
   function fdParse(){ const a=String(S.fdDems||"0").split(/[ ,;]+/).map(Number).filter(v=>isFinite(v)&&Math.abs(v)<=20); return a.length?a:[0]; }
   function fdStartRun(){ FDX.dems=fdParse(); FDX.di=0; FDX.active=true; S.fdRes={}; fdBegin(); }
   function fdBegin(){ FDX.dem=FDX.dems[FDX.di]; FDX.ad=PSE({lo:-20,hi:20,n:161,sLo:0.3,sHi:6,ns:10,minT:14,maxT:36,sdStop:0.45}); FDX.x=FDX.ad.next(); fdFlash(); }
@@ -3228,11 +3236,23 @@ distance from ${+S.pmGlasses?"the spectacle plane":"the front of the eyes"}; the
         if(DK) dkField();
         const cR = DK?DkR:R, cG = DK?DkG:G, cB = DK?DkBoth:Bc;
         const lh=Math.max(3,am(28)), lockF=lh/digitRatio, sp=lh*1.35, fw=Math.max(40,2*d*Math.tan(5*Math.PI/180)), fh=Math.max(28,2*d*Math.tan(3.5*Math.PI/180));
+        // Fusion lock. The small OXO and frame alone were too weak: with nothing else to fuse, 3 Δ of software prism was
+        // hard to hold and the readings drifted to large exo whatever the prism (partial dissociation). A field of dots
+        // out to ~12° (each eye its own copy, shifted with the prism like the frame) gives the strong peripheral fusion
+        // a printed fixation-disparity card relies on, and the screen edges fade to black so their zero-disparity
+        // outline doesn't compete with the prism.
+        const W2=Math.min(d*Math.tan(12*Math.PI/180), (env_w_mm()/2)*0.92), H2=Math.min(d*Math.tan(9*Math.PI/180),(env_h_mm()/2)*0.9);
+        const dots=fdDots(W2,H2,fw/2+am(20),fh/2+am(20),d);
         const build=c=>{ const q=el("g",{});
           [-sp,0,sp].forEach((x,i)=>q.appendChild(el("text",{x:x,y:lh/2,"text-anchor":"middle",style:fillC(c),"font-size":lockF.toFixed(3),"font-weight":"700"},i===1?"X":"O")));
           q.appendChild(el("rect",{x:-fw/2,y:-fh/2,width:fw,height:fh,rx:fw*0.06,style:strokeC(c,Math.max(0.6,am(6)))}));
+          if(S.fdLock!=="min") dots.forEach(([x,y,r])=>q.appendChild(el("circle",{cx:x.toFixed(2),cy:y.toFixed(2),r:r.toFixed(2),style:fillC(c)})));
           return q; };
         dichoptic(g,build,dxR,dxG,{R:cR,G:cG,B:cB});
+        if(S.fdLock!=="min"){ // edge fade (both eyes equally, so leak cancellation is kept)
+          const svgRoot=g.ownerSVGElement||document.getElementById("svg"); let defs=svgRoot&&svgRoot.querySelector("defs"); if(!defs&&svgRoot){ defs=el("defs",{}); svgRoot.prepend(defs); }
+          if(defs&&!defs.querySelector("#fdVig")){ const rg=el("radialGradient",{id:"fdVig",cx:"50%",cy:"50%",r:"72%"}); [["0","0"],["0.55","0"],["0.92","1"],["1","1"]].forEach(([o,a])=>rg.appendChild(el("stop",{offset:o,"stop-color":"#000","stop-opacity":a}))); defs.appendChild(rg); }
+          g.appendChild(el("rect",{x:-env_w_mm()/2-1,y:-env_h_mm()/2-1,width:env_w_mm()+2,height:env_h_mm()+2,fill:"url(#fdVig)"})); }
         if(FDX.show){ const nl=Math.max(3,am(40)), ng=Math.max(0.6,am(6)), lw=Math.max(3*dev,am(3.5)), off=am(FDX.x);
           g.appendChild(el("rect",{x:dxR+off-lw/2,y:-lh/2-ng-nl,width:lw,height:nl,style:fillC(cR)}));
           g.appendChild(el("rect",{x:dxG-lw/2,y:lh/2+ng,width:lw,height:nl,style:fillC(cG)})); }
@@ -5422,6 +5442,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     b.hidden=true; b.onclick=e=>{ e.stopPropagation(); HUD_ON=true; b.hidden=true; draw(); }; $("stage").appendChild(b);
     function showBtn(){ b.hidden=false; } })();
   (function(){ const s=$("coSF"); if(!s) return; s.value=String(S.coSF||3); s.addEventListener("change",()=>{ S.coSF=+s.value; save(); draw(); }); })();
+  (function(){ const s=$("fdLock"); if(!s) return; s.value=S.fdLock||"full"; s.addEventListener("change",()=>{ S.fdLock=s.value; save(); draw(); }); })();
   measure(); newFxText(); sync();
   if(document.fonts&&document.fonts.ready) document.fonts.ready.then(()=>{measure();draw();});
 })();

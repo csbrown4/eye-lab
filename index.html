@@ -230,6 +230,11 @@ button.ghost{background:transparent;border-color:var(--line2)}
 #tapPad button{height:58px;border-radius:14px;border:1px solid #3a3a3a;background:rgba(12,12,12,.85);color:#ccc;font:700 22px/1 var(--f-body,system-ui);touch-action:none}
 #tapPad button.wide{grid-column:1/-1;font-size:16px}
 #tapPad .shw{grid-column:1/-1;text-align:center;font:700 26px/1.2 var(--f-mono,monospace);color:#ddd;background:rgba(0,0,0,.7);border-radius:12px;padding:8px 4px}
+
+/* fusion-sensitive tests running: every on-screen control is hidden (each one is a sharp, zero-disparity object both
+   eyes see, which locks vergence and spoils dissociation). Answers go to invisible tap halves. */
+body.quiet #actBar, body.quiet #tapX, body.quiet #tapQ, body.quiet #tapL .tz span, body.quiet #tpad, body.quiet #exit,
+body.quiet #hud, body.quiet #stage > button, body.quiet #resCard, body.quiet #stageMsg{display:none!important}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .flash{animation:flash .5s linear infinite}
 @keyframes flash{0%,69.9%{opacity:1}70%,100%{opacity:0}}
@@ -1401,7 +1406,7 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
       const pr=gl.createProgram();
       gl.attachShader(pr,sh(gl.VERTEX_SHADER,"attribute vec2 p;void main(){gl_Position=vec4(p,0.0,1.0);}"));
       gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,`precision highp float;
-        uniform sampler2D uT; uniform vec2 uTex; uniform vec2 uOrg; uniform float uH, uR, uG, uX, uY, uGR, uGG, uP0, uMod, uNeg, uKa, uKb, uW, uEdge; uniform vec3 uVA, uVB; uniform sampler2D uLut; uniform vec4 uTint; uniform vec2 uTbg;
+        uniform sampler2D uT; uniform vec2 uTex; uniform vec2 uOrg; uniform float uH, uR, uG, uX, uY, uGR, uGG, uP0, uMod, uNeg, uKa, uKb, uW, uEdge; uniform vec3 uVA, uVB; uniform sampler2D uLut; uniform vec4 uTint; uniform vec2 uTbg; uniform vec4 uCal;
         float enc(float v){ v=clamp(v,0.0,1.0); return v<=0.0031308 ? v*12.92 : 1.055*pow(v,1.0/2.4)-0.055; }
         void main(){
           vec2 q=vec2(gl_FragCoord.x, uH-gl_FragCoord.y)+uOrg;
@@ -1412,6 +1417,7 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
           float A, B, k=1.0-uX*uY;
           if(uNeg>0.5){ a*=uKa; b*=uKb; float det=1.0-a*b*uX*uY;
             A=((1.0-a)*uGR+a*uX*(1.0-b)*uGG)/det; B=((1.0-b)*uGG+b*uY*(1.0-a)*uGR)/det; }
+          else if(uCal.x>=0.0){ A=uCal.x+a*(uCal.z-uCal.x); B=uCal.y+b*(uCal.w-uCal.y); }   // calibrated pedestals → calibrated targets
           else { A=uGR*(uP0+uMod*a); B=uGG*(uP0+uMod*b); }
           // fade everything to black toward the screen border: in a dark room the screen's own edge then disappears,
           // removing the strongest fixed (zero-disparity) contour in view. Scaling both eyes' targets equally keeps the
@@ -1428,7 +1434,7 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
       gl.useProgram(pr);
       const b=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,b); gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
       const pl=gl.getAttribLocation(pr,"p"); gl.enableVertexAttribArray(pl); gl.vertexAttribPointer(pl,2,gl.FLOAT,false,0,0);
-      ["uT","uTex","uOrg","uH","uR","uG","uX","uY","uGR","uGG","uP0","uMod","uNeg","uKa","uKb","uW","uEdge","uVA","uVB","uLut","uTint","uTbg"].forEach(n=>VGL.loc[n]=gl.getUniformLocation(pr,n));
+      ["uT","uTex","uOrg","uH","uR","uG","uX","uY","uGR","uGG","uP0","uMod","uNeg","uKa","uKb","uW","uEdge","uVA","uVB","uLut","uTint","uTbg","uCal"].forEach(n=>VGL.loc[n]=gl.getUniformLocation(pr,n));
       VGL.lut=gl.createTexture();
       VGL.tex=gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D,VGL.tex);
       [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]].forEach(([a,v])=>gl.texParameteri(gl.TEXTURE_2D,a,v));
@@ -1505,6 +1511,11 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
         [[gl.TEXTURE_MIN_FILTER,gl.LINEAR],[gl.TEXTURE_MAG_FILTER,gl.LINEAR],[gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE],[gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE]].forEach(([p_,v])=>gl.texParameteri(gl.TEXTURE_2D,p_,v));
         gl.activeTexture(gl.TEXTURE0); VGL.lutKey=key; }
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D,VGL.lut); gl.activeTexture(gl.TEXTURE0); gl.uniform1i(L.uLut,1);
+      // bright polarity: background = the calibration pedestals, full targets = the calibrated red/green target colours
+      // (exactly what the other bright tests draw), all as eye levels A = r + x·g, B = g + y·r
+      { const CV=calVals(), both=S.nullOn===2, pr=S.nullOn?linA(CV.ped/100):0, pg=both?linB(CV.gped/100):0, rL=linA(S.rLvl/100), gL=linB(S.gLvl/100),
+          gI=both?linB(Math.min(CV.gIn,CV.gped)/100):0, rI=S.nullOn?linA(Math.min(CV.rIn,CV.ped)/100):0, X=sol.x, Y=sol.y;
+        if(S.dPol==="light") gl.uniform4f(L.uCal, pr+X*pg, pg+Y*pr, rL+X*gI, gL+Y*rI); else gl.uniform4f(L.uCal,-1,-1,0,0); }
       const on=tintOn()?1:0, dark=S.dPol!=="light"; gl.uniform4f(L.uTint,+S.kBg||0,+S.kBr||0,bluePed(),on); gl.uniform2f(L.uTbg, dark?sol.gR*sol.fl:sol.gR*sol.p0, dark?sol.gG*sol.fl:sol.gG*sol.p0); } gl.uniform1f(L.uEdge,S.vgEdge===0?0:Math.min(sc.Wd,sc.Hd)*0.16);
     gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
   }
@@ -4864,7 +4875,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     if(LD.on){ ldStop(); return; }
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ ldSet("This view has no camera access. Open a saved copy of this page directly in Chrome or Safari."); return; }
     ldSet("Asking for the camera…");
-    try{ LD.stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:"user",width:{ideal:1920},height:{ideal:1080}}}); }
+    try{ LD.stream=await navigator.mediaDevices.getUserMedia({audio:false,video:matchMedia("(pointer:coarse)").matches?{facingMode:"user",width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30,max:30}}:{facingMode:"user",width:{ideal:1920},height:{ideal:1080}}}); }
     catch(e){ ldSet(location.protocol==="file:" ? `Camera blocked (${e.name||e}). Allow Chrome to use the camera: macOS System Settings → Privacy & Security → Camera → Chrome on, then restart Chrome; also check the camera icon at the left of the address bar isn't set to Block.` : `Camera blocked (${e.name||e}). The Claude viewer doesn't allow the camera, even in Chrome. Download this page as an .html file and open the file itself in Chrome (the address bar should start with file:///).`); return; }
     const v=$("ldVid"); v.srcObject=LD.stream; try{ await v.play(); }catch(e){}
     ldSet("Loading the face tracker (about 10 MB the first time)…");
@@ -5195,8 +5206,8 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     L:()=>({run:HL.running,ans:true,start:"Enter",z:[[" ","Tap when seen"]],how:"Tap anywhere on the screen when the patient saw it."}),
     a:()=>DA_.phase==="track"&&{run:true,ans:true,z:[[" ","Tap anywhere when you see the green spot"]]},
     m:()=>({run:MF.active,ans:MF.phase==="answer",start:"s",pad:[..."1234567890"].map(c=>[c,c]).concat([[" ","None"]]),how:"Look at the red dot. Tap the digit you saw on the right, or None."}),
-    V:()=>S.vgMode==="ramp"?{run:VG.status==="run",ans:true,start:" ",x:VG.phase==="back"?[["3","Single again"],[" ",VG.ramping?"Pause":"Resume"]]:[["1","Blurred"],["2","Doubled (break)"],[" ",VG.ramping?"Pause":"Resume"]],
-        how:VG.status==="done"?"Both ranges done. R resets.":`Start ramps ${VG.seq} prism by itself at ${S.vgRate} Δ/s. Keep the target single and clear; tap Blurred when it first blurs, Doubled when it splits, then Single again when it rejoins.`}:
+    V:()=>S.vgMode==="ramp"?{run:VG.status==="run",ans:true,start:" ",z:VG.phase==="back"?[["3","Single again"]]:[["1","Blurred"],["2","Doubled"]],
+        how:VG.status==="done"?"Both ranges done. R resets.":`Start ramps ${VG.seq} prism by itself at ${S.vgRate} Δ/s. Nothing is shown on screen while it runs. Tap the LEFT half when the target first blurs, the RIGHT half when it doubles; it then comes back, and you tap ANYWHERE when it's single again.`}:
       S.vgMode==="obj"&&{run:VO.active,ans:true,start:"s",pad:[["ArrowUp","↑ up"],["ArrowRight","→ right"],["ArrowDown","↓ down"],["ArrowLeft","← left"],[" ","Can't see"]],how:"Tap the direction of the gap in the ring on the right, or Can't see."},
     K:()=>(AD.phase!=="adapt"&&{run:true,ans:true,show:()=>KB.buf,pad:[..."1234567890"].map(c=>[c,c]).concat([[".","."],["-","±"],["Backspace","⌫"],["Enter","Enter ✓"]])}),
     Q:()=>({run:true,ans:true,show:()=>KB.buf,pad:[..."1234567890"].map(c=>[c,c]).concat([[".","."],["-","±"],["Backspace","⌫"],["Enter","Enter ✓"]])}),
@@ -5224,12 +5235,13 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
       rc.textContent="Result · tap to close\n"+txt; rc.hidden=false; clearTimeout(rc._t); rc._t=setTimeout(()=>rc.hidden=true,20000); };
     function sync(){ const m=S.mode, f=TAPS[m], c=f?f():null; cur=c||null;
       const runNow=!!(c&&c.run&&c.start); if(wasRun&&!runNow&&runMode===m) setTimeout(resultCard,250); if(runMode!==m){ const rc=document.getElementById("resCard"); if(rc) rc.hidden=true; } wasRun=runNow; runMode=m;
-      if(!c){ L.innerHTML=""; L.className=""; Q.hidden=G.hidden=X.hidden=true; sig=""; return; }
+      if(!c){ L.innerHTML=""; L.className=""; Q.hidden=G.hidden=X.hidden=true; sig=""; document.body.classList.remove("quiet"); return; }
       const s2=m+"|"+JSON.stringify(c.z||[])+"|"+(c.v?1:0)+JSON.stringify(c.x||[]);
       if(s2!==sig){ sig=s2; L.innerHTML=""; (c.z||[]).forEach(([k,lab])=>{ const z=document.createElement("div"); z.className="tz"; z.innerHTML=`<span>${lab}</span>`; bindHold(z,k); L.appendChild(z); });
         X.innerHTML=""; (c.x||[]).forEach(([k,lab])=>{ const b=document.createElement("button"); b.type="button"; b.textContent=lab; bindHold(b,k); X.appendChild(b); }); }
       const run=!!c.run, ans=run&&c.ans!==false;
       L.className=(c.v?"v ":"")+(run?"run ":"")+(ans?"ans":"");
+      document.body.classList.toggle("quiet", run && !!c.start && (RG_MODES.includes(m)||"VNSQKfxbU".includes(m)||(m==="x"&&S.fxMethod==="dich")));
       G.hidden = run || !c.start; G.querySelector("p").textContent=c.how||""; G.querySelector("p").hidden=!c.how;
       Q.hidden = !(ans && c.q); if(c.q) Q.textContent=c.q;
       X.hidden = !(ans && c.x && c.x.length);

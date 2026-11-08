@@ -12,6 +12,8 @@ import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.PermissionRequest;
+import android.webkit.RenderProcessGoneDetail;
+import android.widget.Toast;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -29,6 +31,12 @@ public class MainActivity extends Activity {
   @Override protected void onCreate(Bundle b) {
     super.onCreate(b);
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);   // no dimming mid-test
+    makeWeb();
+    if (b != null) web.restoreState(b); else web.loadUrl("https://" + HOST + "/assets/index.html?app=1");
+    hideBars();
+  }
+
+  private void makeWeb() {
     web = new WebView(this);
     web.setBackgroundColor(0xFF000000);
     setContentView(web);
@@ -44,6 +52,13 @@ public class MainActivity extends Activity {
     web.setWebViewClient(new WebViewClient() {
       @Override public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
         return loader.shouldInterceptRequest(r.getUrl());
+      }
+      // If the page's renderer dies (a cheap tablet running out of memory under the camera + face tracking), Android
+      // would otherwise close the whole app. Rebuild the page instead and say what happened.
+      @Override public boolean onRenderProcessGone(WebView v, RenderProcessGoneDetail d) {
+        if (web == v) { try { v.destroy(); } catch (Exception e) { } makeWeb(); web.loadUrl("https://" + HOST + "/assets/index.html?app=1");
+          Toast.makeText(MainActivity.this, "The page ran out of memory and was restarted. Close other apps before camera tests.", Toast.LENGTH_LONG).show(); }
+        return true;
       }
       @Override public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
         Uri u = r.getUrl();
@@ -61,8 +76,6 @@ public class MainActivity extends Activity {
         });
       }
     });
-    if (b != null) web.restoreState(b); else web.loadUrl("https://" + HOST + "/assets/index.html?app=1");
-    hideBars();
   }
 
   @Override public void onRequestPermissionsResult(int code, String[] perms, int[] res) {

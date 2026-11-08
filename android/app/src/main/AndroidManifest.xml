@@ -5,7 +5,7 @@
   <uses-feature android:name="android.hardware.camera" android:required="false" />
   <uses-feature android:name="android.hardware.camera.front" android:required="false" />
   <application android:label="Eye Lab" android:icon="@mipmap/ic_launcher" android:theme="@style/Full"
-      android:hardwareAccelerated="true" android:allowBackup="true">
+      android:hardwareAccelerated="true" android:largeHeap="true" android:allowBackup="true">
     <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="fullSensor"
         android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|uiMode|density">
       <intent-filter>

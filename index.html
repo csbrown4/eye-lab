@@ -840,7 +840,7 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
              prism:6, base:"D", hTrim:0, rLvl:100, gLvl:85, nullOn:0, flash:false, ped:30, rIn:18, gped:25, gIn:15, check:false,
              fdScale:1.5, pmType:"amp", pmLens:0, pmGlasses:0, pmAge:"", pmRes:{}, fdMethod:"flash", fdDems:"0, 3, 6, -3, -6", fdRes:null, w4Size:6, stPlate:0, stBal:"auto", dPol:"light", dkField:"dim", stOdd:0, stSeed:12345, stDir:"cross", stDot:2, anMer:"V", anis:0,
              cyMethod:"rg", cyAng:0, fxType:"acc", fxBin:"bi", hsField:10, hsFix:"red",
-             vgMode:"ramp", vgRate:1, vfA:12, vfB:-3, adDem:8, adDur:120, balStyle:"bar", mpFix:"red", mpDur:250, puDelay:0, puAmp:6, puPer:2, fdc:[], z:{}, vgTex:3, vgEdge:1, hsTors:false, yEye:"red", yLog:0.3, hVtx:15, hlSrc:1, hlCon:30, qOri:"H", pd:62, tvDur:300, tvPh:"", tvRes:null, mxHz:1, vnDur:500, vnRes:{}, vnL:{OD:"",OS:""}, bsEye:"red", bsPupil:4, bsRes:{}, itab:"run", stDotA:6, stMethod:"tno", stBal:0, fsRes:null, coLens:0, coPupil:4, coRes:{}, coPh0:"", coPh1:"", coPhL:2, dc:{}, fpAxis:"H", fpDur:200, fpRes:{}, vfLvl:0.08, rdType:"sat", rdRes:{}, ctType:"cs", ctRes:{}, emType:"cpur", slMethod:"cmp", pipSet:"screen", fxMethod:"bin", fxAxis:"90", fxCol:"white", fxPer:20, fxStart:0, fxLum:0.35, ppLight:"red", ppHV:"", ppDur:1, bcMethod:"ori", bcSF:1, bcFlash:600, bcRivDur:60, bcRivC:0.6, nbTgt:"col", nbAc:1.5, nbLens:1, nbNd:40, nbDd:300, kcMethod:"cct", mfDur:1500, slDur:2500, slAge:"", opMethod:"sch", scSep:2.5, scRed:"L", scFus:"0", opP:0, opL:0, daBleach:30, daND:2.7, daCrit:-4.8, daMax:30, daFix:0.004, etAxis:"H", etFreq:"0.4", etAmp:"auto", etN:"10", emRes:{}, rnBest:null, rnBase:null, dLog:0.3, dDuo:false};
+             vgMode:"ramp", vgRate:1, vfA:12, vfB:-3, adDem:8, adDur:120, balStyle:"bar", mpFix:"red", mpDur:250, puDelay:0, puAmp:6, puPer:2, fdc:[], z:{}, vgTex:3, vgEdge:1, hsTors:false, yEye:"red", yLog:0.3, hVtx:15, hlSrc:1, hlCon:30, qOri:"H", pd:62, tvDur:300, tvPh:"", tvRes:null, mxHz:1, vnDur:500, vnRes:{}, vnL:{OD:"",OS:""}, bsEye:"red", bsPupil:4, bsRes:{}, itab:"run", stDotA:6, stMethod:"tno", stBal:0, fsRes:null, coLens:0, coPupil:4, coRes:{}, coPh0:"", coPh1:"", coPhL:2, dc:{}, fpAxis:"H", fpDur:200, fpRes:{}, vfLvl:0.08, rdType:"sat", rdRes:{}, ctType:"cs", ctRes:{}, emType:"cpur", slMethod:"cmp", pipSet:"screen", ccProf:"auto", fxMethod:"bin", fxAxis:"90", fxCol:"white", fxPer:20, fxStart:0, fxLum:0.35, ppLight:"red", ppHV:"", ppDur:1, bcMethod:"ori", bcSF:1, bcFlash:600, bcRivDur:60, bcRivC:0.6, nbTgt:"col", nbAc:1.5, nbLens:1, nbNd:40, nbDd:300, kcMethod:"cct", mfDur:1500, slDur:2500, slAge:"", opMethod:"sch", scSep:2.5, scRed:"L", scFus:"0", opP:0, opL:0, daBleach:30, daND:2.7, daCrit:-4.8, daMax:30, daFix:0.004, etAxis:"H", etFreq:"0.4", etAmp:"auto", etN:"10", emRes:{}, rnBest:null, rnBase:null, dLog:0.3, dDuo:false};
   const S0=JSON.parse(JSON.stringify(S));
 
   let saved=null;
@@ -1995,10 +1995,89 @@ Percival: G = larger, L = smaller of the BI/BO limits; prism = G/3 − 2L/3 (bas
   const KC_CP={P:[0.678,0.501],D:[-1.217,0.782],T:[0.257,0.0]}, KC_BG=[0.1978,0.4683];
   const KC_M = { p3:[[2.4934969,-0.9313836,-0.4027108],[-0.8294890,1.7626641,0.0236247],[0.0358458,-0.0761724,0.9568845]],
                  srgb:[[3.2404542,-1.5371385,-0.4985314],[-0.9692660,1.8760108,0.0415560],[0.0556434,-0.2040259,1.0572252]] };
-  function kcRGB(u,v,Y){ const den=6*u-16*v+12, x=9*u/den, y=4*v/den, X=Y*x/y, Z=Y*(1-x-y)/y, M=KC_M[P3?"p3":"srgb"];
+  // ---- screen colour calibration (plates and colour thresholds) ----
+  // The XYZ → panel matrix is built from the primaries' chromaticities and their luminances:
+  //   M(RGB→XYZ) = [ xᵢ/yᵢ ; 1 ; (1−xᵢ−yᵢ)/yᵢ ] · diag(Yᵢ),  inverted.
+  // Chromaticities: the drawing space's standard primaries, or values measured with a colorimeter off this page's own
+  // full red/green/blue patches. Luminances Yᵢ: from the white point, or measured by heterochromatic flicker
+  // photometry (red vs green, blue vs green at 15 Hz). Tone curve: each channel's response measured with the
+  // stripe-average match (1 lit row in N averages to exactly 1/N), used to encode every colour.
+  const CC_STD={ srgb:{r:[0.64,0.33],g:[0.30,0.60],b:[0.15,0.06],w:[0.3127,0.3290]}, p3:{r:[0.680,0.320],g:[0.265,0.690],b:[0.150,0.060],w:[0.3127,0.3290]} };
+  function ccPrim(){ const std=CC_STD[P3?"p3":"srgb"]; if(S.ccProf!=="custom") return std;
+    const g=(k,d)=>{ const v=parseFloat(S[k]); return isFinite(v)&&v>0&&v<1?v:d; };
+    return {r:[g("ccRx",std.r[0]),g("ccRy",std.r[1])],g:[g("ccGx",std.g[0]),g("ccGy",std.g[1])],b:[g("ccBx",std.b[0]),g("ccBy",std.b[1])],w:[g("ccWx",std.w[0]),g("ccWy",std.w[1])]}; }
+  function m3inv(m){ const [a,b,c]=m[0],[d,e,f]=m[1],[g,h,i]=m[2], A=e*i-f*h, B=-(d*i-f*g), C=d*h-e*g, det=a*A+b*B+c*C;
+    return [[A/det,-(b*i-c*h)/det,(b*f-c*e)/det],[B/det,(a*i-c*g)/det,-(a*f-c*d)/det],[C/det,-(a*h-b*g)/det,(a*e-b*d)/det]]; }
+  let kcMK="", kcMM=null;
+  function kcInfo(){ const P=ccPrim(), col=([x,y])=>[x/y,1,(1-x-y)/y], C=[0,1,2].map(r=>["r","g","b"].map(k=>col(P[k])[r]));
+    let Y; const fl=S.ccY&&S.ccY.length===3&&S.ccY.every(v=>v>0);
+    if(fl){ const t=S.ccY[0]+S.ccY[1]+S.ccY[2]; Y=S.ccY.map(v=>v/t); }
+    else { const W=col(P.w), Ci=m3inv(C); Y=Ci.map(r=>r[0]*W[0]+r[1]*W[1]+r[2]*W[2]); }
+    const M=C.map(r=>r.map((v,j)=>v*Y[j]));
+    const Wx=M[0][0]+M[0][1]+M[0][2], Wy=M[1][0]+M[1][1]+M[1][2], Wz=M[2][0]+M[2][1]+M[2][2];
+    return {P,Y,fl,M,inv:m3inv(M),white:[Wx/(Wx+Wy+Wz),Wy/(Wx+Wy+Wz)]}; }
+  function kcMat(){ const k=JSON.stringify([P3,S.ccProf,S.ccRx,S.ccRy,S.ccGx,S.ccGy,S.ccBx,S.ccBy,S.ccWx,S.ccWy,S.ccY]); if(k!==kcMK){ kcMK=k; kcMM=kcInfo().inv; } return kcMM; }
+  function kcRGB(u,v,Y){ const den=6*u-16*v+12, x=9*u/den, y=4*v/den, X=Y*x/y, Z=Y*(1-x-y)/y, M=kcMat();
     return M.map(r=>r[0]*X+r[1]*Y+r[2]*Z); }
   const kcIn=c=>c.every(v=>v>=-1e-4&&v<=1+1e-4);
-  const kcCss=c=>{ const e=c.map(v=>enc(Math.max(0,Math.min(1,v)))); return P3?`color(display-p3 ${e[0].toFixed(5)} ${e[1].toFixed(5)} ${e[2].toFixed(5)})`:`rgb(${e.map(x=>(255*x).toFixed(2)).join(",")})`; };
+  const kcCss=c=>{ const e=c.map((v,ch)=>encC(Math.max(0,Math.min(1,v)),ch)); return P3?`color(display-p3 ${e[0].toFixed(5)} ${e[1].toFixed(5)} ${e[2].toFixed(5)})`:`rgb(${e.map(x=>(255*x).toFixed(2)).join(",")})`; };
+  // calibration controls shared by the plates (i) and colour thresholds (k)
+  const ccCtl=m=>`<label data-modes="${m}">Screen colour<select data-ntk="ccProf"><option value="auto">Standard primaries (sRGB / P3 as drawn)</option><option value="custom">Measured primaries (colorimeter)</option></select></label>
+      <label data-modes="${m}" data-ntm="custom" data-ntmk="ccProf">Measured xy <span class="u">(read off this page's patches)</span><div class="btns" style="display:grid;grid-template-columns:auto 1fr 1fr;gap:4px 6px;align-items:center">
+        ${[["R","Red"],["G","Green"],["B","Blue"],["W","White"]].map(([k,n])=>`<span>${n}</span><input data-ntk="cc${k}x" data-ntt="num" type="number" step="0.001" min="0" max="1" placeholder="x"><input data-ntk="cc${k}y" data-ntt="num" type="number" step="0.001" min="0" max="1" placeholder="y">`).join("")}</div></label>
+      <label data-modes="${m}">Calibrate<div class="btns"><button type="button" data-nta="${m}:cal">Calibrate screen</button><button type="button" data-nta="${m}:patch">Colorimeter patches</button><button type="button" data-nta="${m}:ccclear">Clear</button></div></label>`;
+  function ccStatus(){ const I=kcInfo(), cur=[0,1,2].map(c=>!!curveOf(c)), std=CC_STD[P3?"p3":"srgb"];
+    const sY=(()=>{ const col=([x,y])=>[x/y,1,(1-x-y)/y], C=[0,1,2].map(r=>["r","g","b"].map(k=>col(std[k])[r])), W=col(std.w); return m3inv(C).map(r=>r[0]*W[0]+r[1]*W[1]+r[2]*W[2]); })();
+    const lvl = S.ccProf==="custom"&&I.fl&&cur.every(Boolean) ? 3 : I.fl&&cur.every(Boolean) ? 2 : (I.fl||cur.some(Boolean)) ? 1 : 0;
+    return {I,cur,sY,lvl,txt:`tone curve ${cur.map((c,i)=>"RGB"[i]+(c?" ✓":" –")).join(" ")} · luminance R:G:B ${I.Y.map(v=>(100*v).toFixed(1)).join(" : ")}% ${I.fl?"(flicker-measured)":"(from the white point)"}${I.fl?` vs standard ${sY.map(v=>(100*v).toFixed(1)).join(" : ")}%`:""} · primaries ${S.ccProf==="custom"?"measured":(P3?"standard P3":"standard sRGB")} · white x ${I.white[0].toFixed(4)} y ${I.white[1].toFixed(4)}`}; }
+  // full-screen patches for a colorimeter, drawn through exactly the same path as the plates
+  function ccPatches(){ const o=document.createElement("div"); o.style.cssText="position:fixed;inset:0;z-index:400;cursor:pointer";
+    const L=[["Red",[1,0,0]],["Green",[0,1,0]],["Blue",[0,0,1]],["White",[1,1,1]]]; let i=0;
+    const t=document.createElement("div"); t.style.cssText="position:absolute;left:0;right:0;bottom:12px;text-align:center;font:600 14px system-ui;color:#888;mix-blend-mode:difference";
+    o.appendChild(t); const show=()=>{ o.style.background=rgbCss(L[i][1]); t.textContent=`${L[i][0]} patch: measure x, y here, then tap for the next (${i+1}/4). Esc closes.`; };
+    o.addEventListener("click",()=>{ i++; if(i>=L.length){ o.remove(); return; } show(); });
+    const esc=e=>{ if(e.key==="Escape"){ o.remove(); removeEventListener("keydown",esc,true); } }; addEventListener("keydown",esc,true);
+    document.body.appendChild(o); show(); try{ document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen().catch(()=>{}); }catch(e){} }
+  // calibration run: tone curve per channel (stripe-average matches), then flicker photometry for the luminance ratios
+  function ccCalibrate(){ const curveSeq=[]; [0,1,2].forEach(ch=>[2,4,8].forEach(N=>curveSeq.push({k:"curve",ch,N})));
+    const std=ccStatus().sY, flSeq=[]; for(let r=0;r<3;r++){ flSeq.push({k:"fl",ch:0}); flSeq.push({k:"fl",ch:2}); }
+    let seq=curveSeq.concat(flSeq), k=0, v=0, Lg=0, alive=true, skipped=false; const res={0:[],1:[],2:[]}, fl={0:[],2:[]};
+    const o=document.createElement("div"); o.style.cssText="position:fixed;inset:0;z-index:400;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden;background:#000";
+    const cv=document.createElement("canvas"); cv.style.cssText="position:absolute;left:0;top:0;image-rendering:pixelated"; o.appendChild(cv);
+    const bar=document.createElement("div"); bar.style.cssText="position:absolute;left:0;right:0;bottom:0;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:10px;font:600 15px system-ui";
+    const B=(l,f)=>{ const b=document.createElement("button"); b.type="button"; b.textContent=l; b.style.cssText="padding:12px 16px;border-radius:999px;border:1px solid #444;background:rgba(0,0,0,.7);color:#ccc;font:inherit"; b.onclick=e=>{ e.stopPropagation(); f(); }; bar.appendChild(b); return b; };
+    o.appendChild(bar); document.body.appendChild(o); const g=p3ctx(cv);
+    const close=()=>{ alive=false; o.remove(); sync&&sync(); draw(); };
+    const start=()=>{ const t=seq[k]; if(t.k==="curve") v=Math.round(255*enc(1/t.N)); else Lg=(t.ch===0?std[0]/std[1]:std[2]/std[1])*Math.pow(10,(Math.random()-0.5)*0.5); };
+    const step=f=>{ const t=seq[k]; if(t.k==="curve") v=Math.max(1,Math.min(255,v+f)); else Lg=Math.max(0.005,Math.min(1,Lg*Math.pow(10,0.01*f))); };
+    B("− −",()=>step(-5)); B("−",()=>step(-1)); B("+",()=>step(1)); B("+ +",()=>step(5));
+    B("Match ✓",()=>{ const t=seq[k]; if(t.k==="curve") res[t.ch].push([v/255,1/t.N]); else fl[t.ch].push(Lg); k++;
+      if(k===curveSeq.length&&!skipped){ const gc=Object.assign({},S.gcurve||{}); [0,1,2].forEach(c=>gc[c]=res[c]); S.gcurve=gc; save(); }
+      if(k<seq.length){ start(); return; }
+      const med=a=>{ const b=[...a].sort((x,y)=>x-y); return b[(b.length-1)>>1]*0.5+b[b.length>>1]*0.5; };
+      if(fl[0].length&&fl[2].length) S.ccY=[med(fl[0]),1,med(fl[2])];
+      save(); close(); });
+    B("Skip curve",()=>{ if(seq[k].k==="curve"){ skipped=true; k=curveSeq.length; start(); } });
+    B("Cancel",close);
+    function paint(ts){ if(!alive) return; const dpr=devicePixelRatio||1, W=o.clientWidth, H=o.clientHeight; if(cv.width!==Math.round(W*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.width=cv.width/dpr+"px"; cv.style.height=cv.height/dpr+"px"; }
+      const Wd=cv.width, Hd=cv.height, t=seq[k]; g.fillStyle="#000"; g.fillRect(0,0,Wd,Hd);
+      g.fillStyle="rgba(170,170,170,.9)"; g.font=`600 ${Math.round(15*dpr)}px system-ui`; g.textAlign="center";
+      const n=k+1, tot=seq.length; let ty=26*dpr; const say=txt=>{ const words=txt.split(" "), mw=Wd*0.9; let line=""; for(const w of words){ const t2=line?line+" "+w:w; if(g.measureText(t2).width>mw&&line){ g.fillText(line,Wd/2,ty); ty+=22*dpr; line=w; } else line=t2; } if(line){ g.fillText(line,Wd/2,ty); ty+=22*dpr; } };
+      if(t.k==="curve"){ const name=["red","green","blue"][t.ch], s_=Math.round(Math.min(Wd,Hd)*0.28), y0=Math.round(Hd/2-s_/2), xa=Math.round(Wd/2-s_-10*dpr), xb=Math.round(Wd/2+10*dpr);
+        let im; try{ im=g.createImageData(s_,s_,{colorSpace:P3?"display-p3":"srgb"}); }catch(e){ im=g.createImageData(s_,s_); }
+        let im2; try{ im2=g.createImageData(s_,s_,{colorSpace:P3?"display-p3":"srgb"}); }catch(e){ im2=g.createImageData(s_,s_); }
+        for(let j=0;j<s_;j++) for(let i=0;i<s_;i++){ const q=(j*s_+i)*4; im.data[q+3]=255; im2.data[q+3]=255; if(j%t.N===0) im.data[q+t.ch]=255; im2.data[q+t.ch]=v; }
+        g.putImageData(im,xa,y0); g.putImageData(im2,xb,y0);
+        say(`Screen calibration ${n}/${tot} · tone curve, ${name}: step back or squint until the stripes blur, then set the right square to the same brightness (− / +).`);
+        say(`Both eyes, no filters, room dim. The stripes average exactly 1/${t.N} of full ${name}.`); }
+      else { const hz=15, ph=Math.floor((ts||0)/(1000/(2*hz)))%2, r=Math.round(Math.min(Wd,Hd)*0.12), name=t.ch===0?"red":"blue";
+        const c= ph ? (t.ch===0?[1,0,0]:[0,0,1]) : [0,encC(Lg,1),0];
+        g.fillStyle=rgbCss(c); g.beginPath(); g.arc(Wd/2,Hd/2,r,0,7); g.fill();
+        g.fillStyle="rgba(170,170,170,.9)";
+        say(`Screen calibration ${n}/${tot} · brightness match, ${name} vs green: look straight at the flickering disc from your test distance and set − / + until the flicker is weakest.`);
+        say(`The colour will still shimmer; judge the brightness flicker. Use the big steps to find the dip, then the small ones. Only valid for normal colour vision.`); }
+      requestAnimationFrame(paint); }
+    start(); requestAnimationFrame(paint); }
   const KC_Y=[0.16,0.20,0.24,0.28,0.32,0.36];       // luminance noise levels (relative to white)
   function kcDir(ax){ const cp=KC_CP[ax], du=cp[0]-KC_BG[0], dv=cp[1]-KC_BG[1], n=Math.hypot(du,dv); const t=[du/n,dv/n];
     // use the direction (toward or away from the copunctal point) with more room inside the gamut at every noise level
@@ -2033,8 +2112,8 @@ Percival: G = larger, L = smaller of the BI/BO limits; prism = G/3 − 2L/3 (bas
     kcNext(); }
   NT.k={ name:"Colour vision",
     ctl:`<label data-modes="k">Test<select data-ntk="kcMethod"><option value="cct">Thresholds: protan / deutan / tritan (trivector)</option><option value="pl">Screening plates (7)</option></select></label>
-      <label data-modes="k">Run<div class="btns"><button type="button" data-nta="k:start" class="primary">Start (S)</button></div></label>`,
-    stop(){ KC.active=false; }, clear(){ S.ntRes&&(S.ntRes.k={}); }, act(a){ if(a==="start") kcStart(); },
+      <label data-modes="k">Run<div class="btns"><button type="button" data-nta="k:start" class="primary">Start (S)</button></div></label>`+ccCtl("k"),
+    stop(){ KC.active=false; }, clear(){ S.ntRes&&(S.ntRes.k={}); }, act(a){ if(a==="start") kcStart(); else if(a==="cal") ccCalibrate(); else if(a==="patch") ccPatches(); else if(a==="ccclear"){ S.ccY=null; if(S.gcurve) delete S.gcurve[2]; save(); draw(); } },
     hud(){ return !KC.active?"S start":KC.mode==="cct"?"arrow key = direction of the C's gap · Space = can't see":"type the number · Space = can't see"; },
     key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ kcStart(); return true; } if(!KC.active) return false;
       if(KC.mode==="cct"){ const map={ArrowRight:0,ArrowUp:1,ArrowLeft:2,ArrowDown:3}; if(k in map){ kcResp(map[k]); return true; } if(k===" "){ kcResp(-1); return true; } }
@@ -2277,26 +2356,37 @@ card: "+" (vertical lines in the vertical arm, horizontal lines in the horizonta
   // line (CIE u′v′, line through the copunctal point), split either side of a midpoint, so to someone missing that cone
   // type they are one colour; every dot gets a random brightness (same spread in figure and ground) and a small random
   // hue offset across the line (also the same in both), so brightness and hue edges give nothing away.
-  // Red–green plates sit just inside the screen's green–red gamut edge, where the protan and deutan confusion lines
-  // run almost parallel (3–8° apart): one plate vanishes for both, and the colours come out like the printed plates,
-  // orange-red figures in green or olive ground. Classification plates sit in the purple–blue region, where the two
-  // lines diverge by 24–27°: the left digit lies on the protan line (invisible to protans), the right digit on the
-  // deutan line. Tritan plates use the tritan line (blue/violet against yellow-green).
+  // Red–green plates: red figures in green ground, at four midpoints just inside the screen's green–red gamut edge,
+  // where the protan and deutan confusion lines run within 4–5° of each other. The figure–ground line is the one
+  // that splits the remaining mismatch evenly between protans and deutans (optimised offline at each midpoint): at
+  // the strongest level a dichromat is left with about 5% of the separation across their own confusion line, and
+  // the dots carry hue jitter of about that size across the line in figure and ground alike, which masks most of it.
+  // Spectrum plates (detailed set): single-line vanishing plates along the protan line and along the deutan line at
+  // three more midpoints spread through the gamut (red-pink / teal, magenta / sea-green, purple / blue), which miss
+  // for one type and not the other. Classification plates: two digits, left on the protan line, right on the deutan
+  // line, in the purple–blue region where the lines are 24–27° apart (protans read only the right digit, deutans only
+  // the left, as in Ishihara's own classification plates). Tritan plates: violet against olive, on the tritan line.
   const PIP={active:false,set:null,i:0,res:[],plate:null,buf:""};
-  const PIP_Y=[0.18,0.22,0.26,0.30,0.34,0.38];
-  const PIP_REG={A:[0.22,0.545],A2:[0.20,0.55],A3:[0.24,0.545],B:[0.23,0.535],C:[0.21,0.40],C2:[0.20,0.42],T1:[0.17,0.47],T2:[0.23,0.46]};
-  // direction along the confusion line at midpoint M, and how far the colours can go each way inside the gamut
-  function pipDir(ax,M){ M=M||PIP_REG.A; const d=a=>{ const cp=KC_CP[a], du=cp[0]-M[0], dv=cp[1]-M[1], n=Math.hypot(du,dv); return [du/n,dv/n]; };
-    let t; if(ax==="RG"){ const P=d("P"); let D=d("D"); if(P[0]*D[0]+P[1]*D[1]<0) D=[-D[0],-D[1]]; t=[P[0]+D[0],P[1]+D[1]]; const n=Math.hypot(t[0],t[1]); t=[t[0]/n,t[1]/n]; } else t=d(ax);
-    if(ax==="T"){ if(t[1]>0) t=[-t[0],-t[1]]; } else if(t[0]<0) t=[-t[0],-t[1]];   // + = toward red (RG, P, D) or toward violet (T)
-    const room=sg=>{ let lo=0,hi=0.15; for(let i=0;i<26;i++){ const m_=(lo+hi)/2; if(PIP_Y.every(Y=>[-0.004,0.004].every(j=>kcIn(kcRGB(M[0]+sg*t[0]*m_-t[1]*j,M[1]+sg*t[1]*m_+t[0]*j,Y))))) lo=m_; else hi=m_; } return lo; };
-    return {u:t[0],v:t[1],max:Math.min(room(1),room(-1)),maxP:room(1)}; }
-  // plate sets. sep = figure–ground separation in u′v′ (capped to the gamut at that midpoint)
+  const PIP_Y=[0.10,0.13,0.16,0.19,0.22];
+  const PIP_REG={A:{m:[0.22,0.533],t:[0.9939,-0.1100]},A2:{m:[0.21,0.538],t:[0.9935,-0.1134]},A3:{m:[0.24,0.533],t:[0.9939,-0.1104]},B:{m:[0.25,0.528],t:[0.9943,-0.1065]},
+    P1:{m:[0.1978,0.4683]},P2:{m:[0.25,0.50]},P3:{m:[0.21,0.43]},D1:{m:[0.23,0.47]},D2:{m:[0.25,0.50]},D3:{m:[0.21,0.43]},
+    C:{m:[0.21,0.40]},C2:{m:[0.20,0.42]},T1:{m:[0.1978,0.4683]},T2:{m:[0.21,0.43]}};
+  // direction along the line at the midpoint (+ toward red for red–green, protan and deutan lines; toward violet for
+  // tritan) and the room inside the gamut each way, for every dot brightness and the jitter
+  function pipDir(ax,R){ R=R||PIP_REG.A; const M=R.m; const d=a=>{ const cp=KC_CP[a], du=cp[0]-M[0], dv=cp[1]-M[1], n=Math.hypot(du,dv); return [du/n,dv/n]; };
+    let t; if(ax==="RG"&&R.t) t=R.t; else if(ax==="RG"){ const P=d("P"); let D=d("D"); if(P[0]*D[0]+P[1]*D[1]<0) D=[-D[0],-D[1]]; t=[P[0]+D[0],P[1]+D[1]]; const n=Math.hypot(t[0],t[1]); t=[t[0]/n,t[1]/n]; } else t=d(ax);
+    if(ax==="T"){ if(t[1]>0) t=[-t[0],-t[1]]; } else if(t[0]<0) t=[-t[0],-t[1]];
+    const room=sg=>{ let lo=0,hi=0.3; for(let i=0;i<26;i++){ const m_=(lo+hi)/2; if(PIP_Y.every(Y=>[-0.01,0.01].every(j=>kcIn(kcRGB(M[0]+sg*t[0]*m_-t[1]*j,M[1]+sg*t[1]*m_+t[0]*j,Y))))) lo=m_; else hi=m_; } return lo; };
+    const rp=room(1), rm=room(-1); return {u:t[0],v:t[1],maxP:rp,maxM:rm,max:Math.min(rp,rm)}; }
+  // figure and ground offsets for a separation: split in proportion to the room each way, capped so the ±25% jitter
+  // along the line stays inside the gamut
+  function pipSplit(dr,sep){ const cap=0.76, tot=dr.maxP+dr.maxM; if(tot<=0) return [0,0]; let f=sep*dr.maxP/tot, g=sep*dr.maxM/tot; f=Math.min(f,cap*dr.maxP); g=Math.min(g,cap*dr.maxM); return [f,g]; }
   const PIP_SETS={
-    screen:[{t:"demo",r:"A"},{t:"RG",r:"A",sep:0.10},{t:"RG",r:"A2",sep:0.10},{t:"RG",r:"A3",sep:0.10},{t:"RG",r:"B",sep:0.10},{t:"RG",r:"A",sep:0.06},{t:"RG",r:"A3",sep:0.06},{t:"RG",r:"B",sep:0.06},
-      {t:"cls",r:"C",sep:0.06},{t:"cls",r:"C2",sep:0.055},{t:"T",r:"T1",sep:0.10},{t:"T",r:"T2",sep:0.10}],
-    full:[{t:"demo",r:"A"}].concat(...["A","A2","A3","B"].map(r=>[0.14,0.10,0.07,0.05,0.035].map(sep=>({t:"RG",r,sep}))),
-      [{t:"cls",r:"C",sep:0.06},{t:"cls",r:"C",sep:0.04},{t:"cls",r:"C2",sep:0.055},{t:"cls",r:"C2",sep:0.035}],
+    screen:[{t:"demo",r:"A"},{t:"RG",r:"A",sep:0.12},{t:"RG",r:"A2",sep:0.12},{t:"RG",r:"A3",sep:0.12},{t:"RG",r:"B",sep:0.12},{t:"RG",r:"A",sep:0.08},{t:"RG",r:"A3",sep:0.08},{t:"RG",r:"B",sep:0.055},
+      {t:"cls",r:"C",sep:0.06},{t:"cls",r:"C2",sep:0.055},{t:"T",r:"T1",sep:0.12},{t:"T",r:"T2",sep:0.12}],
+    full:[{t:"demo",r:"A"}].concat(...["A","A2","A3","B"].map(r=>[0.18,0.12,0.08,0.055,0.035].map(sep=>({t:"RG",r,sep}))),
+      ...["P1","P2","P3"].map(r=>[0.12,0.07].map(sep=>({t:"P",r,sep}))), ...["D1","D2","D3"].map(r=>[0.12,0.07].map(sep=>({t:"D",r,sep}))),
+      [{t:"cls",r:"C",sep:0.06},{t:"cls",r:"C2",sep:0.055}],
       ...["T1","T2"].map(r=>[0.12,0.07].map(sep=>({t:"T",r,sep}))))
   };
   const pipNum=()=>{ const a=[1,2,3,4,5,6,7,8,9]; const x=a[Math.random()*9|0]; let y; do{ y=a[Math.random()*9|0]; }while(y===x); return Math.random()<0.6?`${x}${y}`:`${x}`; };
@@ -2310,14 +2400,15 @@ card: "+" (vertical lines in the vertical arm, horizontal lines in the horizonta
     const c=[[p.ans,p.ans],[a,a],[b,b]].sort(()=>Math.random()-0.5); return [...c,["","Nothing"]]; }
   function pipResp(ans){ if(!PIP.active) return; const p=PIP.set[PIP.i]; PIP.res.push({t:p.t,r:p.r,sep:p.sep||0,ans:p.ans,got:ans,L:p.L,R:p.R}); PIP.i++; PIP.plate=null; PIP.buf="";
     if(PIP.i>=PIP.set.length) pipFinish(); else draw(); }
-  function pipFinish(){ PIP.active=false; const R_=PIP.res, rg=R_.filter(r=>r.t==="RG"), cls=R_.filter(r=>r.t==="cls"), tt=R_.filter(r=>r.t==="T"), demo=R_.find(r=>r.t==="demo");
+  function pipFinish(){ PIP.active=false; const R_=PIP.res, rg=R_.filter(r=>r.t==="RG"), cls=R_.filter(r=>r.t==="cls"), tt=R_.filter(r=>r.t==="T"), demo=R_.find(r=>r.t==="demo"), pl=R_.filter(r=>r.t==="P"), dl=R_.filter(r=>r.t==="D");
     let prot=0,deut=0; cls.forEach(r=>{ if(r.got===r.R) prot++; else if(r.got===r.L) deut++; });
     // faintest separation read at (nearly) every red–green midpoint
     const lv=[...new Set(rg.map(r=>r.sep))].sort((a,b)=>b-a); let faint=null;
     for(const s_ of lv){ const a=rg.filter(r=>r.sep===s_), ok=a.filter(r=>r.got===r.ans).length; if(ok>=Math.max(1,a.length-1)) faint=s_; else break; }
     const full=S.pipSet==="full", rgErr=rg.filter(r=>r.got!==r.ans).length;
     const out={when:Date.now(),set:full?"full":"screen",demo:demo&&demo.got===demo.ans,rg:rg.length-rgErr,rgN:rg.length,rgFaint:faint,levels:lv,clsBoth:cls.filter(r=>r.got===r.ans).length,prot,deut,clsN:cls.length,
-      tri:tt.filter(r=>r.got===r.ans).length,triN:tt.length};
+      tri:tt.filter(r=>r.got===r.ans).length,triN:tt.length,
+      pl:pl.filter(r=>r.got===r.ans).length,plN:pl.length,dl:dl.filter(r=>r.got===r.ans).length,dlN:dl.length};
     ntR("i")[S.eye.i]=out; save(); draw(); }
   function pipMake(env,p,Rmax){ const ppd=ntPPD(env), R=Math.round(Math.min(4.5*ppd,Rmax||1e9)), D=2*R, dots=[], cell=Math.max(4,0.7*ppd), G=new Map(), key=(i,j)=>i+","+j;
     const sc_=R/(4.5*ppd); let tries=0; while(tries++<140000){ const r=(0.04+Math.random()*0.10)*ppd*sc_, a=Math.random()*2*Math.PI, q=Math.sqrt(Math.random())*(R-r), x=q*Math.cos(a), y=q*Math.sin(a);
@@ -2330,21 +2421,23 @@ card: "+" (vertical lines in the vertical arm, horizontal lines in the horizonta
     const put=(txt,cx,col)=>{ m.fillStyle=col; m.strokeStyle=col; m.fillText(txt,cx,R*1.06); m.strokeText(txt,cx,R*1.06); };
     if(p.t==="cls"){ put(p.L,R*0.6,"#f00"); put(p.R,R*1.4,"#0f0"); } else put(p.ans,R,"#f00");
     const md=m.getImageData(0,0,D,D).data, at=(x,y)=>{ const i=((Math.round(y+R))*D+Math.round(x+R))*4; return [md[i]>128,md[i+1]>128]; };
-    const M=PIP_REG[p.r]||PIP_REG.A, J=0.004;
+    const R0=PIP_REG[p.r]||PIP_REG.A, M=R0.m;
+    // hue jitter across the line: 0.004, plus 4% of the separation on red–green plates (max 0.01) to mask the residual mismatch
+    const J=Math.min(0.01,0.004+(p.t==="RG"?0.04*(p.sep||0):0));
     const col=(dir,off,Y)=>{ const j=(Math.random()*2-1)*J; return kcCss(kcRGB(M[0]+dir.u*off-dir.v*j, M[1]+dir.v*off+dir.u*j, Y)); };
     const rY=()=>PIP_Y[Math.random()*PIP_Y.length|0];
-    if(p.t==="demo"){ const dr=pipDir("RG",M), h=0.6*dr.max;   // brightness-defined: dark figure, everyone sees it
-      return dots.map(dt=>{ const [f0]=at(dt.x,dt.y), side=Math.random()<0.5?1:-1; return {x:dt.x,y:dt.y,r:dt.r,c:col(dr,side*h*(0.6+0.4*Math.random()), f0?0.07:PIP_Y[2+(Math.random()*4|0)])}; }); }
-    if(p.t==="cls"){ const dP=pipDir("P",M), dD=pipDir("D",M), sP=Math.min(p.sep,0.95*dP.maxP), sD=Math.min(p.sep,0.95*dD.maxP);
-      return dots.map(dt=>{ const [f0,f1]=at(dt.x,dt.y), w=0.85+0.3*Math.random(); let c;
+    if(p.t==="demo"){ const dr=pipDir("RG",R0), [f,g]=pipSplit(dr,0.12);   // brightness-defined: dark figure, everyone sees it
+      return dots.map(dt=>{ const [f0]=at(dt.x,dt.y), side=Math.random()<0.5?f:-g; return {x:dt.x,y:dt.y,r:dt.r,c:col(dr,side*(0.75+0.5*Math.random()), f0?0.04:PIP_Y[1+(Math.random()*4|0)])}; }); }
+    if(p.t==="cls"){ const dP=pipDir("P",R0), dD=pipDir("D",R0), sP=Math.min(p.sep,0.76*dP.maxP), sD=Math.min(p.sep,0.76*dD.maxP);
+      return dots.map(dt=>{ const [f0,f1]=at(dt.x,dt.y), w=0.75+0.5*Math.random(); let c;
         if(f0) c=col(dP,sP*w,rY()); else if(f1) c=col(dD,sD*w,rY()); else c=col(dP,0,rY());
         return {x:dt.x,y:dt.y,r:dt.r,c}; }); }
-    const dr=pipDir(p.t==="T"?"T":"RG",M), h=Math.min(p.sep/2,0.95*dr.max);   // figure +h, ground −h along the line
-    return dots.map(dt=>{ const [f0]=at(dt.x,dt.y), w=0.75+0.5*Math.random(); return {x:dt.x,y:dt.y,r:dt.r,c:col(dr,(f0?1:-1)*h*w,rY())}; }); }
+    const dr=pipDir(p.t,R0), [f,g]=pipSplit(dr,p.sep);   // figure +f (red / violet side), ground −g along the line
+    return dots.map(dt=>{ const [f0]=at(dt.x,dt.y), w=0.75+0.5*Math.random(); return {x:dt.x,y:dt.y,r:dt.r,c:col(dr,(f0?f:-g)*w,rY())}; }); }
   NT.i={ name:"Ishihara-style plates",
-    ctl:`<label data-modes="i">Plates<select data-ntk="pipSet"><option value="screen">Screening (12 plates)</option><option value="full">Detailed (29 plates: graded red–green, classification, tritan)</option></select></label>
-      <label data-modes="i">Run<div class="btns"><button type="button" data-nta="i:start" class="primary">Start (S)</button></div></label>`,
-    stop(){ PIP.active=false; }, clear(){ S.ntRes&&(S.ntRes.i={}); }, act(a){ if(a==="start") pipStart(); else if(a.startsWith("ans:")) pipResp(a.slice(4)); },
+    ctl:`<label data-modes="i">Plates<select data-ntk="pipSet"><option value="screen">Screening (12 plates)</option><option value="full">Detailed (39 plates: graded red–green, protan/deutan lines across the gamut, classification, tritan)</option></select></label>
+      <label data-modes="i">Run<div class="btns"><button type="button" data-nta="i:start" class="primary">Start (S)</button></div></label>`+ccCtl("i"),
+    stop(){ PIP.active=false; }, clear(){ S.ntRes&&(S.ntRes.i={}); }, act(a){ if(a==="start") pipStart(); else if(a.startsWith("ans:")) pipResp(a.slice(4)); else if(a==="cal") ccCalibrate(); else if(a==="patch") ccPatches(); else if(a==="ccclear"){ S.ccY=null; if(S.gcurve) delete S.gcurve[2]; save(); draw(); } },
     hud(){ return PIP.active?`plate ${PIP.i+1}/${PIP.set.length} · tap the number you see · or type it + Enter · Space = nothing`:"S start"; },
     key(k,e,up){ if(up) return false; if(!PIP.active){ if(k==="s"||k==="S"){ pipStart(); return true; } return false; }
       if(/^[0-9]$/.test(k)){ PIP.buf=(PIP.buf+k).slice(-2); draw(); return true; } if(k==="Backspace"){ PIP.buf=PIP.buf.slice(0,-1); draw(); return true; }
@@ -2362,19 +2455,32 @@ card: "+" (vertical lines in the vertical arm, horizontal lines in the horizonta
         if(r.set==="screen") return r.rgN-r.rg<=1?"<b>pass</b> (red–green)":"<b>fail</b>: run the detailed set";
         const lv=r.levels||[]; if(r.rgFaint==null) return "<b>misses even the strongest red–green plates</b>"; const i=lv.indexOf(r.rgFaint);
         return i===lv.length-1?"<b>reads every red–green level</b>":`reads down to separation <b>${r.rgFaint}</b>; misses ${lv.slice(i+1).join(", ")}`; };
-      const cls=r=>r.prot>r.deut&&r.prot>=Math.ceil(r.clsN/2)?" → <b>protan pattern</b>":r.deut>r.prot&&r.deut>=Math.ceil(r.clsN/2)?" → <b>deutan pattern</b>":"";
+      // type: two-digit plates (protan reads the right digit only) plus, in the detailed set, which single-line plates
+      // were missed (protans miss protan-line plates and read deutan-line ones)
+      const cls=r=>{ const pS=r.prot+(r.plN?(r.plN-r.pl)-(r.dlN-r.dl):0), dS=r.deut+(r.plN?(r.dlN-r.dl)-(r.plN-r.pl):0);
+        return pS>=2&&pS>dS?" → <b>protan pattern</b>":dS>=2&&dS>pS?" → <b>deutan pattern</b>":""; };
       const readout=PIP.active?`<span>plate ${PIP.i+1} of ${PIP.set.length}${PIP.buf?` · typed <b>${PIP.buf}</b>`:""}</span>`:
-        r?`<span>${S.eye.i} (${r.set==="full"?"detailed":"screening"}): ${verdict(r)} · red–green <b>${r.rg}/${r.rgN}</b> · tritan <b>${r.tri}/${r.triN}</b></span><span>classification: both digits ${r.clsBoth}/${r.clsN} · right only (protan pattern) ${r.prot} · left only (deutan pattern) ${r.deut}${cls(r)}</span>`:"<span>stopped</span>";
-      const warns=[]; if(!P3) warns.push("Colours are exact only on a screen that follows sRGB (or a Mac's P3). On a tablet use its Natural/sRGB screen mode, eye-comfort off.");
-      const rd=k=>{ const d=pipDir(k[0]==="T"?"T":k[0]==="C"?"P":"RG",PIP_REG[k]); return `${k} (${PIP_REG[k].join(", ")})`; };
+        r?`<span>${S.eye.i} (${r.set==="full"?"detailed":"screening"}): ${verdict(r)} · red–green <b>${r.rg}/${r.rgN}</b> · tritan <b>${r.tri}/${r.triN}</b></span><span>classification: both digits ${r.clsBoth}/${r.clsN} · right digit only (protan pattern) ${r.prot} · left digit only (deutan pattern) ${r.deut}${r.plN?` · protan-line plates read ${r.pl}/${r.plN} · deutan-line plates read ${r.dl}/${r.dlN}`:""}${cls(r)}</span>`:"<span>stopped</span>";
+      const cs=ccStatus(), warns=[];
+      if(cs.lvl<2) warns.push("Screen not calibrated for colour: press Calibrate screen (tone curve + brightness flicker match, about 3 minutes, needs normal colour vision). For clinical accuracy also measure the primaries with a colorimeter (Colorimeter patches) and enter them.");
+      else if(cs.lvl<3&&!P3) warns.push("Tone curve and luminance are calibrated, but the primaries are assumed to be sRGB: on a budget tablet they may not be. Measure them with a colorimeter for clinical accuracy.");
+      const gam=["A","A2","A3","B"].map(k=>{ const dr=pipDir("RG",PIP_REG[k]), [f,g]=pipSplit(dr,1); return [k,f+g]; }).filter(([k,m])=>m<0.18);
+      if(gam.length) warns.push(`This screen's colour range caps the strongest red–green plates: ${gam.map(([k,m])=>`${k} at ${m.toFixed(3)}`).join(", ")} (planned 0.18). Levels above the cap are shown at the cap.`);
+      warns.push("Use the screen's Natural / sRGB mode with eye-comfort, night light and adaptive colour off; calibrate in that mode.");
+      const rd=k=>`${k} (${PIP_REG[k].m.join(", ")})`;
       return {readout,warns,
         eq:`colours in CIE 1976 u′v′ with luminance Y; confusion lines through the copunctal points P (0.678, 0.501), D (−1.217, 0.782), T (0.257, 0)
-red–green plates: figure = M + (sep/2)·t, ground = M − (sep/2)·t, t along the protan/deutan line (they run 3–8° apart at these midpoints)
-midpoints: ${["A","A2","A3","B"].map(rd).join(" · ")}; classification ${["C","C2"].map(rd).join(" · ")} (left digit on the protan line, right digit on the deutan line, 24–27° apart); tritan ${["T1","T2"].map(rd).join(" · ")}
-every dot: luminance random from ${PIP_Y.join(", ")} × white, ±0.004 hue jitter across the line, ±25% along it (same in figure and ground)
-screening: ${PIP_SETS.screen.length} plates (red–green at separation 0.10 and 0.06); detailed: ${PIP_SETS.full.length} plates (red–green 0.14 / 0.10 / 0.07 / 0.05 / 0.035 at four midpoints)`,
-        opt:`<p>Generated plates in the style of Ishihara's test, not the Ishihara plates themselves. Each number is made of dots in one colour on a ground of dots in another, and the two colours lie on the same colour-confusion line: to a person missing that cone type they are the same colour, and random brightness on every dot means brightness can't give the number away. Red–green plates use orange-red against green and olive at four places across the red–green range, where the protan and deutan lines nearly coincide, so they vanish for both types. Classification plates use purples and blues, where the lines diverge: protans see only the right digit, deutans only the left. Tritan plates check blue–yellow.</p><p><b>Screening</b> (12 plates) gives pass/fail: normal red–green colour vision reads all red–green plates, at most one miss. <b>Detailed</b> (29 plates) grades the red–green plates in five steps of colour separation at each of four colour midpoints, so it shows how strong a defect is, plus classification and tritan plates. Use good, even room light and your near correction at ${S.dist.i} cm, about 3 seconds a plate. A fail or a protan/deutan pattern should be confirmed on printed plates or an anomaloscope, and colour accuracy depends on the screen.</p>`,
-        rows:`<tr><th>Result</th><th>Means</th></tr><tr><td>Screening: at most 1 red–green miss</td><td>Normal red–green colour vision (for this screen)</td></tr><tr><td>Detailed: misses only the faintest (0.035, 0.05)</td><td>Mild anomaly (or a screen colour error: recheck on another screen)</td></tr><tr><td>Detailed: misses down from 0.07 or 0.10</td><td>Moderate to marked defect</td></tr><tr><td>Misses even 0.14</td><td>Strong defect (dichromat range)</td></tr><tr><td>Right digit only</td><td>Protan pattern</td></tr><tr><td>Left digit only</td><td>Deutan pattern</td></tr><tr><td>Tritan plates missed</td><td>Blue–yellow defect (often acquired: check media, optic nerve, drugs)</td></tr>`,
+red–green plates: figure = M + f·t (red side), ground = M − g·t (green side), f + g = separation, split by the gamut room each way; t chosen at each midpoint to split the protan/deutan mismatch evenly (≈5% of the separation)
+red–green midpoints: ${["A","A2","A3","B"].map(rd).join(" · ")}; protan-line plates ${["P1","P2","P3"].map(rd).join(" · ")}; deutan-line plates ${["D1","D2","D3"].map(rd).join(" · ")}
+classification ${["C","C2"].map(rd).join(" · ")} (left digit on the protan line, right digit on the deutan line, 24–27° apart); tritan ${["T1","T2"].map(rd).join(" · ")}
+every dot: luminance random from ${PIP_Y.join(", ")} × white, hue jitter across the line ±(0.004 + 4% of the separation on red–green plates, max 0.01), ±25% along it (same in figure and ground)
+calibration: ${cs.txt}
+screening: ${PIP_SETS.screen.length} plates (red–green at separation 0.12, 0.08 and 0.055); detailed: ${PIP_SETS.full.length} plates (red–green 0.18 / 0.12 / 0.08 / 0.055 / 0.035 at four midpoints, protan- and deutan-line plates 0.12 / 0.07 at three midpoints each, 2 classification, 4 tritan)`,
+        opt:`<p>Generated plates in the style of Ishihara's test, not the Ishihara plates themselves. Each number is dots of one colour in a ground of another, and the two colours lie on (or within a few percent of) the same colour-confusion line: to someone missing that cone type they are the same colour, and random brightness on every dot means brightness can't give the number away.</p>
+        <p><b>Why red numbers in green:</b> red–green deficiency confuses colours along lines that run from red through orange and yellow to green. The protan and deutan lines run nearly together only near the red–green edge of the colour range, so that is where a single plate vanishes for both types, which is why Ishihara's plates are red-orange on green and olive. Ishihara itself tests only that: it has no blue–yellow plates. The <b>detailed set</b> goes further: red-on-green plates graded in five steps at four midpoints, then plates along the protan line alone and the deutan line alone at three more places across the colour range (red-pink against teal, magenta against sea-green, purple against blue). Each of those vanishes for one type and not the other, which classifies more reliably than two-digit plates. Tritan plates (violet against olive) cover blue–yellow.</p>
+        <p><b>Two-digit plates</b> work as in Ishihara's classification plates (e.g. "26": protans read 6, deutans read 2): the left digit lies on the protan line, so protans see only the right digit; the right digit lies on the deutan line, so deutans see only the left. Mild anomalies may see both, one fainter.</p>
+        <p>Use good, even room light and your near correction at ${S.dist.i} cm, about 3 seconds a plate. Accuracy depends on the screen: calibrate it (below), ideally with measured primaries. A fail or a type pattern should be confirmed on printed plates or an anomaloscope.</p>`,
+        rows:`<tr><th>Result</th><th>Means</th></tr><tr><td>Screening: at most 1 red–green miss</td><td>Normal red–green colour vision (for this screen)</td></tr><tr><td>Detailed: misses only the faintest (0.035, 0.055)</td><td>Mild anomaly (or a screen colour error: recheck after calibrating)</td></tr><tr><td>Detailed: misses from 0.08 or 0.12 down</td><td>Moderate to marked defect</td></tr><tr><td>Misses even 0.18</td><td>Strong defect (dichromat range)</td></tr><tr><td>Misses protan-line plates, reads deutan-line plates; right digit only</td><td>Protan pattern</td></tr><tr><td>Misses deutan-line plates, reads protan-line plates; left digit only</td><td>Deutan pattern</td></tr><tr><td>Tritan plates missed</td><td>Blue–yellow defect (often acquired: check media, optic nerve, drugs)</td></tr>`,
         steps:`<li>Good room light, near correction, plate at ${S.dist.i} cm, one eye or both. Choose Screening or Detailed.</li><li>Press S (tap the screen on a tablet); for each plate tap or type the number you see within about 3 seconds, or Nothing (Space).</li><li>The result gives pass/fail (screening) or the faintest red–green level read, the classification and the tritan plates (detailed).</li>` }; } };
   // ---------------- t: N-point near reading card ----------------
   // N notation = point size of Times New Roman print (1 pt = 0.3528 mm). Other serif fonts have a different x-height, so the
@@ -5275,7 +5381,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
       S.vgMode==="obj"&&{run:VO.active,ans:true,start:"s",pad:[["ArrowUp","↑ up"],["ArrowRight","→ right"],["ArrowDown","↓ down"],["ArrowLeft","← left"],[" ","Can't see"]],how:"Tap the direction of the gap in the ring on the right, or Can't see."},
     K:()=>(AD.phase!=="adapt"&&{run:true,ans:true,show:()=>KB.buf,pad:[..."1234567890"].map(c=>[c,c]).concat([[".","."],["-","±"],["Backspace","⌫"],["Enter","Enter ✓"]])}),
     Q:()=>({run:true,ans:true,show:()=>KB.buf,pad:[..."1234567890"].map(c=>[c,c]).concat([[".","."],["-","±"],["Backspace","⌫"],["Enter","Enter ✓"]])}),
-    i:()=>({run:PIP.active,ans:false,start:"s",how:`Good room light, near correction. For each plate tap the number you see (or Nothing) within about 3 seconds. ${S.pipSet==="full"?29:12} plates.`}),
+    i:()=>({run:PIP.active,ans:false,start:"s",how:`Good room light, near correction. For each plate tap the number you see (or Nothing) within about 3 seconds. ${S.pipSet==="full"?39:12} plates.`}),
     t:()=>({run:true,ans:true,z:[["ArrowLeft","Larger"],["ArrowRight","Smaller"]],x:[["Enter","Read it ✓"],["n","New text"]]}),
     // size-adjust and plate-step tests: invisible left/right halves, nothing drawn over the target
     p:()=>({run:true,ans:true,quiet:1,z:[[" ","Record"]]}),

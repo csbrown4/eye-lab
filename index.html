@@ -2043,8 +2043,8 @@ Percival: G = larger, L = smaller of the BI/BO limits; prism = G/3 − 2L/3 (bas
   // The XYZ → panel matrix is built from the primaries' chromaticities and their luminances:
   //   M(RGB→XYZ) = [ xᵢ/yᵢ ; 1 ; (1−xᵢ−yᵢ)/yᵢ ] · diag(Yᵢ),  inverted.
   // Chromaticities: the drawing space's standard primaries, or values measured with a colorimeter off this page's own
-  // full red/green/blue patches. Luminances Yᵢ: from the white point, or measured by heterochromatic flicker
-  // photometry (red vs green, blue vs green at 15 Hz). Tone curve: each channel's response measured with the
+  // full red/green/blue patches. Luminances Yᵢ: from the white point, or measured by minimum-motion photometry
+  // (red vs green, blue vs green). Tone curve: each channel's response measured with the
   // stripe-average match (1 lit row in N averages to exactly 1/N), used to encode every colour.
   const CC_STD={ srgb:{r:[0.64,0.33],g:[0.30,0.60],b:[0.15,0.06],w:[0.3127,0.3290]}, p3:{r:[0.680,0.320],g:[0.265,0.690],b:[0.150,0.060],w:[0.3127,0.3290]} };
   function ccPrim(){ const std=CC_STD[P3?"p3":"srgb"]; if(S.ccProf!=="custom") return std;
@@ -2078,7 +2078,7 @@ Percival: G = larger, L = smaller of the BI/BO limits; prism = G/3 − 2L/3 (bas
   function ccStatus(){ const I=kcInfo(), cur=[0,1,2].map(c=>!!curveOf(c)), std=CC_STD[P3?"p3":"srgb"];
     const sY=(()=>{ const col=([x,y])=>[x/y,1,(1-x-y)/y], C=[0,1,2].map(r=>["r","g","b"].map(k=>col(std[k])[r])), W=col(std.w); return m3inv(C).map(r=>r[0]*W[0]+r[1]*W[1]+r[2]*W[2]); })();
     const lvl = S.ccProf==="custom"&&I.fl&&cur.every(Boolean) ? 3 : I.fl&&cur.every(Boolean) ? 2 : (I.fl||cur.some(Boolean)) ? 1 : 0;
-    return {I,cur,sY,lvl,txt:`tone curve ${cur.map((c,i)=>"RGB"[i]+(c?" ✓":" –")).join(" ")} · luminance R:G:B ${I.Y.map(v=>(100*v).toFixed(1)).join(" : ")}% ${I.fl?"(flicker-measured)":"(from the white point)"}${I.fl?` vs standard ${sY.map(v=>(100*v).toFixed(1)).join(" : ")}%`:""} · primaries ${S.ccProf==="custom"?"measured":(P3?"standard P3":"standard sRGB")} · white x ${I.white[0].toFixed(4)} y ${I.white[1].toFixed(4)}`}; }
+    return {I,cur,sY,lvl,txt:`tone curve ${cur.map((c,i)=>"RGB"[i]+(c?" ✓":" –")).join(" ")} · luminance R:G:B ${I.Y.map(v=>(100*v).toFixed(1)).join(" : ")}% ${I.fl?"(measured by minimum motion)":"(from the white point)"}${I.fl?` vs standard ${sY.map(v=>(100*v).toFixed(1)).join(" : ")}%`:""} · primaries ${S.ccProf==="custom"?"measured":(P3?"standard P3":"standard sRGB")} · white x ${I.white[0].toFixed(4)} y ${I.white[1].toFixed(4)}`}; }
   // full-screen patches for a colorimeter, drawn through exactly the same path as the plates
   function ccPatches(){ const o=document.createElement("div"); o.style.cssText="position:fixed;inset:0;z-index:400;cursor:pointer";
     const L=[["Red",[1,0,0]],["Green",[0,1,0]],["Blue",[0,0,1]],["White",[1,1,1]]]; let i=0;
@@ -2087,46 +2087,62 @@ Percival: G = larger, L = smaller of the BI/BO limits; prism = G/3 − 2L/3 (bas
     o.addEventListener("click",()=>{ i++; if(i>=L.length){ o.remove(); return; } show(); });
     const esc=e=>{ if(e.key==="Escape"){ o.remove(); removeEventListener("keydown",esc,true); } }; addEventListener("keydown",esc,true);
     document.body.appendChild(o); show(); try{ document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen().catch(()=>{}); }catch(e){} }
-  // calibration run: tone curve per channel (stripe-average matches), then flicker photometry for the luminance ratios
+  // calibration run: tone curve per channel (stripe-average matches), then the luminance of red and blue relative to green
+  // by minimum-motion photometry (Anstis & Cavanagh 1983): a red/green grating alternates with a dim luminance grating
+  // shifted a quarter cycle each frame. Whichever colour is brighter carries the apparent motion, so the stripes drift
+  // right if red is brighter and left if green is; at equal luminance the direction is ambiguous. You only say which
+  // way it drifted, and an adaptive staircase finds the balance: no flicker to null.
   function ccCalibrate(){ const curveSeq=[]; [0,1,2].forEach(ch=>[2,4,8].forEach(N=>curveSeq.push({k:"curve",ch,N})));
-    const std=ccStatus().sY, flSeq=[]; for(let r=0;r<3;r++){ flSeq.push({k:"fl",ch:0}); flSeq.push({k:"fl",ch:2}); }
-    let seq=curveSeq.concat(flSeq), k=0, v=0, Lg=0, alive=true, skipped=false; const res={0:[],1:[],2:[]}, fl={0:[],2:[]};
+    const std=ccStatus().sY, exp_={0:std[0]/std[1],2:std[2]/std[1]};
+    const mk=()=>PSE({lo:-0.6,hi:0.6,n:121,sLo:0.01,sHi:0.25,ns:8,minT:14,maxT:30,sdStop:0.03}), ads={0:mk(),2:mk()};
+    let phase="curve", k=0, v=0, alive=true, skipped=false, tr=null, mmT0=0; const res={0:[],1:[],2:[]};
     const o=document.createElement("div"); o.style.cssText="position:fixed;inset:0;z-index:400;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden;background:#000";
     const cv=document.createElement("canvas"); cv.style.cssText="position:absolute;left:0;top:0;image-rendering:pixelated"; o.appendChild(cv);
     const bar=document.createElement("div"); bar.style.cssText="position:absolute;left:0;right:0;bottom:0;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:10px;font:600 15px system-ui";
-    const B=(l,f)=>{ const b=document.createElement("button"); b.type="button"; b.textContent=l; b.style.cssText="padding:12px 16px;border-radius:999px;border:1px solid #444;background:rgba(0,0,0,.7);color:#ccc;font:inherit"; b.onclick=e=>{ e.stopPropagation(); f(); }; bar.appendChild(b); return b; };
-    o.appendChild(bar); document.body.appendChild(o); const g=p3ctx(cv);
-    const close=()=>{ alive=false; o.remove(); sync&&sync(); draw(); };
-    const start=()=>{ const t=seq[k]; if(t.k==="curve") v=Math.round(255*enc(1/t.N)); else Lg=(t.ch===0?std[0]/std[1]:std[2]/std[1])*Math.pow(10,(Math.random()-0.5)*0.5); };
-    const step=f=>{ const t=seq[k]; if(t.k==="curve") v=Math.max(1,Math.min(255,v+f)); else Lg=Math.max(0.005,Math.min(1,Lg*Math.pow(10,0.01*f))); };
-    B("− −",()=>step(-5)); B("−",()=>step(-1)); B("+",()=>step(1)); B("+ +",()=>step(5));
-    B("Match ✓",()=>{ const t=seq[k]; if(t.k==="curve") res[t.ch].push([v/255,1/t.N]); else fl[t.ch].push(Lg); k++;
-      if(k===curveSeq.length&&!skipped){ const gc=Object.assign({},S.gcurve||{}); [0,1,2].forEach(c=>gc[c]=res[c]); S.gcurve=gc; save(); }
-      if(k<seq.length){ start(); return; }
-      const med=a=>{ const b=[...a].sort((x,y)=>x-y); return b[(b.length-1)>>1]*0.5+b[b.length>>1]*0.5; };
-      if(fl[0].length&&fl[2].length) S.ccY=[med(fl[0]),1,med(fl[2])];
-      save(); close(); });
-    B("Skip curve",()=>{ if(seq[k].k==="curve"){ skipped=true; k=curveSeq.length; start(); } });
-    B("Cancel",close);
+    const B=(l,f,big)=>{ const b=document.createElement("button"); b.type="button"; b.textContent=l; b.style.cssText=`padding:${big?"16px 28px":"12px 16px"};border-radius:999px;border:1px solid #444;background:rgba(0,0,0,.7);color:#ccc;font:inherit`; b.onclick=e=>{ e.stopPropagation(); f(); }; bar.appendChild(b); return b; };
+    o.appendChild(bar); document.body.appendChild(o); const g=p3ctx(cv); o.id="ccCal"; o._tr=()=>tr;
+    const keyH=e=>{ if(!alive) return; if(e.key==="Escape"){ close(); } else if(phase==="mm"&&tr&&tr.ans){ if(e.key==="ArrowLeft"){ mmAns(true); } else if(e.key==="ArrowRight"){ mmAns(false); } } e.stopPropagation(); };
+    addEventListener("keydown",keyH,true);
+    const close=()=>{ alive=false; removeEventListener("keydown",keyH,true); o.remove(); sync&&sync(); draw(); };
+    const curveBar=()=>{ bar.innerHTML=""; const step=f=>{ v=Math.max(1,Math.min(255,v+f)); };
+      B("− −",()=>step(-5)); B("−",()=>step(-1)); B("+",()=>step(1)); B("+ +",()=>step(5));
+      B("Match ✓",()=>{ const t=curveSeq[k]; res[t.ch].push([v/255,1/t.N]); k++;
+        if(k<curveSeq.length){ v=Math.round(255*enc(1/curveSeq[k].N)); return; }
+        if(!skipped){ const gc=Object.assign({},S.gcurve||{}); [0,1,2].forEach(c=>gc[c]=res[c]); S.gcurve=gc; save(); }
+        startMM(); });
+      B("Skip curve",()=>{ skipped=true; startMM(); }); B("Cancel",close); };
+    const mmBar=()=>{ bar.innerHTML=""; B("← Drifted left",()=>mmAns(true),true); B("Drifted right →",()=>mmAns(false),true); B("Cancel",close); };
+    function startMM(){ phase="mm"; mmBar(); mmTrial(); }
+    function mmTrial(){ const open=[0,2].filter(c=>!ads[c].done());
+      if(!open.length){ S.ccY=[exp_[0]*Math.pow(10,ads[0].est().mu),1,exp_[2]*Math.pow(10,ads[2].est().mu)]; save(); close(); beep(660,200); return; }
+      const ch=open[Math.floor(Math.random()*open.length)], x=ads[ch].next(); tr={ch,x,gl:Math.min(1,exp_[ch]*Math.pow(10,x)),ans:false,t0:null}; }
+    function mmAns(left){ if(!tr||!tr.ans) return; ads[tr.ch].update(tr.x,left); tr=null; setTimeout(()=>{ if(alive) mmTrial(); },350); }
     function paint(ts){ if(!alive) return; const dpr=devicePixelRatio||1, W=o.clientWidth, H=o.clientHeight; if(cv.width!==Math.round(W*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.width=cv.width/dpr+"px"; cv.style.height=cv.height/dpr+"px"; }
-      const Wd=cv.width, Hd=cv.height, t=seq[k]; g.fillStyle="#000"; g.fillRect(0,0,Wd,Hd);
+      const Wd=cv.width, Hd=cv.height; g.fillStyle="#000"; g.fillRect(0,0,Wd,Hd);
       g.fillStyle="rgba(170,170,170,.9)"; g.font=`600 ${Math.round(15*dpr)}px system-ui`; g.textAlign="center";
-      const n=k+1, tot=seq.length; let ty=26*dpr; const say=txt=>{ const words=txt.split(" "), mw=Wd*0.9; let line=""; for(const w of words){ const t2=line?line+" "+w:w; if(g.measureText(t2).width>mw&&line){ g.fillText(line,Wd/2,ty); ty+=22*dpr; line=w; } else line=t2; } if(line){ g.fillText(line,Wd/2,ty); ty+=22*dpr; } };
-      if(t.k==="curve"){ const name=["red","green","blue"][t.ch], s_=Math.round(Math.min(Wd,Hd)*0.28), y0=Math.round(Hd/2-s_/2), xa=Math.round(Wd/2-s_-10*dpr), xb=Math.round(Wd/2+10*dpr);
+      let ty=26*dpr; const say=txt=>{ const words=txt.split(" "), mw=Wd*0.9; let line=""; for(const w of words){ const t2=line?line+" "+w:w; if(g.measureText(t2).width>mw&&line){ g.fillText(line,Wd/2,ty); ty+=22*dpr; line=w; } else line=t2; } if(line){ g.fillText(line,Wd/2,ty); ty+=22*dpr; } };
+      if(phase==="curve"){ const t=curveSeq[k], name=["red","green","blue"][t.ch], s_=Math.round(Math.min(Wd,Hd)*0.28), y0=Math.round(Hd/2-s_/2), xa=Math.round(Wd/2-s_-10*dpr), xb=Math.round(Wd/2+10*dpr);
         let im; try{ im=g.createImageData(s_,s_,{colorSpace:P3?"display-p3":"srgb"}); }catch(e){ im=g.createImageData(s_,s_); }
         let im2; try{ im2=g.createImageData(s_,s_,{colorSpace:P3?"display-p3":"srgb"}); }catch(e){ im2=g.createImageData(s_,s_); }
         for(let j=0;j<s_;j++) for(let i=0;i<s_;i++){ const q=(j*s_+i)*4; im.data[q+3]=255; im2.data[q+3]=255; if(j%t.N===0) im.data[q+t.ch]=255; im2.data[q+t.ch]=v; }
         g.putImageData(im,xa,y0); g.putImageData(im2,xb,y0);
-        say(`Screen calibration ${n}/${tot} · tone curve, ${name}: step back or squint until the stripes blur, then set the right square to the same brightness (− / +).`);
+        say(`Screen calibration, step 1 of 2 · tone curve ${k+1}/${curveSeq.length}, ${name}: step back or squint until the stripes blur, then set the right square to the same brightness (− / +).`);
         say(`Both eyes, no filters, room dim. The stripes average exactly 1/${t.N} of full ${name}.`); }
-      else { const hz=15, ph=Math.floor((ts||0)/(1000/(2*hz)))%2, r=Math.round(Math.min(Wd,Hd)*0.12), name=t.ch===0?"red":"blue";
-        const c= ph ? (t.ch===0?[1,0,0]:[0,0,1]) : [0,encC(Lg,1),0];
-        g.fillStyle=rgbCss(c); g.beginPath(); g.arc(Wd/2,Hd/2,r,0,7); g.fill();
+      else if(tr){ const A=tr.ch, name=A===0?"red":"blue", P=Math.round(Math.min(Wd,Hd)/5), x0=Math.round(Wd*0.12), x1=Math.round(Wd*0.88), y0=Math.round(Hd*0.32), y1=Math.round(Hd*0.68);
+        if(tr.t0==null) tr.t0=ts; const el_=ts-tr.t0, dur=1200;
+        const total=ads[0].trials()+ads[2].trials()+1;
+        if(el_<dur){ const f=Math.floor(el_/(1000/30))%4, sh=f*P/4, cL=0.25;
+          const col=(first)=>{ if(f%2===0){ return first ? (A===0?[1,0,0]:[0,0,1]) : [0,tr.gl,0]; }
+            const m=first?(1+cL)/2:(1-cL)/2; return A===0?[m,m*tr.gl,0]:[0,m*tr.gl,m]; };
+          const css=c=>rgbCss(c.map((x,i)=>encC(x,i)));
+          const cA=css(col(true)), cB=css(col(false));
+          for(let x=x0-P+((sh%P)+P)%P; x<x1; x+=P){ g.fillStyle=cA; const a=Math.max(x0,x), b=Math.min(x1,x+P/2); if(b>a) g.fillRect(a,y0,b-a,y1-y0); g.fillStyle=cB; const c2=Math.max(x0,x+P/2), d2=Math.min(x1,x+P); if(d2>c2) g.fillRect(c2,y0,d2-c2,y1-y0); } }
+        else tr.ans=true;
         g.fillStyle="rgba(170,170,170,.9)";
-        say(`Screen calibration ${n}/${tot} · brightness match, ${name} vs green: look straight at the flickering disc from your test distance and set − / + until the flicker is weakest.`);
-        say(`The colour will still shimmer; judge the brightness flicker. Use the big steps to find the dip, then the small ones. Only valid for normal colour vision.`); }
+        say(`Screen calibration, step 2 of 2 · brightness of ${name} vs green, look ${total}: the stripes drift for a moment. Which way did they seem to drift? Guess if you can't tell; the guesses near the balance point are what it uses.`);
+        say(tr.ans?"← drifted left · drifted right →":"watch the middle of the stripes"); }
       requestAnimationFrame(paint); }
-    start(); requestAnimationFrame(paint); }
+    v=Math.round(255*enc(1/curveSeq[0].N)); curveBar(); requestAnimationFrame(paint); }
   const KC_Y=[0.16,0.20,0.24,0.28,0.32,0.36];       // luminance noise levels (relative to white)
   function kcDir(ax){ const cp=KC_CP[ax], du=cp[0]-KC_BG[0], dv=cp[1]-KC_BG[1], n=Math.hypot(du,dv); const t=[du/n,dv/n];
     // use the direction (toward or away from the copunctal point) with more room inside the gamut at every noise level
@@ -2182,7 +2198,7 @@ Percival: G = larger, L = smaller of the BI/BO limits; prism = G/3 − 2L/3 (bas
         <span>OD thresholds (× 10⁻⁴ u′v′): ${fmt(cc.OD)}</span><span>OS: ${fmt(cc.OS)}</span><span>plates OD: ${pl("OD")} · OS: ${pl("OS")}</span>`;
       const dirs=KC.dirs||{P:kcDir("P"),D:kcDir("D"),T:kcDir("T")};
       const cs=ccStatus(), warns=[];
-      if(cs.lvl<2) warns.push("Screen not calibrated for colour: press Calibrate screen below (tone curve + brightness flicker match). Thresholds are a few panel steps, so an uncalibrated tone curve or white point shifts them noticeably.");
+      if(cs.lvl<2) warns.push("Screen not calibrated for colour: press Calibrate screen below (tone curve + left/right drift judgements for brightness). Thresholds are a few panel steps, so an uncalibrated tone curve or white point shifts them noticeably.");
       else if(cs.lvl<3&&!P3) warns.push("Tone curve and luminance are calibrated; the primaries are assumed to be sRGB. Measure them with a colorimeter for values comparable with published norms.");
       if(!P3) warns.push("Drawing in sRGB: the colour range is smaller, so strong defects may hit the screen limit (shown as ≥).");
       return {readout, warns,
@@ -2192,7 +2208,7 @@ u′v′Y → XYZ → linear ${P3?"Display P3":"sRGB"} → encoded; largest Δ i
 threshold: 4-choice gap direction of a Landolt C (outer 4.3°, gap 1°), adaptive on log Δ, 25% guess rate
 each disc rounded to the panel's 8-bit steps with random dither, so the target's average colour is exact (one step ≈ 10–13 × 10⁻⁴ in the main channel)
 calibration: ${cs.txt}`,
-        opt:`<p>Modelled on the Cambridge Colour Test: a Landolt C made of discs differs from its surround only in colour, along one of the three cone-confusion lines, while random brightness on every disc stops luminance being used. Each threshold is the smallest colour difference you can see along that line, so it separates protan, deutan and tritan losses and grades their size, which plates can't. Acquired losses (optic neuritis, glaucoma, diabetic retinopathy, drug toxicity, cataract) usually raise tritan first or all three.</p><p>The C is the right task: it is the Cambridge Colour Test's own stimulus, with a 25% guess rate, an answer that needs the shape to be seen (not just "something is there"), and norms to compare against. A digit or a patch in one of four places would work too, but would lose that comparability.</p><p>Limits: values match the published CCT trivector norms only as well as the screen is calibrated. Young adults are typically about 30–70 × 10⁻⁴ protan and deutan and 40–90 tritan, tritan rising with age (lens yellowing); upper normal limits are roughly 100 (protan, deutan) and 150 (tritan) under 50. A normal threshold is only 3–5 steps of an 8-bit panel; the dithered rounding keeps it exact on average, but calibrate the screen first (tone curve and flicker match; ideally measured primaries). Compare eyes and visits with the same settings: True Tone, Night Shift and adaptive brightness off.</p>`,
+        opt:`<p>Modelled on the Cambridge Colour Test: a Landolt C made of discs differs from its surround only in colour, along one of the three cone-confusion lines, while random brightness on every disc stops luminance being used. Each threshold is the smallest colour difference you can see along that line, so it separates protan, deutan and tritan losses and grades their size, which plates can't. Acquired losses (optic neuritis, glaucoma, diabetic retinopathy, drug toxicity, cataract) usually raise tritan first or all three.</p><p>The C is the right task: it is the Cambridge Colour Test's own stimulus, with a 25% guess rate, an answer that needs the shape to be seen (not just "something is there"), and norms to compare against. A digit or a patch in one of four places would work too, but would lose that comparability.</p><p>Limits: values match the published CCT trivector norms only as well as the screen is calibrated. Young adults are typically about 30–70 × 10⁻⁴ protan and deutan and 40–90 tritan, tritan rising with age (lens yellowing); upper normal limits are roughly 100 (protan, deutan) and 150 (tritan) under 50. A normal threshold is only 3–5 steps of an 8-bit panel; the dithered rounding keeps it exact on average, but calibrate the screen first (tone curve and brightness match; ideally measured primaries). Compare eyes and visits with the same settings: True Tone, Night Shift and adaptive brightness off.</p>`,
         rows:`<tr><th>Threshold (× 10⁻⁴ u′v′)</th><th>Roughly</th></tr><tr><td>protan, deutan ≤ ~100; tritan ≤ ~150 (under 50 years)</td><td>Normal (calibrated screen)</td></tr><tr><td>one red-green axis &gt; 300, other near normal</td><td>Congenital protan or deutan (dichromats often reach the gamut limit)</td></tr><tr><td>tritan raised, red-green normal</td><td>Acquired (yellowing lens, glaucoma, diabetes, early optic neuropathy) or rare congenital tritan</td></tr><tr><td>all raised, eyes differ</td><td>Acquired optic nerve or macular disease in the worse eye</td></tr>`,
         steps:`<li>One eye at a time, the other covered. Normal near correction, room lights moderate, no coloured light on the screen. Turn off True Tone and Night Shift.</li><li>${(S.kcMethod||"cct")==="cct"?"Press S. A C appears in the dots: press the arrow for the direction of its gap. Press Space if you can't see one. The three axes are interleaved; it stops when all three are measured (about 3–5 min).":"Press S. Type the number you see in each plate, or Space if none. The first plate is a brightness demo everyone should see."}</li>` }; } };
   // ---------------- m: motion-defined form (digits visible only through motion) ----------------
@@ -2518,7 +2534,7 @@ card: "+" (vertical lines in the vertical arm, horizontal lines in the horizonta
       const readout=PIP.active?`<span>plate ${PIP.i+1} of ${PIP.set.length}${PIP.buf?` · typed <b>${PIP.buf}</b>`:""}</span>`:
         r?`<span>${S.eye.i} (${r.set==="full"?"detailed":"screening"}): ${verdict(r)} · red–green <b>${r.rg}/${r.rgN}</b> · tritan <b>${r.tri}/${r.triN}</b></span><span>classification: both digits ${r.clsBoth}/${r.clsN} · right digit only (protan pattern) ${r.prot} · left digit only (deutan pattern) ${r.deut}${r.plN?` · protan-line plates read ${r.pl}/${r.plN} · deutan-line plates read ${r.dl}/${r.dlN}`:""}${cls(r)}</span>`:"<span>stopped</span>";
       const cs=ccStatus(), warns=[];
-      if(cs.lvl<2) warns.push("Screen not calibrated for colour: press Calibrate screen (tone curve + brightness flicker match, about 3 minutes, needs normal colour vision). For clinical accuracy also measure the primaries with a colorimeter (Colorimeter patches) and enter them.");
+      if(cs.lvl<2) warns.push("Screen not calibrated for colour: press Calibrate screen (tone curve + a left/right drift judgement for brightness, about 3 minutes, needs normal colour vision). For clinical accuracy also measure the primaries with a colorimeter (Colorimeter patches) and enter them.");
       else if(cs.lvl<3&&!P3) warns.push("Tone curve and luminance are calibrated, but the primaries are assumed to be sRGB: on a budget tablet they may not be. Measure them with a colorimeter for clinical accuracy.");
       const gam=["A","A2","A3","B"].map(k=>{ const dr=pipDir("RG",PIP_REG[k]), [f,g]=pipSplit(dr,1); return [k,f+g]; }).filter(([k,m])=>m<0.18);
       if(gam.length) warns.push(`This screen's colour range caps the strongest red–green plates: ${gam.map(([k,m])=>`${k} at ${m.toFixed(3)}`).join(", ")} (planned 0.18). Levels above the cap are shown at the cap.`);

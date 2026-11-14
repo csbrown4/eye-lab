@@ -3331,7 +3331,7 @@ match N, v and the clear-zone radius to the real phenomenon by switching back an
     if(pat==="10-2"){ out.c=D(p=>e(p)<=2); out.ring=D(p=>e(p)>2&&e(p)<=8); out.out=D(p=>e(p)>8); out.ringBad=pts.filter(p=>e(p)>2&&e(p)<=8&&p.dev<=-5).length; }
     return {pts,out}; }
   function vfChart(R_,pat,eye){ const thr=R_.thr, A=thr?vfAnalyse(R_,pat):null, pts=A?A.pts:R_.pts, sp=pat==="10-2"?2:6, ext=pat==="10-2"?11:30, sc=200/ext, W_=420;
-    let s=`<svg viewBox="${-W_/2} ${-W_/2*0.8} ${W_} ${W_*0.8}" style="width:100%;max-width:440px;display:block" font-size="${pat==="10-2"?8:9}">`;
+    let s=`<svg viewBox="${-W_/2} ${-W_*0.46} ${W_} ${W_*0.92}" style="width:100%;max-width:440px;display:block" font-size="${pat==="10-2"?8:9}">`;
     s+=`<line x1="${-W_/2}" y1="0" x2="${W_/2}" y2="0" style="stroke:var(--fg);stroke-opacity:.2"/><line x1="0" y1="${-W_*0.4}" x2="0" y2="${W_*0.4}" style="stroke:var(--fg);stroke-opacity:.2"/>`;
     const cell=sp*sc*0.92;
     R_.pts.forEach((p0,i)=>{ const p=thr?pts.find(q=>q.x===p0.x&&q.y===p0.y)||p0:p0, X=p.x*sc, Y=-p.y*sc;

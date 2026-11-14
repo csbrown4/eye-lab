@@ -48,7 +48,23 @@ h1,h2,h3{text-wrap:balance}
 .brand span{display:block;color:var(--muted);font-size:.78rem;line-height:1.3}
 .bar-actions{display:flex;gap:8px}
 #nav{border-right:1px solid var(--line);padding:14px 10px 48px;position:sticky;top:59px;height:calc(100vh - 59px);overflow-y:auto}
-.ng{margin-bottom:12px}
+.ng{margin-bottom:2px}
+#nav{box-sizing:border-box}
+#nav .ni,#nav .nh{max-width:100%;box-sizing:border-box}
+.nsearch{padding:0 4px 10px}
+.nsearch input{width:100%;box-sizing:border-box;padding:8px 11px;border:1px solid var(--line);border-radius:9px;background:var(--raise);color:var(--fg);font:inherit;font-size:.9rem}
+.nh{display:flex;width:100%;align-items:center;gap:7px;border:0;background:transparent;cursor:pointer;padding:7px 10px;margin:0;border-radius:8px;font:inherit;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);text-align:left}
+.nh:hover{color:var(--fg);background:var(--raise)}
+.nh .nt{flex:1}
+.nh .nc{font-style:normal;font-weight:600;letter-spacing:0;font-size:.72rem;opacity:.6}
+.nh .car{width:0;height:0;border-left:4.5px solid currentColor;border-top:3.5px solid transparent;border-bottom:3.5px solid transparent;transition:transform .15s;transform:rotate(90deg)}
+.ng.shut .car{transform:none}
+.ng.shut .nb{display:none}
+.ng.cur .nh{color:var(--fg)}
+.nb{padding:0 0 8px}
+#ngRecent{margin-bottom:8px}
+#ngRecent h3{margin:2px 10px 4px}
+.ni .new.beta{color:var(--muted);background:var(--raise);border:1px solid var(--line)}
 .ng h3{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.11em;color:var(--muted);margin:0 10px 4px}
 .ni{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;margin:0;border:0;border-radius:9px;background:transparent;color:var(--fg);font-size:.92rem;text-align:left;cursor:pointer}
 .ni:hover{background:var(--raise)}
@@ -258,33 +274,46 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
     </div>
   </header>
   <nav id="nav" aria-label="Tests">
-    <div class="ng"><h3>Phoria</h3>
+    <div class="nsearch"><input id="navQ" type="search" placeholder="Find a test…" autocomplete="off" aria-label="Find a test"></div>
+    <div class="ng" id="ngRecent" hidden><h3>Recent</h3><div class="nrec"></div></div>
+    <div class="ng" data-g="ph"><button type="button" class="nh" aria-expanded="true"><span class="car" aria-hidden="true"></span><span class="nt">Phoria</span><i class="nc">4</i></button><div class="nb">
       <button type="button" class="ni" data-m="T"><span>Thorington</span></button>
       <button type="button" class="ni" data-m="H"><span>Howell</span></button>
       <button type="button" class="ni" data-m="f"><span>Flashed phoria</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
       <button type="button" class="ni" data-m="S"><span>Schober</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
-    </div>
-    <div class="ng"><h3>Vergence</h3>
+    </div></div>
+    <div class="ng" data-g="vg"><button type="button" class="nh" aria-expanded="true"><span class="car" aria-hidden="true"></span><span class="nt">Vergence</span><i class="nc">7</i></button><div class="nb">
       <button type="button" class="ni" data-m="V"><span>Ranges &amp; facility</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
       <button type="button" class="ni" data-m="K"><span>Adaptation</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
       <button type="button" class="ni" data-m="F"><span>Fixation disparity</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
       <button type="button" class="ni" data-m="N"><span>Tonic vergence</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
       <button type="button" class="ni" data-m="n"><span>Reserves &amp; AC/A</span></button>
       <button type="button" class="ni" data-m="Z"><span>Graphical analysis</span></button>
-    </div>
-    <div class="ng"><h3>Binocular</h3>
+      <button type="button" class="ni" data-m="y"><span>Vergence time course<span class="new beta">BETA</span></span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
+    </div></div>
+    <div class="ng" data-g="fu"><button type="button" class="nh" aria-expanded="true"><span class="car" aria-hidden="true"></span><span class="nt">Fusion &amp; suppression</span><i class="nc">7</i></button><div class="nb">
       <button type="button" class="ni" data-m="W"><span>Worth 4 dot</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
-      <button type="button" class="ni" data-m="D"><span>Stereo</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
-      <button type="button" class="ni" data-m="A"><span>Aniseikonia</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
-      <button type="button" class="ni" data-m="C"><span>Cyclo</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
       <button type="button" class="ni" data-m="M"><span>Suppression map</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
       <button type="button" class="ni" data-m="E"><span>Eye dominance</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
-      <button type="button" class="ni" data-m="P"><span>Pulfrich</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
+      <button type="button" class="ni" data-m="b"><span>Binocular combination</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
       <button type="button" class="ni" data-m="Y"><span>Binocular acuity</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
       <button type="button" class="ni" data-m="R"><span>Blur suppression</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
-      <button type="button" class="ni" data-m="b"><span>Binocular combination</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
-    </div>
-    <div class="ng"><h3>Accommodation</h3>
+      <button type="button" class="ni" data-m="w"><span>Panum's area<span class="new new">NEW</span></span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
+    </div></div>
+    <div class="ng" data-g="st"><button type="button" class="nh" aria-expanded="true"><span class="car" aria-hidden="true"></span><span class="nt">Stereo &amp; correspondence</span><i class="nc">6</i></button><div class="nb">
+      <button type="button" class="ni" data-m="D"><span>Stereo</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
+      <button type="button" class="ni" data-m="P"><span>Pulfrich</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
+      <button type="button" class="ni" data-m="A"><span>Aniseikonia</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
+      <button type="button" class="ni" data-m="C"><span>Cyclo</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
+      <button type="button" class="ni" data-m="h"><span>Horopter<span class="new beta">BETA</span></span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
+      <button type="button" class="ni" data-m="j"><span>Afterimage correspondence<span class="new beta">BETA</span></span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
+    </div></div>
+    <div class="ng" data-g="mo"><button type="button" class="nh" aria-expanded="true"><span class="car" aria-hidden="true"></span><span class="nt">Strabismus &amp; motility</span><i class="nc">3</i></button><div class="nb">
+      <button type="button" class="ni" data-m="G"><span>Hess / Lancaster</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
+      <button type="button" class="ni" data-m="l"><span>Binocular single vision field<span class="new new">NEW</span></span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
+      <button type="button" class="ni" data-m="e"><span>Saccades &amp; pursuit</span></button>
+    </div></div>
+    <div class="ng" data-g="ac"><button type="button" class="nh" aria-expanded="true"><span class="car" aria-hidden="true"></span><span class="nt">Accommodation</span><i class="nc">7</i></button><div class="nb">
       <button type="button" class="ni" data-m="X"><span>Facility</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
       <button type="button" class="ni" data-m="p"><span>Near points (camera)</span></button>
       <button type="button" class="ni" data-m="x"><span>Fused cross cylinder (lag)</span></button>
@@ -292,32 +321,33 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
       <button type="button" class="ni" data-m="o"><span>Scheiner optometer &amp; pupil</span></button>
       <button type="button" class="ni" data-m="U"><span>Duochrome</span></button>
       <button type="button" class="ni" data-m="B"><span>Near balance</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
-    </div>
-    <div class="ng"><h3>Vision & fixation</h3>
-      <button type="button" class="ni" data-m="J"><span>Vernier acuity</span></button>
-      <button type="button" class="ni" data-m="O"><span>Maxwell's spot</span></button>
+    </div></div>
+    <div class="ng" data-g="va"><button type="button" class="nh" aria-expanded="true"><span class="car" aria-hidden="true"></span><span class="nt">Acuity &amp; contrast</span><i class="nc">4</i></button><div class="nb">
       <button type="button" class="ni" data-m="d"><span>Distance acuity</span></button>
+      <button type="button" class="ni" data-m="t"><span>N-point reading card</span></button>
+      <button type="button" class="ni" data-m="J"><span>Vernier acuity</span></button>
+      <button type="button" class="ni" data-m="c"><span>Contrast</span></button>
+    </div></div>
+    <div class="ng" data-g="co"><button type="button" class="nh" aria-expanded="true"><span class="car" aria-hidden="true"></span><span class="nt">Colour</span><i class="nc">2</i></button><div class="nb">
       <button type="button" class="ni" data-m="k"><span>Colour vision</span></button>
       <button type="button" class="ni" data-m="i"><span>Ishihara-style plates</span></button>
-      <button type="button" class="ni" data-m="t"><span>N-point reading card</span></button>
-      <button type="button" class="ni" data-m="m"><span>Motion-defined form</span></button>
-      <button type="button" class="ni" data-m="s"><span>Straylight</span></button>
-      <button type="button" class="ni" data-m="a"><span>Dark adaptation</span></button>
-      <button type="button" class="ni" data-m="u"><span>Pupillometry (camera)</span></button>
-      <button type="button" class="ni" data-m="c"><span>Contrast</span></button>
+    </div></div>
+    <div class="ng" data-g="ne"><button type="button" class="nh" aria-expanded="true"><span class="car" aria-hidden="true"></span><span class="nt">Neuro &amp; fields</span><i class="nc">4</i></button><div class="nb">
       <button type="button" class="ni" data-m="v"><span>Central field</span></button>
       <button type="button" class="ni" data-m="r"><span>Red desaturation</span></button>
+      <button type="button" class="ni" data-m="m"><span>Motion-defined form</span></button>
+      <button type="button" class="ni" data-m="u"><span>Pupillometry (camera)</span></button>
+    </div></div>
+    <div class="ng" data-g="re"><button type="button" class="nh" aria-expanded="true"><span class="car" aria-hidden="true"></span><span class="nt">Retina, media &amp; glare</span><i class="nc">5</i></button><div class="nb">
+      <button type="button" class="ni" data-m="O"><span>Maxwell's spot</span></button>
+      <button type="button" class="ni" data-m="g"><span>Blue-field entoptoscope<span class="new beta">BETA</span></span></button>
+      <button type="button" class="ni" data-m="a"><span>Dark adaptation</span></button>
+      <button type="button" class="ni" data-m="s"><span>Straylight</span></button>
       <button type="button" class="ni" data-m="L"><span>Halometer</span></button>
-    </div>
-    <div class="ng"><h3>Eye movements</h3>
-      <button type="button" class="ni" data-m="e"><span>Saccades &amp; pursuit</span></button>
-    </div>
-    <div class="ng"><h3>Motility</h3>
-      <button type="button" class="ni" data-m="G"><span>Hess / Lancaster</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
-    </div>
-    <div class="ng"><h3>Tools</h3>
+    </div></div>
+    <div class="ng" data-g="to"><button type="button" class="nh" aria-expanded="true"><span class="car" aria-hidden="true"></span><span class="nt">Tools</span><i class="nc">1</i></button><div class="nb">
       <button type="button" class="ni" data-m="Q"><span>Prism check</span><span class="kd"><i class="dot dr"></i><i class="dot dg"></i></span></button>
-    </div>
+    </div></div>
   </nav>
   <main>
     <section class="testhead">
@@ -344,13 +374,13 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
             <option value="4">6/24 equivalent</option>
           </select>
         </label>
-        <label data-modes="THSFWDACXGVKBMEPYQNROJfvrcdebkmsoaxit" id="eyeWrap"><span id="eyeLbl">Maddox rod over</span>
+        <label data-modes="THSFWDACXGVKBMEPYQNROJfvrcdebkmsoaxitwyhjlg" id="eyeWrap"><span id="eyeLbl">Maddox rod over</span>
           <div class="seg" role="group" aria-label="Eye">
             <button type="button" id="eOD">OD (right)</button>
             <button type="button" id="eOS">OS (left)</button>
           </div>
         </label>
-        <label data-modes="SFWDACXGVKBMEPYQNRfb"><span id="rgLbl">Red-green filters</span><button type="button" id="check">Calibrate glasses</button></label>
+        <label data-modes="SFWDACXGVKBMEPYQNRfbwyhjl"><span id="rgLbl">Red-green filters</span><button type="button" id="check">Calibrate glasses</button></label>
       </div>
       <div class="controls" id="ctlTest">      <label data-modes="T">Light source
         <select id="lsrc">
@@ -835,12 +865,12 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
   const ARCMIN = Math.PI/180/60;
   const TAN5 = Math.tan(5*ARCMIN);
   const $ = id=>document.getElementById(id);
-  const S = {mode:"T", dist:{i:75,t:40,x:40,u:25,b:40,n:40,k:40,m:40,s:40,o:40,a:40,p:40,T:40,H:33,S:40,F:40,W:40,D:40,A:40,C:40,X:40,G:40,U:40,V:40,K:40,B:40,M:40,E:40,P:40,Z:40,Y:40,L:40,Q:40,N:40,O:40,J:100,R:40,I:40,f:40,v:40,r:40,c:100,e:40,d:300}, preset:"1440", mmpp:PHYS_W_MM/1440, acuity:2,
-             eye:{i:"OD",t:"OD",x:"OD",u:"OD",b:"OD",n:"OD",k:"OD",m:"OD",s:"OD",o:"OD",a:"OD",p:"OD",T:"OD",H:"OD",S:"OD",F:"OD",W:"OD",D:"OD",A:"OD",C:"OD",X:"OD",G:"OD",U:"OD",V:"OD",K:"OD",B:"OD",M:"OD",E:"OD",P:"OD",Z:"OD",Y:"OD",L:"OD",Q:"OD",N:"OD",O:"OD",J:"OD",R:"OD",I:"OD",f:"OD",v:"OD",r:"OD",c:"OD",e:"OD",d:"OD"}, maxH:20, maxV:15, light:3, lsrc:"pen", inkT:32,
+  const S = {mode:"T", dist:{w:40,y:40,h:30,j:40,l:30,g:40,i:75,t:40,x:40,u:25,b:40,n:40,k:40,m:40,s:40,o:40,a:40,p:40,T:40,H:33,S:40,F:40,W:40,D:40,A:40,C:40,X:40,G:40,U:40,V:40,K:40,B:40,M:40,E:40,P:40,Z:40,Y:40,L:40,Q:40,N:40,O:40,J:100,R:40,I:40,f:40,v:40,r:40,c:100,e:40,d:300}, preset:"1440", mmpp:PHYS_W_MM/1440, acuity:2,
+             eye:{w:"OD",y:"OD",h:"OD",j:"OD",l:"OD",g:"OD",i:"OD",t:"OD",x:"OD",u:"OD",b:"OD",n:"OD",k:"OD",m:"OD",s:"OD",o:"OD",a:"OD",p:"OD",T:"OD",H:"OD",S:"OD",F:"OD",W:"OD",D:"OD",A:"OD",C:"OD",X:"OD",G:"OD",U:"OD",V:"OD",K:"OD",B:"OD",M:"OD",E:"OD",P:"OD",Z:"OD",Y:"OD",L:"OD",Q:"OD",N:"OD",O:"OD",J:"OD",R:"OD",I:"OD",f:"OD",v:"OD",r:"OD",c:"OD",e:"OD",d:"OD"}, maxH:20, maxV:15, light:3, lsrc:"pen", inkT:32,
              prism:6, base:"D", hTrim:0, rLvl:100, gLvl:85, nullOn:0, flash:false, ped:30, rIn:18, gped:25, gIn:15, check:false,
              fdScale:1.5, pmType:"amp", pmLens:0, pmGlasses:0, pmAge:"", pmRes:{}, fdMethod:"flash", fdDems:"0, 3, 6, -3, -6", fdRes:null, w4Size:6, stPlate:0, stBal:"auto", dPol:"light", dkField:"dim", stOdd:0, stSeed:12345, stDir:"cross", stDot:2, anMer:"V", anis:0,
              cyMethod:"rg", cyAng:0, fxType:"acc", fxBin:"bi", hsField:10, hsFix:"red",
-             vgMode:"ramp", vgRate:1, vfA:12, vfB:-3, adDem:8, adDur:120, balStyle:"bar", mpFix:"red", mpDur:250, puDelay:0, puAmp:6, puPer:2, fdc:[], z:{}, vgTex:3, vgEdge:1, hsTors:false, yEye:"red", yLog:0.3, hVtx:15, hlSrc:1, hlCon:30, qOri:"H", pd:62, tvDur:300, tvPh:"", tvRes:null, mxHz:1, vnDur:500, vnRes:{}, vnL:{OD:"",OS:""}, bsEye:"red", bsPupil:4, bsRes:{}, itab:"run", stDotA:6, stMethod:"tno", stBal:0, fsRes:null, coLens:0, coPupil:4, coRes:{}, coPh0:"", coPh1:"", coPhL:2, dc:{}, fpAxis:"H", fpDur:200, fpRes:{}, vfLvl:0.08, rdType:"sat", rdRes:{}, ctType:"cs", ctRes:{}, emType:"cpur", slMethod:"cmp", pipSet:"screen", ccProf:"auto", fxMethod:"bin", fxAxis:"90", fxCol:"white", fxPer:20, fxStart:0, fxLum:0.35, ppLight:"red", ppHV:"", ppDur:1, bcMethod:"ori", bcSF:1, bcFlash:600, bcRivDur:60, bcRivC:0.6, nbTgt:"col", nbAc:1.5, nbLens:1, nbNd:40, nbDd:300, kcMethod:"cct", mfDur:1500, slDur:2500, slAge:"", opMethod:"sch", scSep:2.5, scRed:"L", scFus:"0", opP:0, opL:0, daBleach:30, daND:2.7, daCrit:-4.8, daMax:30, daFix:0.004, etAxis:"H", etFreq:"0.4", etAmp:"auto", etN:"10", emRes:{}, rnBest:null, rnBase:null, dLog:0.3, dDuo:false};
+             vgMode:"ramp", vgRate:1, vfA:12, vfB:-3, adDem:8, adDur:120, balStyle:"bar", mpFix:"red", mpDur:250, puDelay:0, puAmp:6, puPer:2, fdc:[], z:{}, vgTex:3, vgEdge:1, hsTors:false, yEye:"red", yLog:0.3, hVtx:15, hlSrc:1, hlCon:30, qOri:"H", pd:62, tvDur:300, tvPh:"", tvRes:null, mxHz:1, vnDur:500, vnRes:{}, vnL:{OD:"",OS:""}, bsEye:"red", bsPupil:4, bsRes:{}, itab:"run", stDotA:6, stMethod:"tno", stBal:0, fsRes:null, coLens:0, coPupil:4, coRes:{}, coPh0:"", coPh1:"", coPhL:2, dc:{}, fpAxis:"H", fpDur:200, fpRes:{}, vfLvl:0.08, rdType:"sat", rdRes:{}, ctType:"cs", ctRes:{}, emType:"cpur", slMethod:"cmp", pipSet:"screen", pnEcc:"0,2,5", pnFlash:150, vtStep:4, vtDir:"BO", hoStep:3, hoFlash:300, aiDur:15, aiVert:"A", aiObj:"", blSeen:"yes", blPulse:"true", blN:30, blSp:2, blFaz:0.8, bcBalCoh:0.6, navOpen:{}, recent:[], ccProf:"auto", fxMethod:"bin", fxAxis:"90", fxCol:"white", fxPer:20, fxStart:0, fxLum:0.35, ppLight:"red", ppHV:"", ppDur:1, bcMethod:"ori", bcSF:1, bcFlash:600, bcRivDur:60, bcRivC:0.6, nbTgt:"col", nbAc:1.5, nbLens:1, nbNd:40, nbDd:300, kcMethod:"cct", mfDur:1500, slDur:2500, slAge:"", opMethod:"sch", scSep:2.5, scRed:"L", scFus:"0", opP:0, opL:0, daBleach:30, daND:2.7, daCrit:-4.8, daMax:30, daFix:0.004, etAxis:"H", etFreq:"0.4", etAmp:"auto", etN:"10", emRes:{}, rnBest:null, rnBase:null, dLog:0.3, dDuo:false};
   const S0=JSON.parse(JSON.stringify(S));
 
   let saved=null;
@@ -918,7 +948,7 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
     P3 = S.cspace==="p3" ? can : S.cspace==="srgb" ? false : (can&&scr); }catch(e){}
   try{ const mq=matchMedia("(color-gamut: p3)"); mq.addEventListener&&mq.addEventListener("change",()=>{ if(!S.cspace||S.cspace==="auto") location.reload(); }); }catch(e){}
 
-  const RG_MODES="SFWDACXGVKBMEPYQNRfb";
+  const RG_MODES="SFWDACXGVKBMEPYQNRfbwyhjl";
   const FX={running:false,start:0,elapsed:0,clears:0,text:[]};
   const HS={red:[],green:[]}, HSP={x:0,y:0,rot:0}; let ORG={cx:0,cy:0,k:0.2};
   let DUO=[];
@@ -1151,7 +1181,7 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
   }
 
   // ===== tests added in v17: tonic vergence, Maxwell's spot, vernier acuity, blur suppression =====
-  const TMETA = {"T": {"g": "Phoria", "n": "Thorington", "d": "Maddox rod streak read on a calibrated prism-dioptre scale.", "k": ["maddox", "pen"]}, "H": {"g": "Phoria", "n": "Howell", "d": "6 Δ base-down dissociation with an accommodation lock, at 33 cm.", "k": ["prism"]}, "S": {"g": "Phoria", "n": "Schober", "d": "Red cross for one eye, green rings for the other.", "k": ["rg"]}, "V": {"g": "Vergence", "n": "Ranges & facility", "d": "Software prism: smooth blur, break and recovery ramps, and jump facility.", "k": ["rg"]}, "K": {"g": "Vergence", "n": "Adaptation", "d": "How quickly the phoria shifts toward a sustained vergence demand, and how it decays.", "k": ["rg"]}, "F": {"g": "Vergence", "n": "Fixation disparity", "d": "Graded nonius pairs under fusion, the fixation disparity curve, and a compensation check.", "k": ["rg", "prism"]}, "N": {"g": "Vergence", "n": "Tonic vergence", "d": "Where vergence rests with nothing to fuse and nothing sharp to focus on.", "k": ["rg"]}, "Z": {"g": "Vergence", "n": "Graphical analysis", "d": "Zone of clear single binocular vision with Sheard and Percival.", "k": ["none"]}, "W": {"g": "Binocular", "n": "Worth 4 dot", "d": "Fusion, suppression or diplopia, at an exact visual angle.", "k": ["rg"]}, "D": {"g": "Binocular", "n": "Stereo", "d": "Random-dot plates for screening, or a fine line-stereo staircase down to a few arcseconds.", "k": ["rg"]}, "A": {"g": "Binocular", "n": "Aniseikonia", "d": "Size-match two half squares in 0.5% steps.", "k": ["rg"]}, "C": {"g": "Binocular", "n": "Cyclo", "d": "Torsional deviation with red-green lines or double Maddox.", "k": ["rg", "maddox"]}, "M": {"g": "Binocular", "n": "Suppression map", "d": "Dichoptic probes map suppression zones out to 8°.", "k": ["rg"]}, "E": {"g": "Binocular", "n": "Eye dominance", "d": "Contrast balance point between the eyes, in dB.", "k": ["rg"]}, "P": {"g": "Binocular", "n": "Pulfrich", "d": "Interocular delay by forced-choice staircase.", "k": ["rg"]}, "Y": {"g": "Binocular", "n": "Binocular acuity", "d": "One eye's acuity measured with both eyes open.", "k": ["rg"]}, "R": {"g": "Binocular", "n": "Blur suppression", "d": "How much defocus one eye can carry before binocular vision looks blurred: a monovision tolerance test.", "k": ["rg"]}, "X": {"g": "Accommodation", "n": "Facility", "d": "±2.00 D or 12 BO / 3 BI flipper facility with a timer.", "k": ["flip", "rg"]}, "U": {"g": "Accommodation", "n": "Duochrome", "d": "Red-green near duochrome for lag and add checks.", "k": ["none"]}, "B": {"g": "Accommodation", "n": "Near balance", "d": "Binocular balance of the near Rx with dichoptic rows.", "k": ["rg"]}, "J": {"g": "Vision & fixation", "n": "Vernier acuity", "d": "Hyperacuity for each eye, compared with letter acuity to separate optical from neural loss.", "k": ["none"]}, "O": {"g": "Vision & fixation", "n": "Maxwell's spot", "d": "An entoptic image of the fovea shows where the eye is really pointing.", "k": ["none"]}, "L": {"g": "Vision & fixation", "n": "Halometer", "d": "Map of the glare halo around a bright source.", "k": ["none"]}, "G": {"g": "Motility", "n": "Hess / Lancaster", "d": "Near Hess screen in nine gazes, with optional torsion.", "k": ["rg"]}, "Q": {"g": "Tools", "n": "Prism check", "d": "Measures any prism's true power on a dissociated scale.", "k": ["rg", "prism"]}, "p": {"g": "Accommodation", "n": "Near points", "d": "Push-up amplitude and near point of convergence, with the camera measuring your distance as you lean in.", "k": ["none"]}, "i": {"g": "Vision & fixation", "n": "Ishihara-style plates", "d": "Generated dot plates along cone-confusion lines: a 12-plate screening set and a 29-plate detailed set with graded red–green, protan/deutan classification and tritan plates.", "k": ["none"]}, "t": {"g": "Vision & fixation", "n": "N-point reading card", "d": "Near reading card in N notation at true physical size, with M and logMAR equivalents.", "k": ["none"]}, "x": {"g": "Accommodation", "n": "Fused cross cylinder", "d": "Accommodative lag with a ±0.50 cross cylinder and plus lenses: binocular, monocular, or dichoptic with one cross cylinder.", "k": ["jcc", "rg"]}, "I": {"g": "Accommodation", "n": "Chromatic lag", "d": "A chromatic optometer: the eye's own colour fringing measures how far focus lags behind the target, with no lenses.", "k": ["none", "flip"]}, "f": {"g": "Phoria", "n": "Flashed phoria", "d": "Forced-choice dissociated phoria from brief flashes, with its own uncertainty. Works at near and at distance.", "k": ["rg"]}, "v": {"g": "Vision & fixation", "n": "Central field", "d": "Screening of the central ±15° with blind-spot fixation checks and false-positive trials.", "k": ["none"]}, "r": {"g": "Vision & fixation", "n": "Red desaturation", "d": "How much red saturation, or brightness, one eye loses compared with the other.", "k": ["none"]}, "c": {"g": "Vision & fixation", "n": "Contrast", "d": "Letter contrast sensitivity and low-contrast acuity, with dithering for contrasts finer than the screen's 256 levels.", "k": ["none"]}, "e": {"g": "Eye movements", "n": "Saccades & pursuit", "d": "Pursuit gain and catch-up saccades, saccade latency and accuracy, antisaccades and nine-gaze motility tracked by the camera; plus camera-free versions.", "k": ["none"]}, "b": {"g": "Binocular", "n": "Binocular combination", "d": "Binocular balance point by orientation combination, suppression by dichoptic global motion, and rivalry dynamics.", "k": ["rg"]}, "n": {"g": "Vergence", "n": "Reserves & AC/A", "d": "Positive and negative fusional vergence with a Risley at near and 3 m, calculated, gradient and proximal AC/A, Sheard and Percival.", "k": ["prism"]}, "k": {"g": "Vision & fixation", "n": "Colour vision", "d": "Cone-confusion-line thresholds (protan, deutan, tritan) in luminance noise, plus screening plates.", "k": ["none"]}, "m": {"g": "Vision & fixation", "n": "Motion-defined form", "d": "Digits visible only through motion: a test of the motion pathway, sensitive after optic neuritis.", "k": ["none"]}, "s": {"g": "Vision & fixation", "n": "Straylight", "d": "Intraocular light scatter by the compensation-comparison method (as in the C-Quant).", "k": ["none"]}, "o": {"g": "Accommodation", "n": "Scheiner optometer & pupil", "d": "Open-loop focus with a red/green double pinhole or a moving pinhole, CA/C, subjective pupil size and depth of focus.", "k": ["none","prism"]}, "a": {"g": "Vision & fixation", "n": "Dark adaptation", "d": "Bleach, then track the dark-adaptation curve: rod–cone break and rod intercept time.", "k": ["none"]}, "u": {"g": "Vision & fixation", "n": "Pupillometry", "d": "Pupil size, light reflex and chromatic (melanopsin) pupil response from the FaceTime camera, scaled by your own iris.", "k": ["none"]}, "d": {"g": "Vision & fixation", "n": "Distance acuity", "d": "A logMAR line at the exact size for the distance (3 m or more), with a duochrome.", "k": ["none"]}};
+  const TMETA = {"T": {"g": "Phoria", "n": "Thorington", "d": "Maddox rod streak read on a calibrated prism-dioptre scale.", "k": ["maddox", "pen"]}, "H": {"g": "Phoria", "n": "Howell", "d": "6 Δ base-down dissociation with an accommodation lock, at 33 cm.", "k": ["prism"]}, "S": {"g": "Phoria", "n": "Schober", "d": "Red cross for one eye, green rings for the other.", "k": ["rg"]}, "V": {"g": "Vergence", "n": "Ranges & facility", "d": "Software prism: smooth blur, break and recovery ramps, and jump facility.", "k": ["rg"]}, "K": {"g": "Vergence", "n": "Adaptation", "d": "How quickly the phoria shifts toward a sustained vergence demand, and how it decays.", "k": ["rg"]}, "F": {"g": "Vergence", "n": "Fixation disparity", "d": "Graded nonius pairs under fusion, the fixation disparity curve, and a compensation check.", "k": ["rg", "prism"]}, "N": {"g": "Vergence", "n": "Tonic vergence", "d": "Where vergence rests with nothing to fuse and nothing sharp to focus on.", "k": ["rg"]}, "Z": {"g": "Vergence", "n": "Graphical analysis", "d": "Zone of clear single binocular vision with Sheard and Percival.", "k": ["none"]}, "W": {"g": "Fusion & suppression", "n": "Worth 4 dot", "d": "Fusion, suppression or diplopia, at an exact visual angle.", "k": ["rg"]}, "D": {"g": "Stereo & correspondence", "n": "Stereo", "d": "Random-dot plates for screening, or a fine line-stereo staircase down to a few arcseconds.", "k": ["rg"]}, "A": {"g": "Stereo & correspondence", "n": "Aniseikonia", "d": "Size-match two half squares in 0.5% steps.", "k": ["rg"]}, "C": {"g": "Stereo & correspondence", "n": "Cyclo", "d": "Torsional deviation with red-green lines or double Maddox.", "k": ["rg", "maddox"]}, "M": {"g": "Fusion & suppression", "n": "Suppression map", "d": "Dichoptic probes map suppression zones out to 8°.", "k": ["rg"]}, "E": {"g": "Fusion & suppression", "n": "Eye dominance", "d": "Contrast balance point between the eyes, in dB.", "k": ["rg"]}, "P": {"g": "Stereo & correspondence", "n": "Pulfrich", "d": "Interocular delay by forced-choice staircase.", "k": ["rg"]}, "Y": {"g": "Fusion & suppression", "n": "Binocular acuity", "d": "One eye's acuity measured with both eyes open.", "k": ["rg"]}, "R": {"g": "Fusion & suppression", "n": "Blur suppression", "d": "How much defocus one eye can carry before binocular vision looks blurred: a monovision tolerance test.", "k": ["rg"]}, "X": {"g": "Accommodation", "n": "Facility", "d": "±2.00 D or 12 BO / 3 BI flipper facility with a timer.", "k": ["flip", "rg"]}, "U": {"g": "Accommodation", "n": "Duochrome", "d": "Red-green near duochrome for lag and add checks.", "k": ["none"]}, "B": {"g": "Accommodation", "n": "Near balance", "d": "Binocular balance of the near Rx with dichoptic rows.", "k": ["rg"]}, "J": {"g": "Acuity & contrast", "n": "Vernier acuity", "d": "Hyperacuity for each eye, compared with letter acuity to separate optical from neural loss.", "k": ["none"]}, "O": {"g": "Retina, media & glare", "n": "Maxwell's spot", "d": "An entoptic image of the fovea shows where the eye is really pointing.", "k": ["none"]}, "L": {"g": "Retina, media & glare", "n": "Halometer", "d": "Map of the glare halo around a bright source.", "k": ["none"]}, "G": {"g": "Strabismus & motility", "n": "Hess / Lancaster", "d": "Near Hess screen in nine gazes, with optional torsion.", "k": ["rg"]}, "Q": {"g": "Tools", "n": "Prism check", "d": "Measures any prism's true power on a dissociated scale.", "k": ["rg", "prism"]}, "p": {"g": "Accommodation", "n": "Near points", "d": "Push-up amplitude and near point of convergence, with the camera measuring your distance as you lean in.", "k": ["none"]}, "i": {"g": "Colour", "n": "Ishihara-style plates", "d": "Generated dot plates along cone-confusion lines: a 12-plate screening set and a 39-plate detailed set with graded red–green, protan/deutan classification and tritan plates.", "k": ["none"]}, "t": {"g": "Acuity & contrast", "n": "N-point reading card", "d": "Near reading card in N notation at true physical size, with M and logMAR equivalents.", "k": ["none"]}, "x": {"g": "Accommodation", "n": "Fused cross cylinder", "d": "Accommodative lag with a ±0.50 cross cylinder and plus lenses: binocular, monocular, or dichoptic with one cross cylinder.", "k": ["jcc", "rg"]}, "I": {"g": "Accommodation", "n": "Chromatic lag", "d": "A chromatic optometer: the eye's own colour fringing measures how far focus lags behind the target, with no lenses.", "k": ["none", "flip"]}, "f": {"g": "Phoria", "n": "Flashed phoria", "d": "Forced-choice dissociated phoria from brief flashes, with its own uncertainty. Works at near and at distance.", "k": ["rg"]}, "v": {"g": "Neuro & fields", "n": "Central field", "d": "Screening of the central ±15° with blind-spot fixation checks and false-positive trials.", "k": ["none"]}, "r": {"g": "Neuro & fields", "n": "Red desaturation", "d": "How much red saturation, or brightness, one eye loses compared with the other.", "k": ["none"]}, "c": {"g": "Acuity & contrast", "n": "Contrast", "d": "Letter contrast sensitivity and low-contrast acuity, with dithering for contrasts finer than the screen's 256 levels.", "k": ["none"]}, "e": {"g": "Strabismus & motility", "n": "Saccades & pursuit", "d": "Pursuit gain and catch-up saccades, saccade latency and accuracy, antisaccades and nine-gaze motility tracked by the camera; plus camera-free versions.", "k": ["none"]}, "b": {"g": "Fusion & suppression", "n": "Binocular combination", "d": "Binocular balance by orientation combination and by dichoptic motion, suppression by dichoptic global motion, and rivalry dynamics.", "k": ["rg"]}, "n": {"g": "Vergence", "n": "Reserves & AC/A", "d": "Positive and negative fusional vergence with a Risley at near and 3 m, calculated, gradient and proximal AC/A, Sheard and Percival.", "k": ["prism"]}, "k": {"g": "Colour", "n": "Colour vision", "d": "Cone-confusion-line thresholds (protan, deutan, tritan) in luminance noise, plus screening plates.", "k": ["none"]}, "m": {"g": "Neuro & fields", "n": "Motion-defined form", "d": "Digits visible only through motion: a test of the motion pathway, sensitive after optic neuritis.", "k": ["none"]}, "s": {"g": "Retina, media & glare", "n": "Straylight", "d": "Intraocular light scatter by the compensation-comparison method (as in the C-Quant).", "k": ["none"]}, "o": {"g": "Accommodation", "n": "Scheiner optometer & pupil", "d": "Open-loop focus with a red/green double pinhole or a moving pinhole, CA/C, subjective pupil size and depth of focus.", "k": ["none", "prism"]}, "a": {"g": "Retina, media & glare", "n": "Dark adaptation", "d": "Bleach, then track the dark-adaptation curve: rod–cone break and rod intercept time.", "k": ["none"]}, "u": {"g": "Neuro & fields", "n": "Pupillometry", "d": "Pupil size, light reflex and chromatic (melanopsin) pupil response from the FaceTime camera, scaled by your own iris.", "k": ["none"]}, "d": {"g": "Acuity & contrast", "n": "Distance acuity", "d": "A logMAR line at the exact size for the distance (3 m or more), with a duochrome.", "k": ["none"]}, "w": {"g": "Fusion & suppression", "n": "Panum's area", "d": "How much disparity is still seen single without the eyes moving, at fixation and out to 10°.", "k": ["rg"]}, "y": {"g": "Vergence", "n": "Vergence time course", "d": "Latency, speed and gain of vergence after a disparity step, rebuilt from flashed nonius snapshots: no eye tracker needed.", "k": ["rg"]}, "h": {"g": "Stereo & correspondence", "n": "Horopter", "d": "Corresponding points across the field by the nonius method: the horopter's shape, the fixation disparity and the relative image size of the eyes.", "k": ["rg"]}, "j": {"g": "Stereo & correspondence", "n": "Afterimage correspondence", "d": "The Hering–Bielschowsky afterimage test: normal or anomalous retinal correspondence, and the angle of anomaly.", "k": ["rg"]}, "l": {"g": "Strabismus & motility", "n": "Binocular single vision field", "d": "Where in the field of gaze the eyes stay single, charted on rings out to 40°.", "k": ["rg"]}, "g": {"g": "Retina, media & glare", "n": "Blue-field entoptoscope", "d": "White blood cells in the perifoveal capillaries, seen in a bright blue field and matched to a simulation: a macular and potential-vision test.", "k": ["none"]}};
   const KITS = {jcc:'<span class="tag">⊕ ±0.50 cross cylinder + trial lenses</span>', rg:'<span class="tag"><i class="dot dr"></i><i class="dot dg"></i>Red-green flippers</span>', prism:'<span class="tag">▲ Prism or Risley</span>', maddox:'<span class="tag">≡ Maddox rod</span>', pen:'<span class="tag">✺ Penlight</span>', flip:'<span class="tag">± Flippers</span>', none:'<span class="tag">Screen only</span>'};
   const lin = v => v<=0.04045 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4);      // sRGB/P3 decode
   const enc = v => v<=0.0031308 ? 12.92*v : 1.055*Math.pow(v,1/2.4)-0.055;     // sRGB/P3 encode
@@ -1859,6 +1889,7 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
   function bcStart(){ bcStop(); const mt=S.bcMethod||"ori"; BC.active=true;
     if(mt==="ori"){ BC.ad=PSE({lo:-24,hi:24,n:97,sLo:1,sHi:14,ns:10,minT:24,maxT:50,sdStop:1.0}); bcOriTrial(); }
     else if(mt==="gm"){ const mk=()=>THR({lo:Math.log10(0.02),hi:0,n:100,beta:3,gamma:0.5,minT:18,maxT:40,sdStop:0.07}); BC.ads={A:mk(),B:mk()}; bcGmTrial(); }
+    else if(mt==="bal"){ const mk=()=>THR({lo:Math.log10(0.03),hi:0,n:100,beta:3,gamma:0.5,minT:18,maxT:40,sdStop:0.07}); BC.ads={A:mk(),B:mk()}; bcBalTrial(); }
     else bcRivStart(); }
   // orientation combination: eye A sees stripes at +θ, eye B at −θ (sides swapped at random); the binocular stripes look
   // tilted toward the stronger eye. The contrast ratio at which they look horizontal is the balance point.
@@ -1871,12 +1902,19 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
     bcOriTrial(); }
   // dichoptic global motion: signal dots (all one direction) to one eye, noise dots (random directions) to the other.
   // The coherence needed to see the direction is found for signal in eye A and in eye B; a suppressed eye needs more.
+  // dichoptic motion balance (Mansouri/Hess/Black style): coherence fixed, the signal eye's dot contrast varied with
+  // the noise eye at full contrast. The contrast each eye needs to win at that coherence gives the balance point.
+  function bcBalTrial(){ if(!BC.active) return; const open=["A","B"].filter(k=>!BC.ads[k].done());
+    if(!open.length){ const e=k=>BC.ads[k].est(), cA=Math.pow(10,e("A").lt), cB=Math.pow(10,e("B").lt);
+      ntR("b").bal={A:+(100*cA).toFixed(1),B:+(100*cB).toFixed(1),db:+(20*Math.log10(cA/cB)).toFixed(1),coh:+S.bcBalCoh||0.6,eyeA:S.eye.b,topA:e("A").lt>-0.03,topB:e("B").lt>-0.03,when:Date.now()}; bcStop(); save(); draw(); beep(660,200); return; }
+    const sig=open[Math.floor(Math.random()*open.length)], x=BC.ads[sig].next(); BC.tr={sig,x,cs:Math.pow(10,x),coh:+S.bcBalCoh||0.6,dir:Math.random()<0.5?1:-1}; BC.phase="blank"; draw();
+    setTimeout(()=>{ if(!BC.active) return; bcGmRun(); },600+Math.random()*400); }
   function bcGmTrial(){ if(!BC.active) return; const open=["A","B"].filter(k=>!BC.ads[k].done());
     if(!open.length){ const e=k=>BC.ads[k].est(); ntR("b").gm={A:+(100*Math.pow(10,e("A").lt)).toFixed(1),B:+(100*Math.pow(10,e("B").lt)).toFixed(1),sdA:e("A").sd,sdB:e("B").sd,eyeA:S.eye.b,when:Date.now()}; bcStop(); save(); draw(); beep(660,200); return; }
     const sig=open[Math.floor(Math.random()*open.length)], x=BC.ads[sig].next(); BC.tr={sig,x,coh:Math.pow(10,x),dir:Math.random()<0.5?1:-1}; BC.phase="blank"; draw();
     setTimeout(()=>{ if(!BC.active) return; bcGmRun(); },600+Math.random()*400); }
   function bcGmRun(){ const env=NT.b.env; if(!env) return; const g_=ntCv(env,null), ppd=ntPPD(env), N=+S.bcDots||150, Rf=5*ppd, T_=BC.tr, nSig=Math.round(T_.coh*N), SD=rgSolver();
-    const cA=bytesCss(SD.px(1,0)), cB=bytesCss(SD.px(0,1)), bg=bytesCss(SD.px(0,0)), both=bytesCss(SD.px(1,1)), sp=4*ppd/1000, life=8, rr=Math.max(1.5,0.11*ppd);
+    const sc=T_.cs??1, cA=bytesCss(SD.px(T_.sig==="A"?sc:1,0)), cB=bytesCss(SD.px(0,T_.sig==="B"?sc:1)), bg=bytesCss(SD.px(0,0)), both=bytesCss(SD.px(1,1)), sp=4*ppd/1000, life=8, rr=Math.max(1.5,0.11*ppd);
     const rnd=()=>{ const r=Rf*Math.sqrt(Math.random()), a=Math.random()*2*Math.PI; return [r*Math.cos(a),r*Math.sin(a)]; };
     const dots=Array.from({length:N},(_,i)=>{ const [x,y]=rnd(), sigD=i<nSig; return {x,y,sig:sigD,a:sigD?(T_.dir>0?0:Math.PI):Math.random()*2*Math.PI,age:Math.floor(Math.random()*life)}; });
     const sigCol = T_.sig==="A"?cA:cB, noiseCol = T_.sig==="A"?cB:cA, tok=BC.tok; let t0=null, lt=null; BC.phase="show";
@@ -1887,7 +1925,7 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
       ctx.fillStyle=both; ctx.fillRect(g_.cxp-2,g_.cyp-2,4,4);
       if(ts-t0<(+S.bcGmDur||1000)) BC.raf=requestAnimationFrame(frame); else { BC.phase="answer"; draw(); } };
     BC.raf=requestAnimationFrame(frame); }
-  function bcGmResp(right){ if(!BC.active||BC.phase!=="answer") return; const T_=BC.tr; BC.ads[T_.sig].update(T_.x,(right?1:-1)===T_.dir); bcGmTrial(); }
+  function bcGmResp(right){ if(!BC.active||BC.phase!=="answer") return; const T_=BC.tr; BC.ads[T_.sig].update(T_.x,(right?1:-1)===T_.dir); if((S.bcMethod||"ori")==="bal") bcBalTrial(); else bcGmTrial(); }
   // rivalry: orthogonal gratings, one per eye; you hold ← while you see "\" stripes and → while you see "/", nothing if mixed
   function bcRivStart(){ const swap=Math.random()<0.5; BC.riv={on:true,t0:performance.now(),swap,log:[[performance.now(),"mix"]],keys:{L:false,R:false},dur:(+S.bcRivDur||60)*1000}; BC.phase="riv"; draw();
     const tok=BC.tok, chk=()=>{ if(tok.dead||!BC.riv.on) return; if(performance.now()-BC.riv.t0>=BC.riv.dur){ bcRivEnd(); return; } draw(); setTimeout(chk,250); }; setTimeout(chk,250); }
@@ -1904,49 +1942,54 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
     const run={pA:tA/Math.max(1e-6,tA+tB),mA:md(dur("A")),mB:md(dur("B")),nA:dur("A").length,nB:dur("B").length,mix:tM/tot,rate:sw/(tot/60),swap:R_.swap,eyeA:S.eye.b,secs:Math.round(tot),when:Date.now()};
     const r=ntR("b"); r.riv=(r.riv||[]).concat([run]); bcStop(); save(); draw(); beep(660,200); }
   NT.b={ name:"Binocular combination",
-    ctl:`<label data-modes="b">Method<select data-ntk="bcMethod"><option value="ori">Balance: orientation combination</option><option value="gm">Suppression: dichoptic global motion</option><option value="riv">Rivalry dynamics</option></select></label>
+    ctl:`<label data-modes="b">Method<select data-ntk="bcMethod"><option value="ori">Balance: orientation combination</option><option value="gm">Suppression: dichoptic global motion</option><option value="bal">Balance: dichoptic motion (contrast)</option><option value="riv">Rivalry dynamics</option></select></label>
       <label data-modes="b" data-ntm="ori" data-ntmk="bcMethod">Spatial frequency<select data-ntk="bcSF" data-ntt="num"><option value="0.5">0.5 c/deg</option><option value="1">1 c/deg</option><option value="2">2 c/deg</option><option value="4">4 c/deg</option></select></label>
       <label data-modes="b" data-ntm="ori" data-ntmk="bcMethod">Flash<select data-ntk="bcFlash" data-ntt="num"><option value="400">400 ms</option><option value="600">600 ms</option><option value="1000">1 s</option></select></label>
+      <label data-modes="b" data-ntm="bal" data-ntmk="bcMethod">Coherence<select data-ntk="bcBalCoh" data-ntt="num"><option value="0.3">30%</option><option value="0.6">60%</option><option value="1">100%</option></select></label>
       <label data-modes="b" data-ntm="riv" data-ntmk="bcMethod">Run length<select data-ntk="bcRivDur" data-ntt="num"><option value="30">30 s</option><option value="60">60 s</option><option value="120">2 min</option></select></label>
       <label data-modes="b" data-ntm="riv" data-ntmk="bcMethod">Contrast (each eye)<select data-ntk="bcRivC" data-ntt="num"><option value="0.3">30%</option><option value="0.6">60%</option><option value="0.9">90%</option></select></label>
       <label data-modes="b">Run<div class="btns"><button type="button" data-nta="b:start" class="primary">Start (S)</button><button type="button" data-nta="b:stop">Stop</button></div></label>`,
     stop:bcStop, clear(){ S.ntRes&&(S.ntRes.b={}); },
     act(a){ if(a==="start") bcStart(); else { bcStop(); draw(); } },
     hud(){ const mt=S.bcMethod||"ori"; if(!BC.active) return "S start"; if(mt==="ori") return BC.phase==="answer"?"stripes: ↑ right end up · ↓ right end down (guess if flat)":"look at the centre";
-      if(mt==="gm") return BC.phase==="answer"?"dots moved: ← left · → right":"look at the centre"; return "hold ← while you see \\ stripes, → while you see /, nothing when mixed"; },
+      if(mt==="gm"||mt==="bal") return BC.phase==="answer"?"dots moved: ← left · → right":"look at the centre"; return "hold ← while you see \\ stripes, → while you see /, nothing when mixed"; },
     key(k,e,up){ const mt=S.bcMethod||"ori";
       if(mt==="riv"&&BC.riv&&BC.riv.on&&(k==="ArrowLeft"||k==="ArrowRight")){ bcRivKey(k==="ArrowLeft"?"L":"R",!up); return true; }
       if(up) return false;
       if(k==="s"||k==="S"){ bcStart(); return true; }
       if(mt==="ori"&&(k==="ArrowUp"||k==="ArrowDown")){ bcOriResp(k==="ArrowUp"); return true; }
-      if(mt==="gm"&&(k==="ArrowLeft"||k==="ArrowRight")){ bcGmResp(k==="ArrowRight"); return true; }
+      if((mt==="gm"||mt==="bal")&&(k==="ArrowLeft"||k==="ArrowRight")){ bcGmResp(k==="ArrowRight"); return true; }
       return false; },
     draw(env){ this.env=env; const mt=S.bcMethod||"ori", SD=rgSolver(), r=ntR("b"), A=LA().name, B=LB().name, eA=S.eye.b, eB=eA==="OD"?"OS":"OD";
-      const mean = mt==="gm" ? 0 : 0.3,          // a dim mean level: the gratings need one, but a bright mixed-colour field is uncomfortable
-       bg=bytesCss(SD.px(mean,mean)), g_=ntCv(env,bg), ctx=g_.ctx, frameCol=bytesCss(mt==="gm"?SD.px(1,1):SD.px(0,0));
-      if(mt!=="gm"||BC.phase!=="show") ntFrame(env,ctx,g_,mt==="riv"?5:12,frameCol);
+      const mean = (mt==="gm"||mt==="bal") ? 0 : 0.3,          // a dim mean level: the gratings need one, but a bright mixed-colour field is uncomfortable
+       bg=bytesCss(SD.px(mean,mean)), g_=ntCv(env,bg), ctx=g_.ctx, frameCol=bytesCss((mt==="gm"||mt==="bal")?SD.px(1,1):SD.px(0,0));
+      if((mt!=="gm"&&mt!=="bal")||BC.phase!=="show") ntFrame(env,ctx,g_,mt==="riv"?5:12,frameCol);
       if(mt==="ori"&&BC.active&&BC.phase==="show"){ const T_=BC.tr, th=+S.bcTheta||20, C=0.8, cA=C*Math.min(1,Math.pow(10,-T_.d/20)), cB=C*Math.min(1,Math.pow(10,T_.d/20));
         const G_=ntDichopticGratings(env,ctx,{sf:+S.bcSF||1,sigDeg:1.5,mean,A:{c:cA,ori:T_.s*th,ph:Math.random()*6.28},B:{c:cB,ori:-T_.s*th,ph:Math.random()*6.28}}); ctx.putImageData(G_.img,Math.round(g_.cxp-G_.R),Math.round(g_.cyp-G_.R)); }
       if(mt==="riv"&&BC.riv&&BC.riv.on){ const c=+S.bcRivC||0.6, G_=ntDichopticGratings(env,ctx,{sf:2.5,sigDeg:0.6,mean,A:{c,ori:BC.riv.swap?-45:45},B:{c,ori:BC.riv.swap?45:-45}}); if(!BC.riv.img) BC.riv.img=G_; ctx.putImageData(BC.riv.img.img,Math.round(g_.cxp-BC.riv.img.R),Math.round(g_.cyp-BC.riv.img.R)); }
       if(!BC.active||BC.phase==="blank"||BC.phase==="answer"){ ctx.fillStyle=frameCol; const s=Math.max(3,0.15*ntPPD(env)); ctx.fillRect(g_.cxp-s/2,g_.cyp-1,s,2); ctx.fillRect(g_.cxp-1,g_.cyp-s/2,2,s); }
       const fmtDb=v=>v==null?"–":`${Math.abs(v).toFixed(1)} dB ${v>0?`(${B} eye ${eB} weaker)`:v<0?`(${A} eye ${eA} weaker)`:"(equal)"}`;
       const rv=r.riv||[], avg=f=>{ const a=rv.map(f).filter(v=>v!=null&&isFinite(v)); return a.length?a.reduce((p,q)=>p+q,0)/a.length:null; };
-      let readout=`<span>${BC.active?(mt==="ori"?`trial ${BC.ad.trials()+1} · contrast ratio ${BC.tr?BC.tr.d.toFixed(1):"–"} dB`:mt==="gm"?`signal in ${BC.tr&&BC.tr.sig==="A"?A:B} eye · coherence ${BC.tr?(100*BC.tr.coh).toFixed(0):"–"}% · trials ${BC.ads.A.trials()}/${BC.ads.B.trials()}`:`rivalry ${Math.round((performance.now()-BC.riv.t0)/1000)} s / ${Math.round(BC.riv.dur/1000)} s`):"stopped"}</span>`;
+      let readout=`<span>${BC.active?(mt==="ori"?`trial ${BC.ad.trials()+1} · contrast ratio ${BC.tr?BC.tr.d.toFixed(1):"–"} dB`:mt==="gm"?`signal in ${BC.tr&&BC.tr.sig==="A"?A:B} eye · coherence ${BC.tr?(100*BC.tr.coh).toFixed(0):"–"}% · trials ${BC.ads.A.trials()}/${BC.ads.B.trials()}`:mt==="bal"?`signal in ${BC.tr&&BC.tr.sig==="A"?A:B} eye at ${BC.tr?(100*BC.tr.cs).toFixed(0):"–"}% contrast · trials ${BC.ads.A.trials()}/${BC.ads.B.trials()}`:`rivalry ${Math.round((performance.now()-BC.riv.t0)/1000)} s / ${Math.round(BC.riv.dur/1000)} s`):"stopped"}</span>`;
       readout+=`<span>orientation balance <b>${r.ori?fmtDb(r.ori.db):"–"}</b>${r.ori?` ± ${r.ori.sd} at ${r.ori.sf} c/deg`:""}</span>`;
       readout+=`<span>global motion threshold: signal to ${A} <b>${r.gm?r.gm.A+"%":"–"}</b> · to ${B} <b>${r.gm?r.gm.B+"%":"–"}</b>${r.gm?` · index ${Math.log10(r.gm.A/r.gm.B).toFixed(2)} (log, + = ${A} eye suppressed)`:""}</span>`;
+      readout+=`<span>motion balance: signal-eye contrast needed ${A} <b>${r.bal?r.bal.A+"%":"–"}</b> · ${B} <b>${r.bal?r.bal.B+"%":"–"}</b>${r.bal?` · balance point <b>${fmtDb(r.bal.db)}</b> at ${Math.round(100*r.bal.coh)}% coherence${r.bal.topA||r.bal.topB?" · <b>one eye needed full contrast: lower the coherence and repeat</b>":""}`:""}</span>`;
       readout+=`<span>rivalry (${rv.length} run${rv.length===1?"":"s"}): ${A} eye predominance <b>${avg(x=>x.pA)!=null?(100*avg(x=>x.pA)).toFixed(0)+"%":"–"}</b> · mean dominance ${ntFmt(avg(x=>x.mA),1)} s / ${ntFmt(avg(x=>x.mB),1)} s · switches <b>${ntFmt(avg(x=>x.rate),1)}/min</b> · mixed ${avg(x=>x.mix)!=null?(100*avg(x=>x.mix)).toFixed(0)+"%":"–"}</span>`;
       const warns=[]; if(S.nullOn===0) warns.push("Leak cancel is off. These tests depend on each eye seeing only its own image: run Calibrate glasses (in any lens test) first.");
       return {readout,warns,
         eq: mt==="ori"?`eye A (${A}) stripes at ±θ, eye B (${B}) at ∓θ, θ = ${+S.bcTheta||20}°, Gaussian window σ 1.5°, ${+S.bcSF||1} c/deg
 contrast ratio δ = 20·log10(cB/cA) dB (the stronger eye's contrast fixed at 80%); answer: does the fused pattern tilt toward eye B's tilt?
 balance point = δ at 50% (adaptive PSE); + means eye B needs more contrast, i.e. it is the weaker eye`:mt==="gm"?`${+S.bcDots||150} dots, 5° radius, 4°/s, 8-frame lifetime; signal dots (fraction c, all left or right) to one eye, noise dots to the other
-coherence threshold c* for signal in eye A and in eye B (2AFC, 75% point); index = log10(c*A / c*B)`:`orthogonal ±45° gratings 2.5 c/deg, σ 0.6°, ${Math.round(100*(+S.bcRivC||0.6))}% each eye; orientation-to-eye assignment random per run
+coherence threshold c* for signal in eye A and in eye B (2AFC, 75% point); index = log10(c*A / c*B)`:mt==="bal"?`${+S.bcDots||150} dots, 5° radius, 4°/s; coherence fixed at ${Math.round(100*(+S.bcBalCoh||0.6))}%; signal dots to one eye at contrast c, noise dots to the other at full contrast
+c* = signal-eye contrast for 75% correct direction (2AFC), for signal in eye A and in eye B
+balance point = 20·log10(c*A / c*B) dB; + means eye A needs more contrast (eye A weaker)`:`orthogonal ±45° gratings 2.5 c/deg, σ 0.6°, ${Math.round(100*(+S.bcRivC||0.6))}% each eye; orientation-to-eye assignment random per run
 predominance = time eye A / (time A + time B); dominance durations exclude the first and last percepts; switches = exclusive alternations per minute`,
         opt: mt==="ori"?`<p>When each eye sees stripes at a different tilt, the brain fuses them into one pattern whose tilt is a weighted average: the eye with more weight pulls the tilt its way. Finding the contrast ratio that makes the fused stripes look flat measures how much more contrast one eye needs to count equally: the binocular balance point (Wang et al. 2019; the orientation version of Ding &amp; Sperling's phase combination). It's more sensitive than rivalry-based dominance and is a standard outcome in amblyopia research. Balanced eyes sit within about ±2 dB; amblyopia is often 6–20 dB.</p><p>It assumes each eye sees only its own stripes: leak through the filters pulls both eyes toward equal and makes the imbalance look smaller. Calibrate the glasses first; swap the lenses between runs to cancel any filter difference.</p>`:
+          mt==="bal"?`<p>The contrast version of the dichoptic motion test (Mansouri, Hess and colleagues): the coherence is fixed, and the contrast of the signal eye's dots is lowered until it can no longer win against full-contrast noise in the other eye. A balanced pair needs about the same contrast whichever eye carries the signal; an amblyopic or suppressing eye needs much more, and the ratio in dB is the interocular balance point used to set the contrast of dichoptic amblyopia treatments.</p><p>If either eye needs 100%, the task is too hard at this coherence: choose a lower coherence (or 100% to make it easier) and repeat. Calibrate the glasses first; leak makes the eyes look more balanced than they are.</p>`:
           mt==="gm"?`<p>Dichoptic global motion (Hess, Mansouri, Black): the eye that gets the signal dots has to win against noise shown to the other eye. If one eye is suppressed, its signal is overwhelmed and it needs a much higher coherence. The index compares the two eyes; near 0 is balanced, large positive or negative values point to suppression of that eye. It's the basis of the dichoptic treatments for amblyopia.</p>`:
           `<p>Binocular rivalry: with incompatible images, perception alternates between the eyes every few seconds. The alternation rate is slower in some conditions (it falls with age and has been reported slower in bipolar disorder and autism), and predominance shows which eye wins more often, an index of eye dominance or suppression. Each run randomises which eye gets which tilt; do at least two runs.</p>`,
-        rows: mt==="ori"?`<tr><th>Balance point</th><th>Roughly</th></tr><tr><td>within ±2 dB</td><td>Balanced</td></tr><tr><td>2–6 dB</td><td>Mild imbalance (common, also from unequal filters)</td></tr><tr><td>&gt; 6 dB</td><td>Marked imbalance: amblyopia, suppression, anisometropia</td></tr>`:mt==="gm"?`<tr><th>Index</th><th>Roughly</th></tr><tr><td>within ±0.15</td><td>Balanced</td></tr><tr><td>beyond ±0.3</td><td>That eye is suppressed by the other</td></tr>`:`<tr><th>Measure</th><th>Typical</th></tr><tr><td>Dominance durations</td><td>about 1–4 s (varies widely)</td></tr><tr><td>Predominance</td><td>40–60% balanced; beyond 70/30 one eye dominates</td></tr><tr><td>Mixed</td><td>10–30% with patches this size</td></tr>`,
-        steps: `<li>Lens glasses on (${A} lens over ${eA}); calibrate the glasses first so each eye sees only its own image. Habitual near correction. Full screen.</li>`+(mt==="ori"?`<li>Press S. Look at the centre of the square. Stripes flash: are they tilted with the right end up (↑) or down (↓)? Guess if they look flat. About 30–50 flashes.</li><li>Swap the lenses (or the eye setting) and repeat; average the two.</li>`:mt==="gm"?`<li>Press S. Look at the centre. Dots move for 1 s: which way did the overall motion go, ← or →? Guess when unsure.</li>`:`<li>Press S. Keep looking at the patch. Hold ← while the stripes look like \\, hold → while they look like /, release both when you see a mixture or patchwork.</li><li>Do 2 runs (the tilt-to-eye assignment changes) and compare.</li>`) }; } };
+        rows: mt==="ori"?`<tr><th>Balance point</th><th>Roughly</th></tr><tr><td>within ±2 dB</td><td>Balanced</td></tr><tr><td>2–6 dB</td><td>Mild imbalance (common, also from unequal filters)</td></tr><tr><td>&gt; 6 dB</td><td>Marked imbalance: amblyopia, suppression, anisometropia</td></tr>`:mt==="bal"?`<tr><th>Balance point</th><th>Roughly</th></tr><tr><td>within ±3 dB</td><td>Balanced</td></tr><tr><td>3–8 dB</td><td>Mild imbalance</td></tr><tr><td>&gt; 8 dB</td><td>Marked: amblyopia or suppression in the weaker eye</td></tr>`:mt==="gm"?`<tr><th>Index</th><th>Roughly</th></tr><tr><td>within ±0.15</td><td>Balanced</td></tr><tr><td>beyond ±0.3</td><td>That eye is suppressed by the other</td></tr>`:`<tr><th>Measure</th><th>Typical</th></tr><tr><td>Dominance durations</td><td>about 1–4 s (varies widely)</td></tr><tr><td>Predominance</td><td>40–60% balanced; beyond 70/30 one eye dominates</td></tr><tr><td>Mixed</td><td>10–30% with patches this size</td></tr>`,
+        steps: `<li>Lens glasses on (${A} lens over ${eA}); calibrate the glasses first so each eye sees only its own image. Habitual near correction. Full screen.</li>`+(mt==="ori"?`<li>Press S. Look at the centre of the square. Stripes flash: are they tilted with the right end up (↑) or down (↓)? Guess if they look flat. About 30–50 flashes.</li><li>Swap the lenses (or the eye setting) and repeat; average the two.</li>`:(mt==="gm"||mt==="bal")?`<li>Press S. Look at the centre. Dots move for 1 s: which way did the overall motion go, ← or →? Guess when unsure.</li>`:`<li>Press S. Keep looking at the patch. Hold ← while the stripes look like \\, hold → while they look like /, release both when you see a mixture or patchwork.</li><li>Do 2 runs (the tilt-to-eye assignment changes) and compare.</li>`) }; } };
   // ---------------- n: vergence reserves (PFV/NFV) with a Risley or prism bar, near and distance, and AC/A ----------------
   const NB_F=[["nbDp","Distance phoria","Δ, eso +"],["nbNp","Near phoria","Δ, eso +"],["nbNpL","Near phoria through the lens","Δ, eso +"],["nbLens","That lens","D"],["nbNd","Near distance","cm"],["nbDd","Distance","cm"],
     ["nBIb","Near BI blur",""],["nBIk","Near BI break",""],["nBIr","Near BI recovery",""],["nBOb","Near BO blur",""],["nBOk","Near BO break",""],["nBOr","Near BO recovery",""],
@@ -2839,6 +2882,361 @@ chromatic: 1 s full-screen blue (≈ 455 nm, melanopsin-weighted) vs red (≈ 63
   try{ Object.assign(window.__thorTest,{PP,ppFrame,ppEye}); }catch(e){}
 
   // ---- wiring for the new tests ----
+  // ======================= dichoptic tests added in v99 =======================
+  // shared: which eye wears lens A, the visible field in degrees, and a per-pixel dichoptic renderer
+  const ntRA=m=>S.eye[m]==="OD";                               // true: lens A (eye A) is the right eye
+  function ntExt(env){ const k=env.vw/env.W, a=px=>Math.atan(px*k/env.d)*180/Math.PI;
+    return {L:a(env.cx), R:a(env.W-env.cx), U:a(env.cy0), D:a(env.H-env.cy0)}; }
+  function ntDichLUT(SD){ const N=17, T=new Array(N*N); for(let i=0;i<N;i++) for(let j=0;j<N;j++) T[i*N+j]=SD.px(i/(N-1),j/(N-1));
+    return (a,b)=>T[Math.round(Math.max(0,Math.min(1,a))*(N-1))*N+Math.round(Math.max(0,Math.min(1,b))*(N-1))]; }
+  // Eye A's and eye B's content are drawn white on black (device px of the stage canvas; antialiasing gives the exact
+  // sub-pixel coverage) and combined pixel by pixel through the leak-cancelling solver, so overlaps are exact.
+  function ntDichRender(g_,rect,drawA,drawB,SD){ SD=SD||rgSolver(); const L=ntDichLUT(SD);
+    const x0=Math.max(0,Math.floor(rect.x)), y0=Math.max(0,Math.floor(rect.y)), w=Math.max(1,Math.min(g_.Wd-x0,Math.ceil(rect.w))), h=Math.max(1,Math.min(g_.Hd-y0,Math.ceil(rect.h)));
+    const mk=f=>{ const c=document.createElement("canvas"); c.width=w; c.height=h; const o=c.getContext("2d"); o.fillStyle="#000"; o.fillRect(0,0,w,h); o.translate(-x0,-y0); o.fillStyle="#fff"; o.strokeStyle="#fff"; f(o); return o.getImageData(0,0,w,h).data; };
+    const A=mk(drawA), B=mk(drawB), img=ntImg(g_.ctx,w,h), D_=img.data;
+    for(let i=0;i<w*h;i++){ const q=L(A[i*4]/255,B[i*4]/255); D_[i*4]=q[0]; D_[i*4+1]=q[1]; D_[i*4+2]=q[2]; D_[i*4+3]=255; }
+    return {img,x:x0,y:y0}; }
+  const ntPut=(g_,r)=>g_.ctx.putImageData(r.img,r.x,r.y);
+  // fused fixation cross (both eyes) with an empty centre of radius gap°
+  function ntCross(env,ctx,g_,col,armDeg,gapDeg){ const a=ntDegPx(env,armDeg), gp=ntDegPx(env,gapDeg||0), t=Math.max(2,0.05*ntPPD(env)); ctx.fillStyle=col;
+    ctx.fillRect(g_.cxp-a,g_.cyp-t/2,a-gp,t); ctx.fillRect(g_.cxp+gp,g_.cyp-t/2,a-gp,t); ctx.fillRect(g_.cxp-t/2,g_.cyp-a,t,a-gp); ctx.fillRect(g_.cxp-t/2,g_.cyp+gp,t,a-gp); }
+  const ntWarnLeak=()=>S.nullOn===0?["Leak cancel is off. These tests depend on each eye seeing only its own image: run Calibrate glasses first."]:[];
+  // weighted least squares of y on columns X (small systems), returns coefficients
+  function ntLsq(X,y,w){ const p=X[0].length, A=Array.from({length:p},()=>new Array(p).fill(0)), b=new Array(p).fill(0);
+    X.forEach((r,i)=>{ const wi=w?w[i]:1; for(let j=0;j<p;j++){ b[j]+=wi*r[j]*y[i]; for(let k=0;k<p;k++) A[j][k]+=wi*r[j]*r[k]; } });
+    for(let c=0;c<p;c++){ let mx=c; for(let r=c+1;r<p;r++) if(Math.abs(A[r][c])>Math.abs(A[mx][c])) mx=r; [A[c],A[mx]]=[A[mx],A[c]]; [b[c],b[mx]]=[b[mx],b[c]];
+      if(Math.abs(A[c][c])<1e-12) return null; for(let r=0;r<p;r++){ if(r===c) continue; const f=A[r][c]/A[c][c]; for(let k=c;k<p;k++) A[r][k]-=f*A[c][k]; b[r]-=f*b[c]; } }
+    return b.map((v,i)=>v/A[i][i]); }
+
+  // ---------------- w: Panum's fusional area ----------------
+  // A thin vertical line is shown to each eye at the same place except for a horizontal disparity δ, crossed or
+  // uncrossed, flashed for 150 ms (shorter than the ~160–200 ms vergence latency, so the eyes can't move to fuse it).
+  // Fixation is held on a fused cross and frame. For each eccentricity and sign, an adaptive staircase finds the δ at
+  // which the line is seen double half the time: the edge of Panum's area.
+  const PN={active:false,phase:"",tok:{},ads:null,tr:null};
+  const pnMax=e=>40+12*e;                                       // staircase ceiling (arcmin) at eccentricity e°
+  function pnEccs(env){ const x=ntExt(env), lim=Math.min(x.L,x.R)-1.5; return String(S.pnEcc||"0,2,5").split(",").map(Number).filter(e=>isFinite(e)&&(e===0||e<=lim)); }
+  function pnStop(){ PN.active=false; PN.phase=""; PN.tok.dead=true; PN.tok={}; }
+  function pnStart(){ pnStop(); const env=NT.w.env; if(!env) return; PN.active=true; PN.ads={};
+    pnEccs(env).forEach(e=>[1,-1].forEach(sg=>{ const mx=pnMax(e); PN.ads[e+"|"+sg]=PSE({lo:0,hi:mx,n:121,sLo:mx/60,sHi:mx/2.5,ns:10,minT:12,maxT:26,sdStop:mx/22}); }));
+    pnTrial(); }
+  function pnTrial(){ if(!PN.active) return; const open=Object.keys(PN.ads).filter(k=>!PN.ads[k].done());
+    if(!open.length){ const r=ntR("w"), out={}; Object.entries(PN.ads).forEach(([k,ad])=>{ const [e,sg]=k.split("|"); out[e]=out[e]||{}; out[e][sg==="1"?"cr":"un"]=+ad.est().mu.toFixed(1); out[e][sg==="1"?"crSd":"unSd"]=+ad.est().sd.toFixed(1); });
+      r.last={by:out,flash:+S.pnFlash||150,when:Date.now()}; pnStop(); save(); draw(); beep(660,200); return; }
+    const key=open[Math.floor(Math.random()*open.length)], [e,sg]=key.split("|").map(Number);
+    PN.tr={key,e,sg:sg,side:Math.random()<0.5?-1:1,dl:PN.ads[key].next()}; PN.phase="blank"; draw();
+    const tok=PN.tok; setTimeout(()=>{ if(tok.dead) return; PN.phase="show"; ntFlash(+S.pnFlash||150,()=>draw(),()=>{ if(tok.dead) return; PN.phase="answer"; draw(); },tok); },600+Math.random()*500); }
+  function pnResp(dbl){ if(!PN.active||PN.phase!=="answer") return; PN.ads[PN.tr.key].update(PN.tr.dl,dbl); pnTrial(); }
+  NT.w={ name:"Panum's area",
+    ctl:`<label data-modes="w">Eccentricities<select data-ntk="pnEcc"><option value="0">Fixation only</option><option value="0,2,5">0°, 2°, 5°</option><option value="0,2,5,10">0°, 2°, 5°, 10°</option></select></label>
+      <label data-modes="w">Flash<select data-ntk="pnFlash" data-ntt="num"><option value="100">100 ms</option><option value="150">150 ms</option><option value="250">250 ms</option></select></label>
+      <label data-modes="w">Run<div class="btns"><button type="button" data-nta="w:start" class="primary">Start (S)</button><button type="button" data-nta="w:stop">Stop</button></div></label>`,
+    stop:pnStop, clear(){ S.ntRes&&(S.ntRes.w={}); }, act(a){ if(a==="start") pnStart(); else { pnStop(); draw(); } },
+    hud(){ return !PN.active?"S start":PN.phase==="answer"?"the line was: ← single · → double":"look at the centre of the cross"; },
+    key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ pnStart(); return true; } if(PN.active&&(k==="ArrowLeft"||k==="ArrowRight")){ pnResp(k==="ArrowRight"); return true; } return false; },
+    draw(env){ this.env=env; const SD=rgSolver(), bg=bytesCss(SD.px(0,0)), both=bytesCss(SD.px(1,1)), g_=ntCv(env,bg), ctx=g_.ctx, ppd=ntPPD(env), ecc=pnEccs(env), emax=Math.max(0,...ecc);
+      ntFrame(env,ctx,g_,Math.min(2*emax+6,2*Math.min(ntExt(env).U,ntExt(env).D)*0.9+2,40),both); ntCross(env,ctx,g_,both,0.6,0.15);
+      if(PN.active&&PN.phase==="show"){ const T_=PN.tr, rA=ntRA("w"), half=T_.sg*T_.dl/120;   // half the disparity in degrees, crossed +
+        const xc=T_.e===0?0:T_.side*T_.e, yc=T_.e===0?-1.0:0, len=0.9, lw=Math.max(1,1.5/60*ppd);
+        const xR=xc-half, xL=xc+half;                              // crossed: right eye's image to the left
+        const xA=rA?xR:xL, xB=rA?xL:xR, px_=a=>g_.cxp+ntDegPx(env,a), py=ntDegPx(env,yc), hl=ntDegPx(env,len/2);
+        const x1=Math.min(px_(xA),px_(xB))-10, x2=Math.max(px_(xA),px_(xB))+10;
+        const R_=ntDichRender(g_,{x:x1,y:g_.cyp+py-hl-4,w:x2-x1,h:2*hl+8},o=>o.fillRect(px_(xA)-lw/2,g_.cyp+py-hl,lw,2*hl),o=>o.fillRect(px_(xB)-lw/2,g_.cyp+py-hl,lw,2*hl),SD); ntPut(g_,R_); }
+      const r=ntR("w").last, rows_=r?Object.keys(r.by).map(Number).sort((a,b)=>a-b).map(e=>{ const o=r.by[e]; return `${e}°: crossed <b>${ntFmt(o.cr,1)}′</b> · uncrossed <b>${ntFmt(o.un,1)}′</b> · total <b>${ntFmt((o.cr||0)+(o.un||0),1)}′</b>`; }).join("<br>"):"";
+      let ratio=""; if(r){ const es=Object.keys(r.by).map(Number).filter(e=>e>0); if(es.length&&r.by[0]){ const t0=r.by[0].cr+r.by[0].un; ratio=es.map(e=>`${e}°: ${((r.by[e].cr+r.by[e].un)/t0).toFixed(1)}×`).join(" · "); } }
+      const readout=`<span>${PN.active?`${PN.tr.e}° ${PN.tr.sg>0?"crossed":"uncrossed"} · disparity ${PN.tr.dl.toFixed(1)}′ · trials ${Object.values(PN.ads).map(a=>a.trials()).reduce((p,q)=>p+q,0)}`:"stopped"}</span>${r?`<span>${rows_}</span>${ratio?`<span>growth with eccentricity (total vs fixation): ${ratio}</span>`:""}`:""}`;
+      return {readout,warns:ntWarnLeak(),
+        eq:`each eye sees a vertical line (0.9° long, 1.5′ wide) at the same place except for disparity δ split ±δ/2 between the eyes
+crossed: right eye's image to the left (seen nearer); flash ${+S.pnFlash||150} ms, under the vergence latency, with a fused cross and frame holding fixation
+limit = δ seen double on 50% of flashes (adaptive), for each eccentricity and sign; total extent = crossed + uncrossed
+at 0° the line is 1° above the cross; eccentric lines are on the horizontal meridian, left or right at random`,
+        opt:`<p>Panum's fusional area is the range of disparity that is still seen single without the eyes moving. It's the slack that lets small vergence errors (fixation disparity) go unnoticed. Flashing the line for less than the vergence reaction time measures sensory fusion alone, with no motor vergence help.</p><p>The size depends on the target: thin sharp lines give the smallest areas (typically about 5–15′ each way at fixation for brief flashes) and it grows with eccentricity, roughly in proportion to it beyond a few degrees. There are no clinical norms for this exact stimulus, so treat it as a within-person measure: compare eccentricities, crossed vs uncrossed, and visits. An unusually small area goes with symptoms from small fixation disparities; very large or asymmetric areas suggest abnormal binocular vision.</p>`,
+        rows:`<tr><th>Pattern</th><th>Suggests</th></tr><tr><td>Total at fixation under about 30′, growing with eccentricity</td><td>Typical</td></tr><tr><td>Crossed and uncrossed very unequal</td><td>A fixation disparity or vergence bias shifting the zone</td></tr><tr><td>Very large at fixation</td><td>Reduced foveal binocular sensitivity (amblyopia, suppression, microtropia)</td></tr>`,
+        steps:`<li>Lens glasses on (${LA().name} lens over ${S.eye.w}); calibrate the glasses first. Habitual near correction. Full screen, room dim.</li><li>Press S. Keep looking at the centre of the cross. A line flashes: was it one line (← / tap left) or two (→ / tap right)? About 12–26 flashes per condition; it stops on its own.</li>` }; } };
+
+  // ---------------- y: vergence time course (psychophysical, no eye tracker) ----------------
+  // A fused dot field steps in disparity (software prism). A nonius pair (top line to eye A, bottom to eye B) is flashed
+  // for 2 frames at a delay τ after the step. If the eyes have not moved yet, the lines look offset by the whole step;
+  // once vergence has caught up they look aligned. The nonius offset that looks aligned, found adaptively at each
+  // delay, gives how far vergence had got at τ. A fitted latency + exponential gives latency, time constant and gain.
+  const VT={active:false,phase:"",tok:{},ads:null,tr:null,cache:null};
+  const VT_TAU=[0,100,200,350,600,1200];
+  function vtStop(){ VT.active=false; VT.phase=""; VT.tok.dead=true; VT.tok={}; }
+  function vtGeom(env,dir){ const P=+S.vtStep||4, sep=P*(env.d-S.hVtx)/100, rA=ntRA("y"), conv=dir==="BO";
+    // BO: right eye's image moves left (crossed). shift per eye in mm, + = rightward
+    const sR=conv?-sep/2:sep/2, sL=-sR, sA=rA?sR:sL, sB=rA?sL:sR, am=mm=>Math.atan(mm/env.d)*180/Math.PI*60;
+    return {P,sA,sB,dx:am(sA-sB)}; }                            // dx: eye A − eye B image offset (arcmin)
+  function vtStart(){ vtStop(); const env=NT.y.env; if(!env) return; VT.active=true; VT.ads={}; VT.cache=null;
+    const dirs=S.vtDir==="both"?["BO","BI"]:[S.vtDir||"BO"];
+    dirs.forEach(dir=>{ const D=Math.abs(vtGeom(env,dir).dx); VT_TAU.forEach(t=>{ VT.ads[dir+"|"+t]=PSE({lo:-1.6*D,hi:1.6*D,n:121,sLo:D/40,sHi:D/2,ns:10,minT:10,maxT:18,sdStop:D/12}); }); });
+    vtTrial(); }
+  function vtFit(pts,D){ // pts: [{t, v(Δ achieved), w}] ; model v = b + A(1 − e^{−(t−L)/T}) for t > L
+    let best=null; for(let L=0;L<=400;L+=10) for(let T=30;T<=900;T+=10){ const X=pts.map(p=>[1,p.t>L?1-Math.exp(-(p.t-L)/T):0]), c=ntLsq(X,pts.map(p=>p.v),pts.map(p=>p.w)); if(!c) continue;
+      let ss=0; pts.forEach((p,i)=>{ ss+=p.w*(p.v-(c[0]+c[1]*X[i][1]))**2; }); if(!best||ss<best.ss) best={ss,L,T,b:c[0],A:c[1]}; }
+    return best; }
+  function vtFinish(){ const env=NT.y.env, r=ntR("y"), out={};
+    Object.keys(VT.ads).map(k=>k.split("|")[0]).filter((v,i,a)=>a.indexOf(v)===i).forEach(dir=>{ const G=vtGeom(env,dir), pts=VT_TAU.map(t=>{ const e=VT.ads[dir+"|"+t].est();
+        // aligned offset v* (A line − B line) = −(retinal residual of the step); progress = 1 + v*/dx
+        const prog=1+e.mu/G.dx; return {t,v:prog*G.P,sd:Math.abs(e.sd/G.dx)*G.P,w:1/Math.max(0.05,(e.sd/G.dx*G.P)**2)}; });
+      const f=vtFit(pts,G.P); out[dir]={P:G.P,pts:pts.map(p=>({t:p.t,v:+p.v.toFixed(2),sd:+p.sd.toFixed(2)})),L:f?f.L:null,T:f?f.T:null,A:f?+f.A.toFixed(2):null,b:f?+f.b.toFixed(2):null}; });
+    r.last={by:out,when:Date.now()}; vtStop(); save(); draw(); beep(660,200); }
+  function vtTrial(){ if(!VT.active) return; const open=Object.keys(VT.ads).filter(k=>!VT.ads[k].done()); if(!open.length){ vtFinish(); return; }
+    const key=open[Math.floor(Math.random()*open.length)], [dir,t]=key.split("|"); VT.tr={key,dir,tau:+t,v:VT.ads[key].next()}; VT.dxNow=vtGeom(NT.y.env,dir).dx; VT.phase="base"; draw();
+    const env=NT.y.env, tok=VT.tok, g_=ntCv(env,null), imgs=vtImages(env,g_,dir,VT.tr.v);
+    setTimeout(()=>{ if(tok.dead) return; let t0=null, shown=0, phase=0;
+      const tick=ts=>{ if(tok.dead) return; if(t0==null){ t0=ts; ntPut(g_,imgs.step); requestAnimationFrame(tick); return; }
+        const el_=ts-t0;
+        if(phase===0&&el_>=VT.tr.tau-NTF.fdt/2){ ntPut(g_,imgs.non); phase=1; shown=ts; }
+        else if(phase===1&&ts-shown>=2*NTF.fdt-NTF.fdt/2){ ntPut(g_,imgs.step); phase=2; }
+        if(phase===2&&el_>=VT.tr.tau+400){ VT.phase="answer"; return; }
+        requestAnimationFrame(tick); };
+      requestAnimationFrame(tick); },1300+Math.random()*700); }
+  // three pre-rendered frames: base (no disparity), stepped field, stepped field + nonius
+  function vtImages(env,g_,dir,v){ const ck=JSON.stringify([dir,v,env.W,env.H,env.d,env.dpr,S.vtStep,S.eye.y,S.hVtx,S.ped,S.gped,S.rIn,S.gIn,S.rLvl,S.gLvl,S.nullOn,S.kBg,S.kBr,S.xMan,S.yMan]);
+    if(VT.imgs&&VT.imgs.ck===ck) return VT.imgs.v; const out=vtImagesRaw(env,g_,dir,v); VT.imgs={ck,v:out}; return out; }
+  function vtImagesRaw(env,g_,dir,v){ const SD=rgSolver(), ppd=ntPPD(env), G=vtGeom(env,dir), k_=1/env.dev, sA=G.sA*k_, sB=G.sB*k_;
+    const ext=ntExt(env), Wd=Math.min(16,2*Math.min(ext.L,ext.R)-2), Hd=Math.min(11,2*Math.min(ext.U,ext.D)-2), w=ntDegPx(env,Wd/2), h=ntDegPx(env,Hd/2), hole=ntDegPx(env,1.2);
+    if(!VT.cache||VT.cache.key!==[env.W,env.H,env.d].join()){ let s=12345; const rnd=()=>{ s=(s*1103515245+12345)&0x7fffffff; return s/0x7fffffff; }, dots=[];
+      const n=Math.round(Wd*Hd*5); for(let i=0;i<n;i++){ const x=(rnd()*2-1)*w, y=(rnd()*2-1)*h; if(Math.hypot(x,y)<hole) continue; dots.push([x,y]); } VT.cache={key:[env.W,env.H,env.d].join(),dots}; }
+    const dots=VT.cache.dots, r=Math.max(1.5,0.09*ppd), rect={x:g_.cxp-w-Math.abs(sA)-r-4,y:g_.cyp-h-r-4,w:2*w+2*Math.abs(sA)+2*r+8,h:2*h+2*r+8};
+    const field=(o,dx)=>{ dots.forEach(([x,y])=>{ o.beginPath(); o.arc(g_.cxp+x+dx,g_.cyp+y,r,0,7); o.fill(); }); const t=Math.max(2,0.05*ppd), a=ntDegPx(env,0.5); o.fillRect(g_.cxp+dx-a,g_.cyp-t/2,2*a*0.35,t); o.fillRect(g_.cxp+dx+a*0.3,g_.cyp-t/2,a*0.7,t); };
+    const vpx=ntDegPx(env,v/60), lw=Math.max(1,1.5/60*ppd), L_=ntDegPx(env,0.45), gap=ntDegPx(env,0.08);
+    const nonA=(o,dx)=>o.fillRect(g_.cxp+dx+vpx/2-lw/2,g_.cyp-gap-L_,lw,L_), nonB=(o,dx)=>o.fillRect(g_.cxp+dx-vpx/2-lw/2,g_.cyp+gap,lw,L_);
+    return { base:ntDichRender(g_,rect,o=>field(o,0),o=>field(o,0),SD),
+             step:ntDichRender(g_,rect,o=>field(o,sA),o=>field(o,sB),SD),
+             non: ntDichRender(g_,rect,o=>{ field(o,sA); nonA(o,sA); },o=>{ field(o,sB); nonB(o,sB); },SD) }; }
+  function vtResp(right){ if(!VT.active||VT.phase!=="answer") return; VT.ads[VT.tr.key].update(VT.tr.v,right); VT.phase="base"; vtTrial(); }
+  NT.y={ name:"Vergence time course",
+    ctl:`<label data-modes="y">Step<select data-ntk="vtStep" data-ntt="num"><option value="2">2 Δ</option><option value="4">4 Δ</option><option value="6">6 Δ</option></select></label>
+      <label data-modes="y">Direction<select data-ntk="vtDir"><option value="BO">Convergence (BO step)</option><option value="BI">Divergence (BI step)</option><option value="both">Both (twice as long)</option></select></label>
+      <label data-modes="y">Run<div class="btns"><button type="button" data-nta="y:start" class="primary">Start (S)</button><button type="button" data-nta="y:stop">Stop</button></div></label>`,
+    stop:vtStop, clear(){ S.ntRes&&(S.ntRes.y={}); }, act(a){ if(a==="start") vtStart(); else { vtStop(); draw(); } },
+    hud(){ return !VT.active?"S start":VT.phase==="answer"?"top line was: ← left · → right of the bottom line":"keep the dots single, look at the centre"; },
+    key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ vtStart(); return true; } if(VT.active&&(k==="ArrowLeft"||k==="ArrowRight")){ vtResp(k==="ArrowRight"); return true; } return false; },
+    draw(env){ this.env=env; const SD=rgSolver(), g_=ntCv(env,bytesCss(SD.px(0,0)));
+      if(!VT.active||VT.phase==="base"||VT.phase===""){ const im=vtImages(env,g_,S.vtDir==="BI"?"BI":"BO",0); ntPut(g_,im.base); }
+      else if(VT.phase==="answer"){ const im=vtImages(env,g_,VT.tr.dir,0); ntPut(g_,im.step); }
+      const r=ntR("y").last;
+      const fmtDir=(dir,o)=>`${dir==="BO"?"convergence":"divergence"} ${o.P} Δ: latency <b>${o.L!=null?o.L+" ms":"–"}</b> · time constant <b>${o.T!=null?o.T+" ms":"–"}</b> · gain <b>${o.A!=null?(o.A/o.P).toFixed(2):"–"}</b> · initial speed <b>${o.A!=null&&o.T?(o.A/o.T*1000).toFixed(0)+" Δ/s":"–"}</b><br>${o.pts.map(p=>`${p.t} ms: ${p.v.toFixed(1)} ± ${p.sd.toFixed(1)} Δ`).join(" · ")}`;
+      const chart=r?vtChart(r.by):"";
+      const readout=`<span>${VT.active?`${VT.tr.dir} step · delay ${VT.tr.tau} ms · nonius ${VT.tr.v.toFixed(1)}′ · trials ${Object.values(VT.ads).map(a=>a.trials()).reduce((p,q)=>p+q,0)} of about ${Object.keys(VT.ads).length*14}`:"stopped"}</span>${r?Object.entries(r.by).map(([d_,o])=>`<span>${fmtDir(d_,o)}</span>`).join(""):""}${chart}`;
+      const G=vtGeom(env,S.vtDir==="BI"?"BI":"BO");
+      return {readout,warns:ntWarnLeak().concat(["Experimental: a psychophysical reconstruction. Each delay needs 10–18 answers, so a run takes about 5 minutes per direction."]),
+        eq:`fused random-dot field (up to 16° × 11°) with a 1.2° central gap; step = software prism ${G.P} Δ: each eye's image shifted ±P·(d − ${S.hVtx})/200 mm (BO: right eye's image left)
+nonius: top line to eye A, bottom to eye B, flashed for 2 frames at delay τ ∈ {${VT_TAU.join(", ")}} ms after the step
+aligned offset v*(τ) (arcmin, A − B); eye A − eye B image offset of the step dx = ${G.dx.toFixed(1)}′
+vergence achieved V(τ) = P · (1 + v*/dx): 0 = not moved yet, P = fully on target
+fit V(t) = b + A·(1 − e^(−(t − L)/T)) for t > L (weighted least squares): latency L, time constant T, gain A/P, initial speed A/T`,
+        opt:`<p>Vergence is slow compared with saccades: it starts roughly 150–200 ms after a disparity step and takes several hundred milliseconds to settle. Measuring its time course normally needs an eye tracker. Here the eyes measure themselves: a flashed nonius pair is a snapshot of where the eyes are pointing at that instant, because any vergence error shows up as a nonius misalignment. Collecting snapshots at fixed delays after many identical steps rebuilds the average response (a technique used in vergence research).</p><p>Typical values for small disparity steps are a latency of about 130–250 ms and a time constant of about 150–300 ms; convergence is usually a little faster than divergence. Slow, low-gain or late responses go with convergence insufficiency and some neurological conditions (and fatigue). Treat the numbers as experimental and compare visits and directions.</p>`,
+        rows:`<tr><th>Measure</th><th>Rough typical range</th></tr><tr><td>Latency</td><td>130–250 ms</td></tr><tr><td>Time constant</td><td>150–300 ms</td></tr><tr><td>Gain at 1.2 s</td><td>0.8–1.0 (fixation disparity lowers it slightly)</td></tr>`,
+        steps:`<li>Lens glasses on (${LA().name} lens over ${S.eye.y}); calibrate the glasses. Habitual near correction, full screen, room dim.</li><li>Press S. Keep the dot field single and look at the gap in the middle. The field jumps in depth, and two short lines flash in the gap: was the top line left (← / tap left) or right (→ / tap right) of the bottom line? Guess when unsure.</li><li>It stops on its own (about 70 answers per direction) and fits the curve.</li>` }; } };
+  function vtChart(by){ const W_=420,H_=170,pl=40,pb=24,pt=10,pr=10, cols={BO:"var(--accent,#c0392b)",BI:"#2d7dd2"}; let Pm=0; Object.values(by).forEach(o=>Pm=Math.max(Pm,o.P,...o.pts.map(p=>p.v+p.sd)));
+    const X=t=>pl+(W_-pl-pr)*t/1300, Y=v=>H_-pb-(H_-pb-pt)*Math.max(0,v)/Math.max(1,Pm*1.1); let s=`<svg viewBox="0 0 ${W_} ${H_}" style="width:100%;max-width:${W_}px;display:block;margin-top:6px" font-size="10" fill="currentColor">`;
+    s+=`<line x1="${pl}" y1="${H_-pb}" x2="${W_-pr}" y2="${H_-pb}" stroke="currentColor" opacity=".4"/><line x1="${pl}" y1="${pt}" x2="${pl}" y2="${H_-pb}" stroke="currentColor" opacity=".4"/>`;
+    [0,300,600,900,1200].forEach(t=>s+=`<text x="${X(t)}" y="${H_-8}" text-anchor="middle" opacity=".7">${t}</text>`); s+=`<text x="${W_-pr}" y="${H_-pb-4}" text-anchor="end" opacity=".7">ms</text><text x="4" y="${pt+8}" opacity=".7">Δ</text>`;
+    Object.entries(by).forEach(([d_,o])=>{ const c=cols[d_]; s+=`<line x1="${pl}" x2="${W_-pr}" y1="${Y(o.P)}" y2="${Y(o.P)}" stroke="${c}" stroke-dasharray="3 3" opacity=".6"/>`;
+      if(o.L!=null){ let p=""; for(let t=0;t<=1300;t+=10){ const v=o.b+(t>o.L?o.A*(1-Math.exp(-(t-o.L)/o.T)):0); p+=(p?"L":"M")+X(t).toFixed(1)+","+Y(v).toFixed(1); } s+=`<path d="${p}" fill="none" stroke="${c}" stroke-width="1.6"/>`; }
+      o.pts.forEach(p=>{ s+=`<line x1="${X(p.t)}" x2="${X(p.t)}" y1="${Y(p.v-p.sd)}" y2="${Y(p.v+p.sd)}" stroke="${c}"/><circle cx="${X(p.t)}" cy="${Y(p.v)}" r="3" fill="${c}"/>`; }); });
+    return `<span>${s}</svg></span>`; }
+
+  // ---------------- h: empirical horopter (nonius method) ----------------
+  // With the eyes fixating a fused cross, nonius pairs (one line per eye, one above the other) are flashed at several
+  // horizontal eccentricities. The offset that looks aligned at each place marks corresponding retinal points, and so
+  // the horopter's distance at that direction. Fitting s*(θ) = s0 + m·θ + q·θ² gives the fixation disparity (s0),
+  // the relative horizontal magnification of the eyes (m, a horopter tilt) and the curvature (q) compared with the
+  // Vieth–Müller circle (q = −a/d) and the plane of the screen (q = 0).
+  const HO={active:false,phase:"",tok:{},ads:null,tr:null};
+  function hoEccs(env){ const x=ntExt(env), lim=Math.min(x.L,x.R)-1.2, step=+S.hoStep||3, out=[0]; for(let e=step;e<=lim+1e-6&&out.length<11;e+=step){ out.push(e,-e); } return out.sort((a,b)=>a-b); }
+  const hoLim=e=>8+0.25*e*e;
+  function hoStop(){ HO.active=false; HO.phase=""; HO.tok.dead=true; HO.tok={}; }
+  function hoStart(){ hoStop(); const env=NT.h.env; if(!env) return; HO.active=true; HO.ads={}; hoEccs(env).forEach(e=>{ const L=hoLim(Math.abs(e)); HO.ads[e]=PSE({lo:-L,hi:L,n:121,sLo:0.5,sHi:L/2,ns:10,minT:12,maxT:24,sdStop:Math.max(0.6,L/16)}); }); hoTrial(); }
+  function hoTrial(){ if(!HO.active) return; const open=Object.keys(HO.ads).filter(k=>!HO.ads[k].done());
+    if(!open.length){ const env=NT.h.env, a=(S.pd||62), pts=Object.keys(HO.ads).map(Number).sort((p,q)=>p-q).map(e=>{ const es=HO.ads[e].est(); return {e,s:+es.mu.toFixed(2),sd:+es.sd.toFixed(2)}; });
+      const rad=x=>x*Math.PI/180, fit=ntLsq(pts.map(p=>[1,rad(p.e),rad(p.e)**2]),pts.map(p=>p.s/60*Math.PI/180),pts.map(p=>1/Math.max(0.3,p.sd)**2));
+      ntR("h").last={pts,fit:fit?{s0:fit[0]*180/Math.PI*60,m:fit[1],q:fit[2]}:null,d:env.d,a,when:Date.now()}; hoStop(); save(); draw(); beep(660,200); return; }
+    const e=+open[Math.floor(Math.random()*open.length)]; HO.tr={e,s:HO.ads[e].next(),topA:Math.random()<0.5}; HO.phase="blank"; draw();
+    const tok=HO.tok; setTimeout(()=>{ if(tok.dead) return; HO.phase="show"; ntFlash(+S.hoFlash||300,()=>draw(),()=>{ if(tok.dead) return; HO.phase="answer"; draw(); },tok); },500+Math.random()*400); }
+  // answer: is the top line to the right of the bottom one? → convert to "right eye's line to the right of the left eye's"
+  function hoResp(topRight){ if(!HO.active||HO.phase!=="answer") return; const T_=HO.tr, rA=ntRA("h"), topIsR=T_.topA===rA; HO.ads[T_.e].update(T_.s, topIsR?topRight:!topRight); hoTrial(); }
+  NT.h={ name:"Horopter",
+    ctl:`<label data-modes="h">Spacing<select data-ntk="hoStep" data-ntt="num"><option value="2">every 2°</option><option value="3">every 3°</option><option value="4">every 4°</option></select></label>
+      <label data-modes="h">Flash<select data-ntk="hoFlash" data-ntt="num"><option value="200">200 ms</option><option value="300">300 ms</option><option value="500">500 ms</option></select></label>
+      <label data-modes="h">Run<div class="btns"><button type="button" data-nta="h:start" class="primary">Start (S)</button><button type="button" data-nta="h:stop">Stop</button></div></label>`,
+    stop:hoStop, clear(){ S.ntRes&&(S.ntRes.h={}); }, act(a){ if(a==="start") hoStart(); else { hoStop(); draw(); } },
+    hud(){ return !HO.active?"S start":HO.phase==="answer"?"top line was: ← left · → right of the bottom line":"look at the centre of the cross"; },
+    key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ hoStart(); return true; } if(HO.active&&(k==="ArrowLeft"||k==="ArrowRight")){ hoResp(k==="ArrowRight"); return true; } return false; },
+    draw(env){ this.env=env; const SD=rgSolver(), bg=bytesCss(SD.px(0,0)), both=bytesCss(SD.px(1,1)), g_=ntCv(env,bg), ctx=g_.ctx, ppd=ntPPD(env), ext=ntExt(env);
+      const fw=2*Math.min(ext.L,ext.R)-0.6, fh=2*Math.min(ext.U,ext.D)-0.6, sx=ntDegPx(env,fw/2), sy=ntDegPx(env,fh/2), lwF=Math.max(2,0.06*ppd);
+      ctx.strokeStyle=both; ctx.lineWidth=lwF; ctx.strokeRect(g_.cxp-sx,g_.cyp-sy,2*sx,2*sy);
+      ntCross(env,ctx,g_,both,0.9,0.5);
+      if(HO.active&&HO.phase==="show"){ const T_=HO.tr, rA=ntRA("h"), half=T_.s/120;     // s: right eye's line minus left eye's (arcmin, uncrossed +)
+        const xR=T_.e+half, xL=T_.e-half, xA=rA?xR:xL, xB=rA?xL:xR, px_=a=>g_.cxp+ntDegPx(env,a), lw=Math.max(1,1.5/60*ppd), L_=ntDegPx(env,0.7), gp=ntDegPx(env,0.1);
+        const top=T_.topA?"A":"B", x1=Math.min(px_(xA),px_(xB))-8, x2=Math.max(px_(xA),px_(xB))+8;
+        const lineA=o=>o.fillRect(px_(xA)-lw/2, top==="A"?g_.cyp-gp-L_:g_.cyp+gp, lw, L_), lineB=o=>o.fillRect(px_(xB)-lw/2, top==="B"?g_.cyp-gp-L_:g_.cyp+gp, lw, L_);
+        ntPut(g_,ntDichRender(g_,{x:x1,y:g_.cyp-gp-L_-4,w:x2-x1,h:2*(gp+L_)+8},lineA,lineB,SD)); }
+      const r=ntR("h").last; let res="", chart="";
+      if(r&&r.fit){ const f=r.fit, K=-f.q/(r.a/r.d), mag=-100*f.m;
+        res=`<span>fixation disparity <b>${f.s0>=0?"+":""}${f.s0.toFixed(1)}′</b> (uncrossed +) · curvature <b>${K.toFixed(2)}</b> × Vieth–Müller (1 = circle, 0 = flat like the screen) · relative horizontal magnification <b>${mag>=0?"+":""}${mag.toFixed(1)}%</b> (right eye larger +)</span>
+          <span>${r.pts.map(p=>`${p.e}°: ${p.s>=0?"+":""}${p.s.toFixed(1)}′`).join(" · ")}</span>`;
+        chart=hoChart(r); }
+      const readout=`<span>${HO.active?`${HO.tr.e}° · offset ${HO.tr.s.toFixed(1)}′ · trials ${Object.values(HO.ads).map(a=>a.trials()).reduce((p,q)=>p+q,0)} of about ${Object.keys(HO.ads).length*16}`:"stopped"}</span>${res}${chart}`;
+      return {readout,warns:ntWarnLeak().concat(hoEccs(env).length<5?["The screen spans only a few degrees here: sit closer (e.g. 30 cm) to measure further out."]:[]),
+        eq:`nonius pair at eccentricity θ: one 0.7° line per eye, one above and one below the meridian (which eye is on top is random), flashed ${+S.hoFlash||300} ms
+s*(θ) = offset that looks aligned, right eye's line minus left eye's (arcmin, uncrossed +), adaptive at each θ ∈ {${hoEccs(env).join(", ")}}°
+fit s*(θ) = s0 + m·θ + q·θ² (radians)
+the screen plane carries uncrossed disparity (a/d)·θ² relative to the Vieth–Müller circle, so q = −a/d for a circular horopter and 0 for one lying in the screen; curvature index = −q/(a/d), a = PD ${S.pd||62} mm, d = ${env.d.toFixed(0)} mm
+horopter depth relative to the screen: Δz(θ) = d²·s*(θ)/a   ·   relative magnification (right eye) = −m`,
+        opt:`<p>The horopter is the set of points in space whose images fall on corresponding points in the two eyes: the surface where single vision is best. Geometry predicts a circle through the eyes and the fixation point (the Vieth–Müller circle); measured horopters are flatter than that (the Hering–Hillebrand deviation), and at near they usually lie between the circle and a flat plane. The nonius method finds corresponding points directly: two lines, one per eye, look aligned only when they fall on corresponding points.</p><p>Three things come out: the offset at the centre is the fixation disparity; a tilt (one side nearer than the other) means one eye's image is horizontally larger than the other's, as in aniseikonia; the curvature describes the shape of the horopter. This is research-grade; there are no clinical norms, so compare with your own repeat runs. Left/right asymmetry that agrees with the Aniseikonia test is a strong sign of a real size difference.</p>`,
+        rows:`<tr><th>Result</th><th>Means</th></tr><tr><td>Curvature 0–1</td><td>Typical at near: flatter than the circle</td></tr><tr><td>Magnification beyond ±1%</td><td>Horizontal size difference between the eyes (check with the Aniseikonia test)</td></tr><tr><td>Irregular or asymmetric points</td><td>Abnormal correspondence or unsteady fixation: repeat</td></tr>`,
+        steps:`<li>Lens glasses on (${LA().name} lens over ${S.eye.h}); calibrate the glasses. Habitual near correction. Full screen; sit close enough that the screen spans at least ±9°.</li><li>Press S. Keep looking at the centre of the cross. Two short lines flash, one above the other, somewhere along the horizontal line: was the top one left (← / tap left) or right (→ / tap right) of the bottom one? Guess when unsure.</li><li>It stops on its own (about 16 answers per place) and fits the horopter.</li>` }; } };
+  function hoChart(r){ const W_=420,H_=180,pl=36,pr=10,pt=12,pb=24, d=r.d, a=r.a, rad=x=>x*Math.PI/180;
+    const pts=r.pts.map(p=>({x:d*Math.tan(rad(p.e)),z:d*d*(p.s/60*Math.PI/180)/a,sd:d*d*(p.sd/60*Math.PI/180)/a})); const xm=Math.max(...pts.map(p=>Math.abs(p.x)))*1.08||1;
+    const vm=x=>-(x*x)/d; let zmin=Math.min(0,...pts.map(p=>p.z-p.sd),vm(xm)), zmax=Math.max(0,...pts.map(p=>p.z+p.sd)); const pad=(zmax-zmin)*0.1+1; zmin-=pad; zmax+=pad;
+    const X=x=>pl+(W_-pl-pr)*(x+xm)/(2*xm), Y=z=>pt+(H_-pt-pb)*(zmax-z)/(zmax-zmin);
+    let s=`<svg viewBox="0 0 ${W_} ${H_}" style="width:100%;max-width:${W_}px;display:block;margin-top:6px" font-size="10" fill="currentColor">`;
+    s+=`<line x1="${pl}" x2="${W_-pr}" y1="${Y(0)}" y2="${Y(0)}" stroke="currentColor" opacity=".45"/><text x="${W_-pr}" y="${Y(0)-4}" text-anchor="end" opacity=".7">screen plane</text>`;
+    let p=""; for(let i=0;i<=60;i++){ const x=-xm+2*xm*i/60; p+=(p?"L":"M")+X(x).toFixed(1)+","+Y(vm(x)).toFixed(1); } s+=`<path d="${p}" fill="none" stroke="#2d7dd2" stroke-dasharray="4 3"/><text x="${pl+4}" y="${Y(vm(-xm))+12}" fill="#2d7dd2">Vieth–Müller</text>`;
+    if(r.fit){ let q=""; for(let i=0;i<=60;i++){ const x=-xm+2*xm*i/60, th=Math.atan(x/d), sv=r.fit.s0/60*Math.PI/180+r.fit.m*th+r.fit.q*th*th; q+=(q?"L":"M")+X(x).toFixed(1)+","+Y(d*d*sv/a).toFixed(1); } s+=`<path d="${q}" fill="none" stroke="var(--accent,#c0392b)" stroke-width="1.6"/>`; }
+    pts.forEach(p=>{ s+=`<line x1="${X(p.x)}" x2="${X(p.x)}" y1="${Y(p.z-p.sd)}" y2="${Y(p.z+p.sd)}" stroke="var(--accent,#c0392b)"/><circle cx="${X(p.x)}" cy="${Y(p.z)}" r="3" fill="var(--accent,#c0392b)"/>`; });
+    s+=`<text x="${pl}" y="${H_-8}" opacity=".7">${(-xm/10).toFixed(0)} cm</text><text x="${W_-pr}" y="${H_-8}" text-anchor="end" opacity=".7">${(xm/10).toFixed(0)} cm</text><text x="4" y="${pt+4}" opacity=".7">further</text><text x="4" y="${H_-pb}" opacity=".7">nearer</text>`;
+    return `<span>top-down view, depth exaggerated (mm):${s}</svg></span>`; }
+
+  // ---------------- j: afterimage correspondence test (Hering–Bielschowsky) ----------------
+  // Each eye in turn fixates the centre of a bright line seen by that eye only (vertical for one eye, horizontal for the
+  // other), so each line's afterimage is centred on that eye's fovea whatever the eyes' alignment. Afterwards the two
+  // afterimages are seen together: with normal correspondence the foveas share a visual direction and the afterimages
+  // cross at their centres (even in a strabismus); with anomalous correspondence they are displaced, by the angle of
+  // anomaly. Both lines carry tick marks every degree, so the displacement is read off the afterimage itself.
+  const AI={phase:"idle",t0:0,tok:{},dx:0,dy:0,timer:0};
+  function aiStop(){ AI.phase="idle"; AI.tok.dead=true; AI.tok={}; clearInterval(AI.timer); }
+  function aiStart(){ aiStop(); AI.dx=0; AI.dy=0; const tok=AI.tok, dur=(+S.aiDur||15)*1000; AI.phase="A"; AI.t0=performance.now(); draw(); beep(880,120);
+    AI.timer=setInterval(()=>{ if(tok.dead) return; const el_=performance.now()-AI.t0;
+      if(AI.phase==="A"&&el_>=dur){ AI.phase="B"; AI.t0=performance.now(); beep(880,120); draw(); }
+      else if(AI.phase==="B"&&el_>=dur){ AI.phase="view"; beep(660,300); clearInterval(AI.timer); draw(); }
+      else draw(); },500); }
+  function aiSave(){ if(AI.phase!=="view") return; const r=ntR("j"); r.last={dx:AI.dx,dy:AI.dy,vert:S.aiVert||"A",eyeA:S.eye.j,obj:parseFloat(S.aiObj),when:Date.now()}; AI.phase="done"; save(); draw(); beep(660,200); }
+  NT.j={ name:"Afterimage correspondence",
+    ctl:`<label data-modes="j">Exposure per eye<select data-ntk="aiDur" data-ntt="num"><option value="10">10 s</option><option value="15">15 s</option><option value="20">20 s</option><option value="30">30 s</option></select></label>
+      <label data-modes="j">Vertical line to<select data-ntk="aiVert"><option value="A">Eye A (first)</option><option value="B">Eye B (second)</option></select></label>
+      <label data-modes="j">Cover-test deviation <span class="u">(Δ, eso +, optional)</span><input data-ntk="aiObj" data-ntt="num" type="number" step="1"></label>
+      <label data-modes="j">Run<div class="btns"><button type="button" data-nta="j:start" class="primary">Start (S)</button><button type="button" data-nta="j:stop">Stop</button></div></label>`,
+    stop:aiStop, clear(){ S.ntRes&&(S.ntRes.j={}); }, act(a){ if(a==="start") aiStart(); else { aiStop(); draw(); } },
+    hud(){ return AI.phase==="idle"||AI.phase==="done"?"S start":AI.phase==="view"?"move the mark: ← → ↑ ↓ · Enter saves":"keep looking at the dot in the gap"; },
+    key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ aiStart(); return true; }
+      if(AI.phase==="view"){ const st=e&&e.shiftKey?0.1:0.25; if(k==="ArrowLeft"){ AI.dx-=st; draw(); return true; } if(k==="ArrowRight"){ AI.dx+=st; draw(); return true; } if(k==="ArrowUp"){ AI.dy-=st; draw(); return true; } if(k==="ArrowDown"){ AI.dy+=st; draw(); return true; } if(k==="Enter"||k===" "){ aiSave(); return true; } }
+      return false; },
+    draw(env){ this.env=env; const SD=rgSolver(), g_=ntCv(env,bytesCss(SD.px(0,0))), ctx=g_.ctx, ppd=ntPPD(env), ext=ntExt(env), dur=(+S.aiDur||15);
+      const vertEye=(S.aiVert||"A"), L=Math.max(3,Math.min(8,Math.min(ext.L,ext.R,ext.U,ext.D)-0.8)), th=Math.max(2,0.12*ppd), gap=ntDegPx(env,0.35), tk=ntDegPx(env,0.25);
+      const lineFor=(eye,vertical)=>o=>{ const Lp=ntDegPx(env,L); if(vertical){ o.fillRect(g_.cxp-th/2,g_.cyp-Lp,th,Lp-gap); o.fillRect(g_.cxp-th/2,g_.cyp+gap,th,Lp-gap); for(let i=1;i<=Math.floor(L);i++){ [1,-1].forEach(sg=>o.fillRect(g_.cxp-tk,g_.cyp+sg*ntDegPx(env,i)-th/2,2*tk,th)); } }
+          else { o.fillRect(g_.cxp-Lp,g_.cyp-th/2,Lp-gap,th); o.fillRect(g_.cxp+gap,g_.cyp-th/2,Lp-gap,th); for(let i=1;i<=Math.floor(L);i++){ [1,-1].forEach(sg=>o.fillRect(g_.cxp+sg*ntDegPx(env,i)-th/2,g_.cyp-tk,th,2*tk)); } }
+          o.globalAlpha=0.55; o.beginPath(); o.arc(g_.cxp,g_.cyp,Math.max(2,0.07*ppd),0,7); o.fill(); o.globalAlpha=1; };
+      const Lp=ntDegPx(env,L)+tk+4, rect={x:g_.cxp-Lp,y:g_.cyp-Lp,w:2*Lp,h:2*Lp}, none=()=>{};
+      if(AI.phase==="A") ntPut(g_,ntDichRender(g_,rect,lineFor("A",vertEye==="A"),none,SD));
+      else if(AI.phase==="B") ntPut(g_,ntDichRender(g_,rect,none,lineFor("B",vertEye==="B"),SD));
+      else if(AI.phase==="view"){ // a dim mark for the patient to place where the vertical afterimage crosses the horizontal one
+        ctx.fillStyle="#3a3a3a"; const mx=g_.cxp+ntDegPx(env,AI.dx), my=g_.cyp+ntDegPx(env,AI.dy), s=Math.max(3,0.12*ppd); ctx.fillRect(mx-s,my-1,2*s,2); ctx.fillRect(mx-1,my-s,2,2*s);
+        ctx.fillStyle="#555"; ctx.font=`${Math.round(13*env.dpr)}px system-ui`; ctx.textAlign="center"; ctx.fillText(`crossing ${Math.abs(AI.dx).toFixed(2)}° ${AI.dx>=0?"right":"left"}, ${Math.abs(AI.dy).toFixed(2)}° ${AI.dy>0?"down":"up"} of the gap · Enter saves`,g_.cxp,g_.Hd-20*env.dpr); }
+      const el_=(performance.now()-AI.t0)/1000, A=LA().name, B=LB().name, eB=S.eye.j==="OD"?"OS":"OD";
+      const r=ntR("j").last; let res="";
+      if(r){ const mag=Math.hypot(r.dx,r.dy), dpr_=100*Math.tan(mag*Math.PI/180), hD=100*Math.tan(Math.abs(r.dx)*Math.PI/180), nrc=mag<=0.5;
+        res=`<span>vertical afterimage crosses the horizontal one <b>${Math.abs(r.dx).toFixed(2)}° ${r.dx>=0?"right":"left"}</b> and <b>${Math.abs(r.dy).toFixed(2)}° ${r.dy>0?"below":"above"}</b> its centre (${dpr_.toFixed(1)} Δ)</span>
+          <span>${nrc?"<b>Normal correspondence</b>: the afterimages cross at (or within 0.5° of) their centres":`<b>Anomalous correspondence</b>: angle of anomaly about <b>${hD.toFixed(1)} Δ</b> horizontally`}${!nrc&&isFinite(r.obj)&&r.obj!==0?` · cover test ${Math.abs(r.obj)} Δ → ${Math.abs(hD-Math.abs(r.obj))<=Math.max(3,0.25*Math.abs(r.obj))?"<b>harmonious</b> (anomaly ≈ deviation)":"<b>unharmonious</b> (anomaly ≠ deviation)"}`:""}</span>`; }
+      const readout=`<span>${AI.phase==="A"?`eye A (${A} lens, ${S.eye.j}): ${Math.max(0,dur-el_).toFixed(0)} s left`:AI.phase==="B"?`eye B (${B} lens, ${eB}): ${Math.max(0,dur-el_).toFixed(0)} s left`:AI.phase==="view"?"afterimage: place the mark, Enter to save":"stopped"}</span>${res}`;
+      return {readout,warns:ntWarnLeak().concat(["Experimental on a screen: the afterimage needs a bright line, so use full brightness, a dim room, and steady fixation on the dot for the whole exposure."]),
+        eq:`exposure 1: eye A only, ${vertEye==="A"?"vertical":"horizontal"} line ${(2*L).toFixed(0)}° long, ${(0.12*60).toFixed(0)}′ wide, ticks every 1°, fixation dot in a 0.7° central gap; ${dur} s
+exposure 2: eye B only, the other orientation, same size; ${dur} s
+afterimage: each line is centred on its own eye's fovea; with normal correspondence the foveas share a visual direction, so the afterimages cross at their centres
+displacement read from the afterimage ticks (or the mark) = angle of anomaly; Δ = 100·tan(angle)`,
+        opt:`<p>The afterimage test (Hering, Bielschowsky) checks retinal correspondence without depending on where the eyes point. Each eye fixates the centre of its own bright line while the other eye sees nothing, so each afterimage is printed on that eye's fovea. Afterimages move with the eyes, so when they are seen together they show how the two foveas are related in the brain, not how the eyes are aligned. A symmetrical cross means normal correspondence, even in a squint; a displaced cross means anomalous retinal correspondence (ARC), and the displacement is the angle of anomaly. Comparing it with the cover-test deviation separates harmonious ARC (anomaly equals the deviation) from unharmonious.</p><p>Eccentric fixation breaks the method: an eye that fixates off its fovea puts its afterimage off the fovea too and mimics ARC. Check fixation with Maxwell's spot or Haidinger's brushes if the result is abnormal.</p>`,
+        rows:`<tr><th>Afterimages</th><th>Means</th></tr><tr><td>Symmetrical cross</td><td>Normal correspondence (also with a squint, if fixation is central)</td></tr><tr><td>Displaced by about the deviation</td><td>Harmonious anomalous correspondence</td></tr><tr><td>Displaced, but less than the deviation</td><td>Unharmonious anomalous correspondence</td></tr><tr><td>One afterimage missing</td><td>Deep suppression or very poor fixation in that eye</td></tr>`,
+        steps:`<li>Lens glasses on (${A} lens over ${S.eye.j}); calibrate the glasses so each line reaches only its own eye. Full screen, full brightness, room dark.</li><li>Press S. A bright line appears: look steadily at the dot in its centre gap without moving your eyes for ${dur} s. After the beep the line moves to the other eye; fixate that dot for ${dur} s too.</li><li>After the long beep, keep looking at the dark screen and blink a few times (or close your eyes): the afterimages appear as a cross. Use the arrow keys to put the dim mark where the vertical afterimage crosses the horizontal one (count the ticks, 1° apart), then press Enter.</li>` }; } };
+
+  // ---------------- l: field of binocular single vision ----------------
+  // A small fused cross appears at gaze positions on rings around the centre; the patient follows it with the eyes only
+  // (head still, centred) and reports single or double. Through the filters a double image is one red and one green.
+  const BF={active:false,list:[],i:0,res:null};
+  function bfPositions(env){ const x=ext=>ext, e=ntExt(env), out=[[0,0]], rings=[10,20,30,40], dirs=[0,45,90,135,180,225,270,315];
+    rings.forEach(r=>dirs.forEach(a=>{ const ax=r*Math.cos(a*Math.PI/180), ay=-r*Math.sin(a*Math.PI/180);   // y up = negative screen y
+      const fitX=ax>=0?ax<=e.R-1.5:-ax<=e.L-1.5, fitY=ay>=0?ay<=e.D-1.5:-ay<=e.U-1.5; if(fitX&&fitY) out.push([ax,ay]); })); return out; }
+  function bfStart(){ const env=NT.l.env; if(!env) return; const P=bfPositions(env), L=[]; P.forEach(p=>{ L.push(p); L.push(p); }); for(let i=L.length-1;i>0;i--){ const j=Math.random()*(i+1)|0; [L[i],L[j]]=[L[j],L[i]]; }
+    BF.active=true; BF.list=L; BF.i=0; BF.res={}; draw(); }
+  function bfResp(dbl){ if(!BF.active) return; const p=BF.list[BF.i], k=p.join(","); BF.res[k]=BF.res[k]||{s:0,d:0}; BF.res[k][dbl?"d":"s"]++; BF.i++;
+    if(BF.i>=BF.list.length){ BF.active=false; ntR("l").last={res:BF.res,d:NT.l.env.d,when:Date.now()}; save(); beep(660,200); } draw(); }
+  function bfChart(res){ const W_=300, c=W_/2, sc=c/44, dirName=(x,y)=>{ if(!x&&!y) return "centre"; const a=(Math.atan2(-y,x)*180/Math.PI+360)%360, n=["right","up-right","up","up-left","left","down-left","down","down-right"][Math.round(a/45)%8]; return `${n} ${Math.round(Math.hypot(x,y))}°`; };
+    let s=`<svg viewBox="0 0 ${W_} ${W_}" style="width:100%;max-width:${W_}px;display:block;margin-top:6px" font-size="9" fill="currentColor">`;
+    [10,20,30,40].forEach(r=>s+=`<circle cx="${c}" cy="${c}" r="${r*sc}" fill="none" stroke="currentColor" opacity=".2"/><text x="${c+r*sc+2}" y="${c-2}" opacity=".5">${r}°</text>`);
+    s+=`<line x1="0" x2="${W_}" y1="${c}" y2="${c}" stroke="currentColor" opacity=".15"/><line y1="0" y2="${W_}" x1="${c}" x2="${c}" stroke="currentColor" opacity=".15"/>`;
+    const dbl=[]; Object.entries(res).forEach(([k,v])=>{ const [x,y]=k.split(",").map(Number), col=v.d===0?"#2e9d5b":v.s===0?"#d0342c":"#e0a020"; if(v.d>0) dbl.push(dirName(x,y)+(v.s>0?" (sometimes)":""));
+      s+=`<circle cx="${c+x*sc}" cy="${c+y*sc}" r="6" fill="${col}"/>`; });
+    return {svg:s+`</svg>`,dbl}; }
+  NT.l={ name:"Field of binocular single vision",
+    ctl:`<label data-modes="l">Run<div class="btns"><button type="button" data-nta="l:start" class="primary">Start (S)</button><button type="button" data-nta="l:stop">Stop</button></div></label>`,
+    stop(){ BF.active=false; }, clear(){ S.ntRes&&(S.ntRes.l={}); }, act(a){ if(a==="start") bfStart(); else { BF.active=false; draw(); } },
+    hud(){ return BF.active?"follow the cross with your eyes only: ← single · → double":"S start"; },
+    key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ bfStart(); return true; } if(BF.active&&(k==="ArrowLeft"||k==="ArrowRight")){ bfResp(k==="ArrowRight"); return true; } return false; },
+    draw(env){ this.env=env; const SD=rgSolver(), g_=ntCv(env,bytesCss(SD.px(0,0))), ctx=g_.ctx, both=bytesCss(SD.px(1,1)), ppd=ntPPD(env);
+      const P=BF.active?BF.list[BF.i]:[0,0], x=g_.cxp+ntDegPx(env,P[0]), y=g_.cyp+ntDegPx(env,P[1]), a=Math.max(4,0.5*ppd), t=Math.max(2,0.08*ppd);
+      ctx.fillStyle=both; ctx.fillRect(x-a,y-t/2,2*a,t); ctx.fillRect(x-t/2,y-a,t,2*a);
+      const pos=bfPositions(env), maxR=Math.max(...pos.map(p=>Math.hypot(p[0],p[1]))), r=ntR("l").last;
+      let res=""; if(r){ const C=bfChart(r.res); res=`<span>${C.dbl.length?`double: <b>${C.dbl.join(", ")}</b>`:"<b>single in every position tested</b>"}</span><span>${C.svg}</span>`; }
+      const readout=`<span>${BF.active?`position ${BF.i+1} of ${BF.list.length} · gaze ${Math.round(Math.hypot(P[0],P[1]))}°`:"stopped"} · positions out to ${Math.round(maxR)}° at this distance</span>${res}`;
+      return {readout,warns:ntWarnLeak().concat(maxR<20?[`Only ${Math.round(maxR)}° of gaze fits on this screen at ${S.dist.l} cm: sit closer (25 cm reaches about 30° on a laptop) and set the distance.`]:[]),
+        eq:`cross 1° wide, seen by both eyes, at the centre and on rings of 10°, 20°, 30°, 40° in 8 directions (only those that fit on the screen); each position twice, random order
+gaze angle = atan(screen offset / distance) with the head still and centred in front of the screen
+green = single both times, red = double both times, amber = mixed`,
+        opt:`<p>The field of binocular single vision charts where in the field of gaze the two eyes stay aligned well enough to fuse. In a paralytic or restrictive squint, double vision starts in the direction of action of the affected muscle (for example on looking down and in with a fourth nerve palsy, or on looking to the side with a sixth). Charting it over time shows recovery or progression, and it is the standard outcome measure before and after squint surgery. Through the red and green filters a double image shows as one red and one green cross, which also tells which eye is which.</p><p>The screen covers less than the full clinical field (about ±45°): sit close to reach 30°. Keep the head still; a head turn changes the gaze angles.</p>`,
+        rows:`<tr><th>Pattern</th><th>Suggests</th></tr><tr><td>Single everywhere</td><td>Normal within the tested range</td></tr><tr><td>Double in one direction of gaze</td><td>Underaction of the muscle acting there (palsy) or restriction of its antagonist</td></tr><tr><td>Double on side gaze, worse at distance</td><td>Sixth nerve palsy pattern</td></tr><tr><td>Double on looking down</td><td>Superior oblique (fourth nerve) or inferior rectus problem</td></tr>`,
+        steps:`<li>Lens glasses on; habitual correction. Sit close (25–30 cm), set the distance, head centred and still.</li><li>Press S. A cross appears in different places: look at it with your eyes only. Is it single (← / tap left) or double (→ / tap right)? Each place is shown twice.</li>` }; } };
+
+  // ---------------- g: blue-field entoptoscope ----------------
+  // In a bright uniform blue field, white blood cells moving through the capillaries around the fovea are seen as tiny
+  // bright dots darting along curved paths (Scheerer's phenomenon): blue light is absorbed by the red cells around them,
+  // so the plasma gaps behind each white cell let more light through. Seeing them shows the perifoveal retina is
+  // working (used as a potential-vision test behind cataract). A simulation of moving dots is matched to what is seen
+  // for count, speed and the size of the dot-free zone around fixation (the foveal avascular zone).
+  const BL={phase:"idle",raf:0,dots:[],t0:0,lt:0};
+  const blN=()=>Math.round(+S.blN||30), blSp=()=>+S.blSp||2, blFaz=()=>+S.blFaz||0.8;
+  function blStop(){ BL.phase="idle"; cancelAnimationFrame(BL.raf); }
+  function blSpawn(){ const r=blFaz()+Math.random()*(9-blFaz()), a=Math.random()*2*Math.PI; return {x:r*Math.cos(a),y:r*Math.sin(a),h:Math.random()*2*Math.PI,age:0,life:1+Math.random()*2.5}; }
+  function blRun(){ cancelAnimationFrame(BL.raf); const env=NT.g.env; if(!env) return; BL.t0=performance.now(); BL.lt=BL.t0;
+    const frame=ts=>{ if(BL.phase!=="view"&&BL.phase!=="sim") return; const dt=Math.min(0.05,(ts-BL.lt)/1000); BL.lt=ts; const g_=ntCv(env,null), ctx=g_.ctx, ppd=ntPPD(env);
+      ctx.fillStyle=P3?"color(display-p3 0 0 1)":"rgb(0,0,255)"; ctx.fillRect(0,0,g_.Wd,g_.Hd);
+      if(BL.phase==="sim"){ const N=blN(); while(BL.dots.length<N) BL.dots.push(blSpawn()); BL.dots.length=N;
+        const pulse=(S.blPulse===false||S.blPulse==="false")?1:1+0.6*Math.sin(2*Math.PI*1.15*(ts-BL.t0)/1000), sp=blSp()*pulse, rr=Math.max(1.2,0.05*ppd);
+        BL.dots.forEach((p,i)=>{ p.h+=(Math.random()-0.5)*3.2*dt; p.x+=Math.cos(p.h)*sp*dt; p.y+=Math.sin(p.h)*sp*dt; p.age+=dt; const r=Math.hypot(p.x,p.y);
+          if(r<blFaz()||r>9.5||p.age>p.life) BL.dots[i]=blSpawn();
+          const X=g_.cxp+ntDegPx(env,p.x), Y=g_.cyp+ntDegPx(env,p.y);
+          ctx.fillStyle=P3?"color(display-p3 0.55 0.6 1)":"rgb(150,160,255)"; ctx.beginPath(); ctx.arc(X,Y,rr,0,7); ctx.fill();
+          ctx.fillStyle=P3?"color(display-p3 0 0 0.62)":"rgb(0,0,160)"; ctx.beginPath(); ctx.arc(X-Math.cos(p.h)*rr*2.2,Y-Math.sin(p.h)*rr*2.2,rr*0.9,0,7); ctx.fill(); }); }
+      ctx.fillStyle="#000"; ctx.beginPath(); ctx.arc(g_.cxp,g_.cyp,Math.max(2,0.06*ppd),0,7); ctx.fill();
+      BL.raf=requestAnimationFrame(frame); };
+    BL.raf=requestAnimationFrame(frame); }
+  function blSave(){ const r=ntR("g"); r[S.eye.g]={seen:S.blSeen!=="no",n:blN(),sp:+blSp().toFixed(2),faz:+blFaz().toFixed(2),when:Date.now()}; save(); beep(660,200); draw(); }
+  NT.g={ name:"Blue-field entoptoscope",
+    ctl:`<label data-modes="g">Dots seen in the real field?<select data-ntk="blSeen"><option value="yes">Yes</option><option value="no">No</option></select></label>
+      <label data-modes="g">Simulated pulse<select data-ntk="blPulse"><option value="true">Heartbeat (about 70/min)</option><option value="false">Steady</option></select></label>
+      <label data-modes="g">Run<div class="btns"><button type="button" data-nta="g:start" class="primary">Start (S)</button><button type="button" data-nta="g:stop">Stop</button><button type="button" data-nta="g:save">Save match (Enter)</button></div></label>`,
+    stop:blStop, clear(){ S.ntRes&&(S.ntRes.g={}); },
+    act(a){ if(a==="start"){ BL.phase="view"; BL.dots=[]; blRun(); draw(); } else if(a==="save") blSave(); else { blStop(); draw(); } },
+    hud(){ return BL.phase==="idle"?"S start":BL.phase==="view"?"real field: look at the black dot · Space: show the simulation":"simulation · Space: back to the real field · ↑↓ dots · ←→ speed · [ ] clear zone · Enter saves"; },
+    key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ BL.phase="view"; BL.dots=[]; blRun(); draw(); return true; } if(BL.phase==="idle") return false;
+      const set=(key,v)=>{ S[key]=v; save(); draw(); };
+      if(k===" "){ BL.phase=BL.phase==="view"?"sim":"view"; draw(); return true; }
+      if(k==="ArrowUp"){ set("blN",Math.min(200,Math.max(blN()+1,Math.round(blN()*1.2)))); return true; } if(k==="ArrowDown"){ set("blN",Math.max(0,Math.round(blN()/1.2))); return true; }
+      if(k==="ArrowRight"){ set("blSp",Math.min(12,blSp()*1.15)); return true; } if(k==="ArrowLeft"){ set("blSp",Math.max(0.2,blSp()/1.15)); return true; }
+      if(k==="]"){ set("blFaz",Math.min(4,blFaz()+0.1)); return true; } if(k==="["){ set("blFaz",Math.max(0,blFaz()-0.1)); return true; }
+      if(k==="Enter"){ blSave(); return true; } return false; },
+    draw(env){ this.env=env; if(BL.phase!=="idle") ntCv(env,null); if(BL.phase==="idle"){ const g_=ntCv(env,P3?"color(display-p3 0 0 0.35)":"rgb(0,0,90)"), ctx=g_.ctx; ctx.fillStyle="#000"; ctx.beginPath(); ctx.arc(g_.cxp,g_.cyp,Math.max(2,0.06*ntPPD(env)),0,7); ctx.fill(); }
+      const r=ntR("g"), f=e=>{ const o=r[e]; return o?(o.seen?`<b>seen</b> · matched ${o.n} dots, ${o.sp}°/s, clear zone radius ${o.faz}°`:"<b>not seen</b>"):"–"; };
+      const readout=`<span>${BL.phase==="idle"?"stopped":BL.phase==="view"?"real field (no simulation)":`simulation: ${blN()} dots · ${blSp().toFixed(1)}°/s · clear zone ${blFaz().toFixed(1)}°`}</span><span>OD: ${f("OD")} · OS: ${f("OS")}</span>`;
+      return {readout,warns:["Experimental: needs a bright blue. Use full screen brightness in a dim room; on many screens the dots are faint, so give it 20–30 s. If you never see them in either eye, the screen may simply not be bright enough."],
+        eq:`uniform field at the panel's full blue (${P3?"Display P3":"sRGB"} 0, 0, 1) with a black fixation dot
+simulation: N bright dots with dark tails on curved random paths between the clear-zone radius and 9°, speed v (°/s) with an optional pulse at 1.15 Hz (±60%)
+match N, v and the clear-zone radius to the real phenomenon by switching back and forth (Space)`,
+        opt:`<p>Look at a bright blue sky and you may see tiny bright dots darting along wiggly paths: the blue-field entoptic phenomenon. Each dot is a white blood cell squeezing through a capillary just in front of the photoreceptors around the fovea; red cells absorb blue light, the white cell and the plasma gap behind it don't, so a bright dot with a dark tail moves across the field in time with the pulse. The very centre stays empty, because the fovea has no capillaries: its size is the foveal avascular zone.</p><p>Because it is generated inside the retina, the phenomenon is still seen behind a cataract if the perifoveal retina and its circulation are working, which is how it was used as a potential-vision test. Matching a simulation measures the dot count, speed and the empty central zone; fewer or slower dots in one eye have been reported in diabetic retinopathy and macular disease, and an enlarged empty zone with capillary dropout. This is experimental on a screen.</p>`,
+        rows:`<tr><th>Result</th><th>Suggests</th></tr><tr><td>Seen, similar in both eyes</td><td>Perifoveal retina and capillary flow working</td></tr><tr><td>Fewer or slower dots in one eye</td><td>Reduced perifoveal flow or function in that eye</td></tr><tr><td>Larger empty centre in one eye</td><td>Enlarged foveal avascular zone (diabetic maculopathy, vein occlusion)</td></tr><tr><td>Not seen behind a dense cataract</td><td>Not conclusive: the screen may not be bright enough through the lens</td></tr>`,
+        steps:`<li>One eye at a time, other covered. No filters. Full screen at full brightness, room dim. Distance about ${S.dist.g} cm.</li><li>Press S and look at the black dot. Within 10–30 s you may see tiny bright dots darting around it. Choose "Dots seen" yes or no.</li><li>Press Space to switch to the simulation and back. Adjust until it looks the same: ↑↓ number of dots, ←→ speed, [ and ] the size of the empty centre. Press Enter to save for this eye.</li>` }; } };
   Object.entries(NT).forEach(([m_,t])=>$("ctlTest").insertAdjacentHTML("beforeend",t.ctl));
   document.addEventListener("change",e=>{ const t=e.target; if(!t||!t.dataset||!t.dataset.ntk) return; const k=t.dataset.ntk; S[k]= t.dataset.ntt==="num" ? (t.value===""?"":+t.value) : t.value;
     const m_=S.mode; if(NT[m_]&&NT[m_].stop&&t.tagName==="SELECT") NT[m_].stop(); save(); sync(); });
@@ -4568,7 +4966,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     const r=$("ruler"); r.style.width=(100/k)+"px"; r.replaceChildren();
     for(let i=0;i<=10;i++){const t=document.createElement("div");t.style.cssText=`position:absolute;bottom:0;left:${i*10/k-1}px;width:2px;height:${i%5?10:20}px;background:currentColor`;r.appendChild(t);}
   }
-  function eyeLabel(m){ return {i:"Eye being tested",t:"Eye being tested",x:"Eye being tested",k:"Eye being tested",m:"Eye being tested",s:"Eye being tested",o:"Eye being tested",a:"Eye being tested",v:"Eye being tested",c:"Eye being tested",d:"Eye being tested",r:"Suspected (worse) eye",O:"Eye being tested",J:"Eye being tested",T:"Maddox rod over",H:"Prism over",C:S.cyMethod==="dm"?"Red Maddox over":lensOverTxt()}[m] || lensOverTxt(); }
+  function eyeLabel(m){ return {g:"Eye being tested",i:"Eye being tested",t:"Eye being tested",x:"Eye being tested",k:"Eye being tested",m:"Eye being tested",s:"Eye being tested",o:"Eye being tested",a:"Eye being tested",v:"Eye being tested",c:"Eye being tested",d:"Eye being tested",r:"Suspected (worse) eye",O:"Eye being tested",J:"Eye being tested",T:"Maddox rod over",H:"Prism over",C:S.cyMethod==="dm"?"Red Maddox over":lensOverTxt()}[m] || lensOverTxt(); }
   function lensOverTxt(){ const n=LA().name; return n[0].toUpperCase()+n.slice(1)+" lens over"; }
   function pairTxt(){ const a=LA().name, b=LB().name; return a[0].toUpperCase()+a.slice(1)+"-"+b; }
   const setv=(id,v)=>{const e=$(id); if(e) e.value=String(v);};
@@ -4695,6 +5093,22 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
   $("eOD").onclick=()=>{S.eye[S.mode]="OD";sync();}; $("eOS").onclick=()=>{S.eye[S.mode]="OS";sync();};
   $("bD").onclick=()=>{S.base="D";sync();}; $("bU").onclick=()=>{S.base="U";sync();};
   document.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ document.body.classList.remove("nav-open"); if(b.dataset.m!==S.mode){ tvStop(); vnStop(); fsStop(); BS.active=false; CO.active=false; fpStop(); fdStopRun(); STF.active=false; ANF.active=false; CYF.active=false; tClear("an"); tClear("cy"); if(FLD.running) fldStop(); rdStop(); CT.active=false; emStop(); ccStop(); Object.values(NT).forEach(t=>t.stop&&t.stop()); if(ET.plan) etStop(""); EM.naming.running=false; } if(S.mode==="M"&&b.dataset.m!=="M") mapStop(); if(S.mode==="L"&&b.dataset.m!=="L") hlStop(); VG.ramping=false; S.mode=b.dataset.m;S.check=false;sync();});
+  // ---- navigation: collapsible groups, search, recent tests ----
+  (function navInit(){ const nav=$("nav"), q=$("navQ"), groups=[...nav.querySelectorAll(".ng[data-g]")];
+    if(!S.navOpen||typeof S.navOpen!=="object") S.navOpen={}; if(!Array.isArray(S.recent)) S.recent=[];
+    const apply=()=>{ const term=(q.value||"").trim().toLowerCase(), words=term.split(/\s+/).filter(Boolean);
+      groups.forEach(g=>{ const items=[...g.querySelectorAll(".nb .ni")]; let hits=0;
+        items.forEach(b=>{ const M_=TMETA[b.dataset.m]||{}, txt=(b.textContent+" "+(M_.n||"")+" "+(M_.d||"")+" "+(M_.g||"")).toLowerCase(), ok=words.every(w=>txt.includes(w)); b.hidden=!ok; if(ok) hits++; });
+        const cur=items.some(b=>b.dataset.m===S.mode), k=g.dataset.g, open = words.length ? true : (S.navOpen[k]!=null ? !!S.navOpen[k] : cur);
+        g.classList.toggle("cur",cur); g.hidden=words.length>0&&!hits; g.classList.toggle("shut",!open); g.querySelector(".nh").setAttribute("aria-expanded",String(open)); });
+      const R_=$("ngRecent"), list=S.recent.filter(m=>m!==S.mode&&nav.querySelector(`.nb [data-m="${m}"]`)).slice(0,4);
+      R_.hidden=words.length>0||!list.length; R_.querySelector(".nrec").innerHTML=list.map(m=>`<button type="button" class="ni" data-goto="${m}">${nav.querySelector(`.nb [data-m="${m}"]`).innerHTML}</button>`).join(""); };
+    groups.forEach(g=>g.querySelector(".nh").addEventListener("click",()=>{ S.navOpen[g.dataset.g]=g.classList.contains("shut"); save(); apply(); }));
+    nav.addEventListener("click",e=>{ const b=e.target.closest&&e.target.closest("[data-goto]"); if(b){ const t=nav.querySelector(`.nb [data-m="${b.dataset.goto}"]`); if(t) t.click(); } });
+    nav.querySelectorAll(".nb .ni").forEach(b=>b.addEventListener("click",()=>{ const m=b.dataset.m; S.recent=[m].concat(S.recent.filter(x=>x!==m)).slice(0,6); S.navOpen[b.closest(".ng").dataset.g]=true; if(q.value){ q.value=""; } save(); apply(); }));
+    q.addEventListener("input",apply);
+    q.addEventListener("keydown",e=>{ if(e.key==="Enter"){ const f=nav.querySelector(".nb .ni:not([hidden])"); if(f){ f.click(); q.blur(); } e.preventDefault(); } else if(e.key==="Escape"){ q.value=""; apply(); q.blur(); e.stopPropagation(); } });
+    window.navApply=apply; apply(); })();
   $("cardPx").addEventListener("input",e=>{S.mmpp=85.6/parseFloat(e.target.value);S.scr="card";setv("scrProf","card");draw();syncSetup();save();});
 
   // stereo plates
@@ -5366,6 +5780,12 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
   // start = key that starts it, z = zones [key, label], v = zones stacked top/bottom, x = extra buttons, q = question,
   // how = the instruction shown on the Start screen.
   const TAPS={
+    w:()=>({run:PN.active,ans:PN.phase==="answer",start:"s",z:[["ArrowLeft","Single"],["ArrowRight","Double"]],how:"Look at the centre of the cross. A line flashes: tap the LEFT half if it was one line, the RIGHT half if it was two."}),
+    y:()=>({run:VT.active,ans:VT.phase==="answer",start:"s",z:[["ArrowLeft","Top line LEFT"],["ArrowRight","Top line RIGHT"]],how:"Keep the dots single and look at the gap. After each jump two short lines flash: tap LEFT if the top one was left of the bottom one, RIGHT if it was right. Guess when unsure."}),
+    h:()=>({run:HO.active,ans:HO.phase==="answer",start:"s",z:[["ArrowLeft","Top line LEFT"],["ArrowRight","Top line RIGHT"]],how:"Look at the centre of the cross. Two short lines flash, one above the other: tap LEFT if the top one was left of the bottom one, RIGHT if it was right. Guess when unsure."}),
+    j:()=>({run:AI.phase==="A"||AI.phase==="B"||AI.phase==="view",ans:AI.phase==="view",start:"s",pad:[["ArrowUp","↑"],["ArrowLeft","←"],["ArrowRight","→"],["ArrowDown","↓"],["Enter","Save ✓"]],how:"Look steadily at the dot in the gap of the bright line until the beep, then at the next one. Then look at the dark screen and blink: move the mark to where the vertical afterimage crosses the horizontal one."}),
+    l:()=>({run:BF.active,ans:true,start:"s",z:[["ArrowLeft","Single"],["ArrowRight","Double"]],how:"Head still and centred. Follow the cross with your eyes only: tap LEFT if it looks single, RIGHT if it looks double."}),
+    g:()=>({run:BL.phase!=="idle",ans:true,start:"s",pad:[[" ","Real / simulated"],["ArrowUp","More dots"],["ArrowDown","Fewer"],["ArrowLeft","Slower"],["ArrowRight","Faster"],["[","Smaller centre"],["]","Larger centre"],["Enter","Save ✓"]],how:"Look at the black dot for 20–30 s. Then switch to the simulation and adjust it until it looks like the real dots."}),
     J:()=>({run:VN.active,ans:!VN.show,start:"s",q:"Top bar was to the…",z:[["ArrowLeft","Top bar LEFT"],["ArrowRight","Top bar RIGHT"]],how:"Two bars flash, one above the other. Tap LEFT if the top bar was to the left of the bottom bar, RIGHT if it was to the right."}),
     N:()=>({run:TV.active,ans:!TV.show,start:"s",q:"Top bar was to the…",z:[["ArrowLeft","Top bar LEFT"],["ArrowRight","Top bar RIGHT"]],how:"After each flash, tap LEFT if the top bar was left of the bottom one, RIGHT if it was right."}),
     R:()=>({run:BS.active,ans:true,start:"s",q:"Did it look sharp or blurred?",z:[["ArrowLeft","Sharp"],["ArrowRight","Blurred"]],how:"Tap the LEFT half if the letters look sharp, the RIGHT half if they look blurred."}),
@@ -5381,7 +5801,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     s:()=>(S.slMethod||"cmp")==="cmp"&&{run:SL.active,ans:SL.phase==="answer",start:"s",q:"Which half of the small disc pulsed more?",z:[["ArrowLeft","Left half"],["ArrowRight","Right half"]],how:"Look at the red dot in the middle. After each look, tap the LEFT or RIGHT half of the screen: whichever half of the small central disc pulsed more. Guess if equal. The first 4 are practice with a beep."},
     x:()=>({run:FCX.active,ans:true,start:"s",info:FCX.active?`${FCX.st.lens>=0?"+":""}${FCX.st.lens.toFixed(2)} D`:"",z:[["ArrowLeft","Horizontal"],[" ","Equal"],["ArrowUp","Vertical"]],how:"Lens on top of the distance Rx as the screen says (the lens to use is shown small at the top and changes after each answer). Look at the centre of the cross for 2 seconds, then tap the LEFT third if the horizontal lines are blacker, the MIDDLE third if both look the same, the RIGHT third if the vertical lines are blacker."}),
     b:()=>{ const mt=S.bcMethod||"ori"; if(mt==="ori") return {run:BC.active,ans:BC.phase==="answer",start:"s",q:"Stripes tilted…",v:1,z:[["ArrowUp","Right end UP"],["ArrowDown","Right end DOWN"]],how:"After each flash, tap the TOP half if the stripes' right end was up, the BOTTOM half if it was down. Guess if flat."};
-      if(mt==="gm") return {run:BC.active,ans:BC.phase==="answer",start:"s",q:"Which way did the dots move?",z:[["ArrowLeft","Left"],["ArrowRight","Right"]],how:"Watch the dots. Tap LEFT or RIGHT for the way most of them moved."};
+      if(mt==="gm"||mt==="bal") return {run:BC.active,ans:BC.phase==="answer",start:"s",q:"Which way did the dots move?",z:[["ArrowLeft","Left"],["ArrowRight","Right"]],how:"Watch the dots. Tap LEFT or RIGHT for the way most of them moved."};
       return {run:BC.active,ans:true,hold:1,start:"s",q:"Hold the side you see",z:[["ArrowLeft","Hold: \\\\ stripes"],["ArrowRight","Hold: / stripes"]],how:"Keep your finger down on the LEFT while you see \\ stripes only, on the RIGHT while you see / stripes only. Lift off when it's a mix."}; },
     v:()=>({run:FLD.running,ans:true,start:"Enter",z:[[" ","Tap anywhere when you see a spot"]],how:"Look at the cross. Tap anywhere on the screen whenever a spot appears."}),
     M:()=>({run:MAP.running,ans:true,start:"Enter",z:[[" ","Tap when seen"]],how:"Tap anywhere on the screen when the patient saw it."}),
@@ -5416,7 +5836,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     let cur=null, sig="";
     const TOUCH=()=>(matchMedia("(pointer:coarse)").matches&&!matchMedia("(pointer:fine)").matches)||S.tpad===true;
     G.addEventListener("click",e=>{ if(!TOUCH()) return; e.preventDefault(); if(cur&&cur.go){ cur.go(); return; } if(cur&&cur.start){ send("keydown",cur.start); send("keyup",cur.start); } });
-    const KN={" ":"Space","Enter":"Enter","ArrowLeft":"←","ArrowRight":"→","ArrowUp":"↑","ArrowDown":"↓"}, kn=k=>KN[k]||k.toUpperCase();
+    const KN={" ":"Space","Enter":"Enter","ArrowLeft":"←","ArrowRight":"→","ArrowUp":"↑","ArrowDown":"↓"}, kn=k=>k==null?"":(KN[k]||String(k).toUpperCase());
     // desktop wording of the same instructions: keys instead of taps
     const deskHow=c=>{ const z=(c.z||[]).concat(c.x||[]); return `Press <b>${kn(c.start)}</b> to start.`+(z.length?` Then answer with the keys: ${z.map(([k,l])=>`<b>${kn(k)}</b> ${l.toLowerCase()}`).join(" · ")}.`:c.pad?" Then type the answer on the keyboard.":""); };
     const bindHold=(el,key)=>{ el.addEventListener("pointerdown",e=>{ e.preventDefault(); el.classList.add("dn"); try{ el.setPointerCapture(e.pointerId); }catch(_){} send("keydown",key); if(navigator.vibrate) try{ navigator.vibrate(8); }catch(_){} });
@@ -5437,7 +5857,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
       document.body.classList.toggle("quiet", run && (!!c.start||!!c.quiet));
       const tch=TOUCH(); G.classList.toggle("desk",!tch); document.body.classList.toggle("tapmode",tch); L.style.display=tch?"":"none";
       G.hidden = run || !c.start; const gp=G.querySelector("p");
-      if(tch) gp.innerHTML=(c.how?c.how+" ":"")+"<b>Tap anywhere to start.</b>"; else gp.innerHTML=deskHow(c);
+      if(!c.start) gp.innerHTML=""; else if(tch) gp.innerHTML=(c.how?c.how+" ":"")+"<b>Tap anywhere to start.</b>"; else gp.innerHTML=deskHow(c);
       gp.hidden=false;
       // nothing on screen while a test runs: answers are invisible tap zones (touch) or keys (desktop); only tests answered
       // with more than arrows/space (digits, letters, directions) keep their answer pad
@@ -5620,7 +6040,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     function showBtn(){ b.hidden=false; } })();
 
   (function(){ const s=$("fdLock"); if(!s) return; s.value=S.fdLock||"full"; s.addEventListener("change",()=>{ S.fdLock=s.value; save(); draw(); }); })();
-  try{ Object.assign(window.__thorTest,{PSE,THR,TV,tvStart,tvResp,FP,fpStart,fpResp,ANF,anfStart,anfResp,CYF,cyfStart,cyfResp,BS,bsStart,bsResp,RD,rdStart,rdResp,PS,SED,sedResp,STF,stfStart,stfResp,CT,ctStart,ctResp,VN,vnStart,vnResp,pipMake:typeof pipMake!=="undefined"?pipMake:null,pipDir:typeof pipDir!=="undefined"?pipDir:null,KC_CP:typeof KC_CP!=="undefined"?KC_CP:null,npScale:typeof npScale!=="undefined"?npScale:null}); }catch(e){}
+  try{ Object.assign(window.__thorTest,{PN,VT,HO,AI,BF,BL,BC,vtGeom,hoEccs,pnEccs,PSE,THR,TV,tvStart,tvResp,FP,fpStart,fpResp,ANF,anfStart,anfResp,CYF,cyfStart,cyfResp,BS,bsStart,bsResp,RD,rdStart,rdResp,PS,SED,sedResp,STF,stfStart,stfResp,CT,ctStart,ctResp,VN,vnStart,vnResp,pipMake:typeof pipMake!=="undefined"?pipMake:null,pipDir:typeof pipDir!=="undefined"?pipDir:null,KC_CP:typeof KC_CP!=="undefined"?KC_CP:null,npScale:typeof npScale!=="undefined"?npScale:null}); }catch(e){}
   measure(); newFxText(); sync();
   // the web font usually arrives after the first measurement: measure again once it's loaded and redraw
   try{ document.fonts&&document.fonts.ready.then(()=>{ const r0=digitRatio; measure(); if(Math.abs(digitRatio-r0)>1e-4) draw(); }); document.fonts&&document.fonts.addEventListener&&document.fonts.addEventListener("loadingdone",()=>{ const r0=digitRatio; measure(); if(Math.abs(digitRatio-r0)>1e-4) draw(); }); }catch(e){}

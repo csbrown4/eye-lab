@@ -2074,11 +2074,12 @@ Percival: G = larger, L = smaller of the BI/BO limits; prism = G/3 − 2L/3 (bas
   const ccCtl=m=>`<label data-modes="${m}">Screen colour<select data-ntk="ccProf"><option value="auto">Standard primaries (sRGB / P3 as drawn)</option><option value="custom">Measured primaries (colorimeter)</option></select></label>
       <label data-modes="${m}" data-ntm="custom" data-ntmk="ccProf">Measured xy <span class="u">(read off this page's patches)</span><div class="btns" style="display:grid;grid-template-columns:auto 1fr 1fr;gap:4px 6px;align-items:center">
         ${[["R","Red"],["G","Green"],["B","Blue"],["W","White"]].map(([k,n])=>`<span>${n}</span><input data-ntk="cc${k}x" data-ntt="num" type="number" step="0.001" min="0" max="1" placeholder="x"><input data-ntk="cc${k}y" data-ntt="num" type="number" step="0.001" min="0" max="1" placeholder="y">`).join("")}</div></label>
-      <label data-modes="${m}">Calibrate<div class="btns"><button type="button" data-nta="${m}:cal">Calibrate screen</button><button type="button" data-nta="${m}:patch">Colorimeter patches</button><button type="button" data-nta="${m}:ccclear">Clear</button></div></label>`;
+      <label data-modes="${m}">Calibrate<div class="btns"><button type="button" data-nta="${m}:cal" class="primary">Quick calibrate (2 min)</button><button type="button" data-nta="${m}:curve">Tone curve (advanced)</button><button type="button" data-nta="${m}:patch">Colorimeter patches</button><button type="button" data-nta="${m}:ccclear">Clear</button></div></label>`;
   function ccStatus(){ const I=kcInfo(), cur=[0,1,2].map(c=>!!curveOf(c)), std=CC_STD[P3?"p3":"srgb"];
     const sY=(()=>{ const col=([x,y])=>[x/y,1,(1-x-y)/y], C=[0,1,2].map(r=>["r","g","b"].map(k=>col(std[k])[r])), W=col(std.w); return m3inv(C).map(r=>r[0]*W[0]+r[1]*W[1]+r[2]*W[2]); })();
-    const lvl = S.ccProf==="custom"&&I.fl&&cur.every(Boolean) ? 3 : I.fl&&cur.every(Boolean) ? 2 : (I.fl||cur.some(Boolean)) ? 1 : 0;
-    return {I,cur,sY,lvl,txt:`tone curve ${cur.map((c,i)=>"RGB"[i]+(c?" ✓":" –")).join(" ")} · luminance R:G:B ${I.Y.map(v=>(100*v).toFixed(1)).join(" : ")}% ${I.fl?"(measured by minimum motion)":"(from the white point)"}${I.fl?` vs standard ${sY.map(v=>(100*v).toFixed(1)).join(" : ")}%`:""} · primaries ${S.ccProf==="custom"?"measured":(P3?"standard P3":"standard sRGB")} · white x ${I.white[0].toFixed(4)} y ${I.white[1].toFixed(4)}`}; }
+    const lvl = S.ccProf==="custom"&&I.fl ? 3 : I.fl ? 2 : cur.some(Boolean) ? 1 : 0;   // the tone curve is optional: brightness ratios are what matter most
+    const odd = I.fl && (I.Y[0]/sY[0]<0.72||I.Y[0]/sY[0]>1.4||I.Y[2]/sY[2]<0.5||I.Y[2]/sY[2]>2);
+    return {I,cur,sY,lvl,odd,txt:`tone curve ${cur.map((c,i)=>"RGB"[i]+(c?" ✓":" –")).join(" ")} · luminance R:G:B ${I.Y.map(v=>(100*v).toFixed(1)).join(" : ")}% ${I.fl?"(measured by minimum motion)":"(from the white point)"}${I.fl?` vs standard ${sY.map(v=>(100*v).toFixed(1)).join(" : ")}%`:""} · primaries ${S.ccProf==="custom"?"measured":(P3?"standard P3":"standard sRGB")} · white x ${I.white[0].toFixed(4)} y ${I.white[1].toFixed(4)}`}; }
   // full-screen patches for a colorimeter, drawn through exactly the same path as the plates
   function ccPatches(){ const o=document.createElement("div"); o.style.cssText="position:fixed;inset:0;z-index:400;cursor:pointer";
     const L=[["Red",[1,0,0]],["Green",[0,1,0]],["Blue",[0,0,1]],["White",[1,1,1]]]; let i=0;
@@ -2092,7 +2093,9 @@ Percival: G = larger, L = smaller of the BI/BO limits; prism = G/3 − 2L/3 (bas
   // shifted a quarter cycle each frame. Whichever colour is brighter carries the apparent motion, so the stripes drift
   // right if red is brighter and left if green is; at equal luminance the direction is ambiguous. You only say which
   // way it drifted, and an adaptive staircase finds the balance: no flicker to null.
-  function ccCalibrate(){ const curveSeq=[]; [0,1,2].forEach(ch=>[2,4,8].forEach(N=>curveSeq.push({k:"curve",ch,N})));
+  // Clear removes the brightness ratios and the curves this calibration measured (keeps any glasses-tuner curves it didn't touch)
+  function ccClear(){ S.ccY=null; if(S.gcurve){ delete S.gcurve[2]; if(S.ccCurve){ delete S.gcurve[0]; delete S.gcurve[1]; } } S.ccCurve=false; save(); draw(); }
+  function ccCalibrate(mode){ mode=mode||"quick"; const curveSeq=[]; [0,1,2].forEach(ch=>[2,4,8].forEach(N=>curveSeq.push({k:"curve",ch,N})));
     const std=ccStatus().sY, exp_={0:std[0]/std[1],2:std[2]/std[1]};
     const mk=()=>PSE({lo:-0.6,hi:0.6,n:121,sLo:0.01,sHi:0.25,ns:8,minT:12,maxT:22,sdStop:0.045}), ads={0:mk(),2:mk()};
     let phase="curve", k=0, v=0, alive=true, skipped=false, tr=null, mmT0=0; const res={0:[],1:[],2:[]};
@@ -2108,9 +2111,9 @@ Percival: G = larger, L = smaller of the BI/BO limits; prism = G/3 − 2L/3 (bas
       B("− −",()=>step(-5)); B("−",()=>step(-1)); B("+",()=>step(1)); B("+ +",()=>step(5));
       B("Match ✓",()=>{ const t=curveSeq[k]; res[t.ch].push([v/255,1/t.N]); k++;
         if(k<curveSeq.length){ v=Math.round(255*enc(1/curveSeq[k].N)); return; }
-        if(!skipped){ const gc=Object.assign({},S.gcurve||{}); [0,1,2].forEach(c=>gc[c]=res[c]); S.gcurve=gc; save(); }
-        startMM(); });
-      B("Skip curve",()=>{ skipped=true; startMM(); }); B("Cancel",close); };
+        if(!skipped){ const gc=Object.assign({},S.gcurve||{}); [0,1,2].forEach(c=>gc[c]=res[c]); S.gcurve=gc; S.ccCurve=true; save(); }
+        if(mode==="curve"){ close(); beep(660,200); } else startMM(); });
+      B("Cancel",close); };
     const mmBar=()=>{ bar.innerHTML=""; B("← Drifted left",()=>mmAns(true),true); B("Drifted right →",()=>mmAns(false),true); B("Cancel",close); };
     function startMM(){ phase="mm"; mmBar(); mmTrial(); }
     function mmTrial(){ const open=[0,2].filter(c=>!ads[c].done());
@@ -2126,7 +2129,7 @@ Percival: G = larger, L = smaller of the BI/BO limits; prism = G/3 − 2L/3 (bas
         let im2; try{ im2=g.createImageData(s_,s_,{colorSpace:P3?"display-p3":"srgb"}); }catch(e){ im2=g.createImageData(s_,s_); }
         for(let j=0;j<s_;j++) for(let i=0;i<s_;i++){ const q=(j*s_+i)*4; im.data[q+3]=255; im2.data[q+3]=255; if(j%t.N===0) im.data[q+t.ch]=255; im2.data[q+t.ch]=v; }
         g.putImageData(im,xa,y0); g.putImageData(im2,xb,y0);
-        say(`Screen calibration, step 1 of 2 · tone curve ${k+1}/${curveSeq.length}, ${name}: step back or squint until the stripes blur, then set the right square to the same brightness (− / +).`);
+        say(`Tone curve ${k+1}/${curveSeq.length}, ${name}: step back or squint until the stripes blur, then set the right square to the same brightness (− / +).`);
         say(`Both eyes, no filters, room dim. The stripes average exactly 1/${t.N} of full ${name}.`); }
       else if(tr){ const A=tr.ch, name=A===0?"red":"blue", P=Math.round(Math.min(Wd,Hd)/5), x0=Math.round(Wd*0.12), x1=Math.round(Wd*0.88), y0=Math.round(Hd*0.32), y1=Math.round(Hd*0.68);
         if(tr.t0==null) tr.t0=ts; const el_=ts-tr.t0, dur=1200;
@@ -2139,10 +2142,10 @@ Percival: G = larger, L = smaller of the BI/BO limits; prism = G/3 − 2L/3 (bas
           for(let x=x0-P+((sh%P)+P)%P; x<x1; x+=P){ g.fillStyle=cA; const a=Math.max(x0,x), b=Math.min(x1,x+P/2); if(b>a) g.fillRect(a,y0,b-a,y1-y0); g.fillStyle=cB; const c2=Math.max(x0,x+P/2), d2=Math.min(x1,x+P); if(d2>c2) g.fillRect(c2,y0,d2-c2,y1-y0); } }
         else tr.ans=true;
         g.fillStyle="rgba(170,170,170,.9)";
-        say(`Screen calibration, step 2 of 2 · brightness of ${name} vs green, look ${total} (at most 44, usually 25–35): the stripes drift for a moment. Which way did they seem to drift? Guess if you can't tell; the guesses near the balance point are what it uses.`);
+        say(`Quick calibration · brightness of ${name} vs green, look ${total} (at most 44, usually 25–35): the stripes drift for a moment. Which way did they seem to drift? Guess if you can't tell. No filters; must be done by someone with normal colour vision${P3?" (not needed on a Mac: its colour is already managed)":""}.`);
         say(tr.ans?"← drifted left · drifted right →":"watch the middle of the stripes"); }
       requestAnimationFrame(paint); }
-    v=Math.round(255*enc(1/curveSeq[0].N)); curveBar(); requestAnimationFrame(paint); }
+    v=Math.round(255*enc(1/curveSeq[0].N)); if(mode==="curve") curveBar(); else startMM(); requestAnimationFrame(paint); }
   const KC_Y=[0.16,0.20,0.24,0.28,0.32,0.36];       // luminance noise levels (relative to white)
   function kcDir(ax){ const cp=KC_CP[ax], du=cp[0]-KC_BG[0], dv=cp[1]-KC_BG[1], n=Math.hypot(du,dv); const t=[du/n,dv/n];
     // use the direction (toward or away from the copunctal point) with more room inside the gamut at every noise level
@@ -2179,7 +2182,7 @@ Percival: G = larger, L = smaller of the BI/BO limits; prism = G/3 − 2L/3 (bas
   NT.k={ name:"Colour vision",
     ctl:`<label data-modes="k">Test<select data-ntk="kcMethod"><option value="cct">Thresholds: protan / deutan / tritan (trivector)</option><option value="pl">Screening plates (7)</option></select></label>
       <label data-modes="k">Run<div class="btns"><button type="button" data-nta="k:start" class="primary">Start (S)</button></div></label>`+ccCtl("k"),
-    stop(){ KC.active=false; }, clear(){ S.ntRes&&(S.ntRes.k={}); }, act(a){ if(a==="start") kcStart(); else if(a==="cal") ccCalibrate(); else if(a==="patch") ccPatches(); else if(a==="ccclear"){ S.ccY=null; if(S.gcurve) delete S.gcurve[2]; save(); draw(); } },
+    stop(){ KC.active=false; }, clear(){ S.ntRes&&(S.ntRes.k={}); }, act(a){ if(a==="start") kcStart(); else if(a==="cal") ccCalibrate("quick"); else if(a==="curve") ccCalibrate("curve"); else if(a==="patch") ccPatches(); else if(a==="ccclear"){ ccClear(); } },
     hud(){ return !KC.active?"S start":KC.mode==="cct"?"arrow key = direction of the C's gap · Space = can't see":"type the number · Space = can't see"; },
     key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ kcStart(); return true; } if(!KC.active) return false;
       if(KC.mode==="cct"){ const map={ArrowRight:0,ArrowUp:1,ArrowLeft:2,ArrowDown:3}; if(k in map){ kcResp(map[k]); return true; } if(k===" "){ kcResp(-1); return true; } }
@@ -2198,8 +2201,8 @@ Percival: G = larger, L = smaller of the BI/BO limits; prism = G/3 − 2L/3 (bas
         <span>OD thresholds (× 10⁻⁴ u′v′): ${fmt(cc.OD)}</span><span>OS: ${fmt(cc.OS)}</span><span>plates OD: ${pl("OD")} · OS: ${pl("OS")}</span>`;
       const dirs=KC.dirs||{P:kcDir("P"),D:kcDir("D"),T:kcDir("T")};
       const cs=ccStatus(), warns=[];
-      if(cs.lvl<2) warns.push("Screen not calibrated for colour: press Calibrate screen below (tone curve + left/right drift judgements for brightness). Thresholds are a few panel steps, so an uncalibrated tone curve or white point shifts them noticeably.");
-      else if(cs.lvl<3&&!P3) warns.push("Tone curve and luminance are calibrated; the primaries are assumed to be sRGB. Measure them with a colorimeter for values comparable with published norms.");
+      if(cs.odd) warns.push(`The measured brightness ratios are far from the screen standard (red ${(100*cs.I.Y[0]).toFixed(0)}% vs ${(100*cs.sY[0]).toFixed(0)}%, blue ${(100*cs.I.Y[2]).toFixed(0)}% vs ${(100*cs.sY[2]).toFixed(0)}%). A screen is rarely that far off${P3?", and a Mac's colour is already managed by the system":""}: the calibration measures the calibrating person's own brightness vision, so either the run went astray or that person's red–green brightness is atypical (red seen dimmer is what a protan defect does). Press Clear to go back to the standard${P3?" (recommended on a Mac)":""}.`); if(cs.lvl<2&&!P3) warns.push("Screen not calibrated for colour: press Quick calibrate below (left/right judgements of drifting stripes, about 2 minutes). Thresholds are a few panel steps, so an uncalibrated tone curve or white point shifts them noticeably.");
+      else if(cs.lvl<3&&!P3) warns.push("Brightness is calibrated; the primaries are assumed to be sRGB. Measure them with a colorimeter for values comparable with published norms.");
       if(!P3) warns.push("Drawing in sRGB: the colour range is smaller, so strong defects may hit the screen limit (shown as ≥).");
       return {readout, warns,
         eq:`background D65 (u′ 0.1978, v′ 0.4683); target discs moved by Δ along the line toward (or away from) a copunctal point:
@@ -2509,7 +2512,7 @@ card: "+" (vertical lines in the vertical arm, horizontal lines in the horizonta
   NT.i={ name:"Ishihara-style plates",
     ctl:`<label data-modes="i">Plates<select data-ntk="pipSet"><option value="screen">Screening (12 plates)</option><option value="full">Detailed (39 plates: graded red–green, protan/deutan lines across the gamut, classification, tritan)</option></select></label>
       <label data-modes="i">Run<div class="btns"><button type="button" data-nta="i:start" class="primary">Start (S)</button></div></label>`+ccCtl("i"),
-    stop(){ PIP.active=false; }, clear(){ S.ntRes&&(S.ntRes.i={}); }, act(a){ if(a==="start") pipStart(); else if(a.startsWith("ans:")) pipResp(a.slice(4)); else if(a==="cal") ccCalibrate(); else if(a==="patch") ccPatches(); else if(a==="ccclear"){ S.ccY=null; if(S.gcurve) delete S.gcurve[2]; save(); draw(); } },
+    stop(){ PIP.active=false; }, clear(){ S.ntRes&&(S.ntRes.i={}); }, act(a){ if(a==="start") pipStart(); else if(a.startsWith("ans:")) pipResp(a.slice(4)); else if(a==="cal") ccCalibrate("quick"); else if(a==="curve") ccCalibrate("curve"); else if(a==="patch") ccPatches(); else if(a==="ccclear"){ ccClear(); } },
     hud(){ return PIP.active?`plate ${PIP.i+1}/${PIP.set.length} · tap the number you see · or type it + Enter · Space = nothing`:"S start"; },
     key(k,e,up){ if(up) return false; if(!PIP.active){ if(k==="s"||k==="S"){ pipStart(); return true; } return false; }
       if(/^[0-9]$/.test(k)){ PIP.buf=(PIP.buf+k).slice(-2); draw(); return true; } if(k==="Backspace"){ PIP.buf=PIP.buf.slice(0,-1); draw(); return true; }
@@ -2534,8 +2537,8 @@ card: "+" (vertical lines in the vertical arm, horizontal lines in the horizonta
       const readout=PIP.active?`<span>plate ${PIP.i+1} of ${PIP.set.length}${PIP.buf?` · typed <b>${PIP.buf}</b>`:""}</span>`:
         r?`<span>${S.eye.i} (${r.set==="full"?"detailed":"screening"}): ${verdict(r)} · red–green <b>${r.rg}/${r.rgN}</b> · tritan <b>${r.tri}/${r.triN}</b></span><span>classification: both digits ${r.clsBoth}/${r.clsN} · right digit only (protan pattern) ${r.prot} · left digit only (deutan pattern) ${r.deut}${r.plN?` · protan-line plates read ${r.pl}/${r.plN} · deutan-line plates read ${r.dl}/${r.dlN}`:""}${cls(r)}</span>`:"<span>stopped</span>";
       const cs=ccStatus(), warns=[];
-      if(cs.lvl<2) warns.push("Screen not calibrated for colour: press Calibrate screen (tone curve + a left/right drift judgement for brightness, about 3 minutes, needs normal colour vision). For clinical accuracy also measure the primaries with a colorimeter (Colorimeter patches) and enter them.");
-      else if(cs.lvl<3&&!P3) warns.push("Tone curve and luminance are calibrated, but the primaries are assumed to be sRGB: on a budget tablet they may not be. Measure them with a colorimeter for clinical accuracy.");
+      if(cs.odd) warns.push(`The measured brightness ratios are far from the screen standard (red ${(100*cs.I.Y[0]).toFixed(0)}% vs ${(100*cs.sY[0]).toFixed(0)}%, blue ${(100*cs.I.Y[2]).toFixed(0)}% vs ${(100*cs.sY[2]).toFixed(0)}%). A screen is rarely that far off${P3?", and a Mac's colour is already managed by the system":""}: the calibration measures the calibrating person's own brightness vision, so either the run went astray or that person's red–green brightness is atypical (red seen dimmer is what a protan defect does). Press Clear to go back to the standard${P3?" (recommended on a Mac)":""}.`); if(cs.lvl<2&&!P3) warns.push("Screen not calibrated for colour: press Quick calibrate (left/right judgements of drifting stripes, about 2 minutes, needs normal colour vision). For clinical accuracy also measure the primaries with a colorimeter (Colorimeter patches) and enter them.");
+      else if(cs.lvl<3&&!P3) warns.push("Brightness is calibrated, but the primaries are assumed to be sRGB: on a budget tablet they may not be. Measure them with a colorimeter for clinical accuracy.");
       const gam=["A","A2","A3","B"].map(k=>{ const dr=pipDir("RG",PIP_REG[k]), [f,g]=pipSplit(dr,1); return [k,f+g]; }).filter(([k,m])=>m<0.18);
       if(gam.length) warns.push(`This screen's colour range caps the strongest red–green plates: ${gam.map(([k,m])=>`${k} at ${m.toFixed(3)}`).join(", ")} (planned 0.18). Levels above the cap are shown at the cap.`);
       warns.push("Use the screen's Natural / sRGB mode with eye-comfort, night light and adaptive colour off; calibrate in that mode.");
@@ -3422,8 +3425,8 @@ catch trials: blind spot (15° temporal, 1.5° below) at 0 dB, blanks, and seen 
     return s+`</svg>`; }
   NT.z={ name:"Colour arrangement",
     ctl:`<label data-modes="z">Caps<select data-ntk="arVer"><option value="sat">Saturated (like the D-15)</option><option value="desat">Desaturated (like the Lanthony D-15d: finds mild defects)</option></select></label>
-      <label data-modes="z">Run<div class="btns"><button type="button" data-nta="z:start" class="primary">New arrangement (S)</button></div></label>`,
-    stop(){}, clear(){ S.ntRes&&(S.ntRes.z={}); }, act(a){ if(a==="start") arStart(); },
+      <label data-modes="z">Run<div class="btns"><button type="button" data-nta="z:start" class="primary">New arrangement (S)</button></div></label>`+ccCtl("z"),
+    stop(){}, clear(){ S.ntRes&&(S.ntRes.z={}); }, act(a){ if(a==="start") arStart(); else if(a==="cal") ccCalibrate("quick"); else if(a==="curve") ccCalibrate("curve"); else if(a==="patch") ccPatches(); else if(a==="ccclear") ccClear(); },
     hud(){ return AR.set?"click or tap the cap that looks most like the last one placed · tap a placed cap to put it back":"S new arrangement"; },
     key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ arStart(); return true; } return false; },
     draw(env){ this.env=env; const bgY=AR.set&&AR.set.ver==="desat"?0.06:0.03, g_=ntCv(env,kcCss(kcRGB(AR_W[0],AR_W[1],bgY))), ctx=g_.ctx;
@@ -3437,7 +3440,7 @@ catch trials: blind spot (15° temporal, 1.5° below) at 0 dB, blanks, and seen 
       const r=ntR("z"), ver=S.arVer||"sat", fmt=o=>o?`<b>${o.type==="normal"?"normal":o.type==="non-specific"?"non-specific (scattered)":o.type+" axis"}</b> (${o.sev}) · C-index ${o.C} · S-index ${o.S} · angle ${o.ang}° · crossings ${o.cross}`:"–";
       const cur=r[ver+"|"+S.eye.z];
       const readout=`<span>${AR.set?`${AR.order.length}/15 placed`:"not started"} · ${ver==="desat"?"desaturated":"saturated"} caps, radius ${(AR.set||arCaps(ver)).r.toFixed(3)} u′v′ at luminance ${(AR.set||arCaps(ver)).Y}</span><span>OD: ${fmt(r[ver+"|OD"])}</span><span>OS: ${fmt(r[ver+"|OS"])}</span>${cur?`<span>${arDiagram((AR.set||arCaps(ver)).caps,cur.order,cur)}</span>`:""}`;
-      const cs=ccStatus(), warns=[]; if(cs.lvl<2) warns.push("Screen not calibrated for colour: run Calibrate screen in the Colour vision or plates test first. Arrangement tests depend on equal brightness of the caps.");
+      const cs=ccStatus(), warns=[]; if(cs.odd) warns.push(`The measured brightness ratios are far from the screen standard (red ${(100*cs.I.Y[0]).toFixed(0)}% vs ${(100*cs.sY[0]).toFixed(0)}%, blue ${(100*cs.I.Y[2]).toFixed(0)}% vs ${(100*cs.sY[2]).toFixed(0)}%). A screen is rarely that far off${P3?", and a Mac's colour is already managed by the system":""}: the calibration measures the calibrating person's own brightness vision, so either the run went astray or that person's red–green brightness is atypical (red seen dimmer is what a protan defect does). Press Clear to go back to the standard${P3?" (recommended on a Mac)":""}.`); if(cs.lvl<2&&!P3) warns.push("Screen not calibrated for colour: run Quick calibrate in the Colour vision, plates or this test first. Arrangement tests depend on equal brightness of the caps.");
       return {readout,warns,
         eq:`pilot + 15 caps on a hue circle around D65 (u′ 0.1978, v′ 0.4683), radius ${(AR.set||arCaps(ver)).r.toFixed(3)} (target ${ver==="desat"?"0.016":"0.05"}, shrunk to fit the screen's gamut), all at luminance ${(AR.set||arCaps(ver)).Y}; hue steps 360/17°, the gap closing the circle between cap 15 and the pilot is twice as wide
 Vingrys & King-Smith: difference vectors between successive caps → moment of inertia → major and minor radii and the major-axis angle

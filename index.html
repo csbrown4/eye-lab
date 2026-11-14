@@ -2094,7 +2094,7 @@ Percival: G = larger, L = smaller of the BI/BO limits; prism = G/3 − 2L/3 (bas
   // way it drifted, and an adaptive staircase finds the balance: no flicker to null.
   function ccCalibrate(){ const curveSeq=[]; [0,1,2].forEach(ch=>[2,4,8].forEach(N=>curveSeq.push({k:"curve",ch,N})));
     const std=ccStatus().sY, exp_={0:std[0]/std[1],2:std[2]/std[1]};
-    const mk=()=>PSE({lo:-0.6,hi:0.6,n:121,sLo:0.01,sHi:0.25,ns:8,minT:14,maxT:30,sdStop:0.03}), ads={0:mk(),2:mk()};
+    const mk=()=>PSE({lo:-0.6,hi:0.6,n:121,sLo:0.01,sHi:0.25,ns:8,minT:12,maxT:22,sdStop:0.045}), ads={0:mk(),2:mk()};
     let phase="curve", k=0, v=0, alive=true, skipped=false, tr=null, mmT0=0; const res={0:[],1:[],2:[]};
     const o=document.createElement("div"); o.style.cssText="position:fixed;inset:0;z-index:400;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden;background:#000";
     const cv=document.createElement("canvas"); cv.style.cssText="position:absolute;left:0;top:0;image-rendering:pixelated"; o.appendChild(cv);
@@ -2139,7 +2139,7 @@ Percival: G = larger, L = smaller of the BI/BO limits; prism = G/3 − 2L/3 (bas
           for(let x=x0-P+((sh%P)+P)%P; x<x1; x+=P){ g.fillStyle=cA; const a=Math.max(x0,x), b=Math.min(x1,x+P/2); if(b>a) g.fillRect(a,y0,b-a,y1-y0); g.fillStyle=cB; const c2=Math.max(x0,x+P/2), d2=Math.min(x1,x+P); if(d2>c2) g.fillRect(c2,y0,d2-c2,y1-y0); } }
         else tr.ans=true;
         g.fillStyle="rgba(170,170,170,.9)";
-        say(`Screen calibration, step 2 of 2 · brightness of ${name} vs green, look ${total}: the stripes drift for a moment. Which way did they seem to drift? Guess if you can't tell; the guesses near the balance point are what it uses.`);
+        say(`Screen calibration, step 2 of 2 · brightness of ${name} vs green, look ${total} (at most 44, usually 25–35): the stripes drift for a moment. Which way did they seem to drift? Guess if you can't tell; the guesses near the balance point are what it uses.`);
         say(tr.ans?"← drifted left · drifted right →":"watch the middle of the stripes"); }
       requestAnimationFrame(paint); }
     v=Math.round(255*enc(1/curveSeq[0].N)); curveBar(); requestAnimationFrame(paint); }

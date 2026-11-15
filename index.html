@@ -399,7 +399,7 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
       <label data-modes="T">Scale limit H / V (Δ)
         <div style="display:flex;gap:6px"><input id="maxH" type="number" min="5" max="40" aria-label="Horizontal limit"><input id="maxV" type="number" min="5" max="30" aria-label="Vertical limit"></div>
       </label>
-      <label data-modes="HQV">Prism to eye <span class="u">(mm)</span><input id="hVtx" type="number" min="0" max="40" step="1"></label>
+      <label data-modes="HQ">Prism to eye <span class="u">(mm)</span><input id="hVtx" type="number" min="0" max="40" step="1"></label>
       <label data-modes="H">Prism power (Δ)<input id="prism" type="number" min="3" max="12" step="1"></label>
       <label data-modes="H">Arrow trim <span id="hTrimVal"></span><input id="hTrim" type="range" min="-3" max="3" step="0.25"></label>
       <label data-modes="H">Prism base
@@ -1089,6 +1089,13 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
   function newSedPair(){ let a=SLOAN[Math.floor(Math.random()*10)], b=a; while(b===a) b=SLOAN[Math.floor(Math.random()*10)]; SED.pair=[a,b]; }
   function sedThreshold(){ return SED.res!=null ? SED.res : null; }
   function sedEnsure(){ if(!SED.ad){ SED.ad=PSE({lo:-2,hi:2,n:161,sLo:0.03,sHi:1,ns:10,minT:20,maxT:50,sdStop:0.06}); SED.b=SED.ad.next(); SED.res=null; } }
+  // Stationary zero-disparity reference for the Pulfrich tests: two rows of short vertical ticks just above and below the
+  // bar's path, plus a fixation dot. Depth from a delay is a RELATIVE disparity: an isolated bar against a blank field
+  // (with only horizontal frame edges near it, which carry no horizontal disparity) gives the eyes nothing to compare,
+  // vergence simply follows it, and the swing looks flat whatever the delay. Hold the eyes on the dot.
+  function pulRef(ctx,cx,cy,span,yOff,len,w,step,col,dot){ ctx.fillStyle=col; const n=Math.floor(span/step);
+    for(let i=-n;i<=n;i++){ const x=cx+i*step-w/2; ctx.fillRect(x,cy-yOff-len,w,len); ctx.fillRect(x,cy+yOff,w,len); }
+    if(dot) ctx.fillRect(cx-dot/2,cy-dot/2,dot,dot); }
   const PUL={raf:0,geom:null,ctx:null,cv:null,cols:null};
   function startPulfrich(){ if(PUL.raf) return; const loop=ts=>{ if(S.mode!=="P"){PUL.raf=0;return;} drawPul(ts); PUL.raf=requestAnimationFrame(loop); }; PUL.raf=requestAnimationFrame(loop); }
   function drawPul(ts){
@@ -1107,6 +1114,7 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
     ctx.save(); disc(xg); ctx.clip(); ctx.fillStyle=C.B; disc(xr); ctx.fill(); ctx.restore();
     ctx.strokeStyle=C.W; ctx.lineWidth=Math.max(2,q.dpr*1.2);
     const fw=px(A)+bw*4, fh=bh*0.9; ctx.strokeRect(ox-fw,oy-fh,fw*2,fh*2);
+    const deg=a=>px(q.d*Math.tan(a*Math.PI/180)); pulRef(ctx,ox,oy,px(A)+deg(1),bh/2+deg(0.25),deg(0.5),Math.max(2,bw/2),deg(1),C.B,0); const fd=Math.max(3,deg(0.12)); ctx.fillStyle=C.B; ctx.fillRect(ox-fd/2,oy+bh/2+deg(1.1),fd,fd);
   }
   // ---- panel charts ----
   function svgAxes(w,h,x0,x1,y0,y1,xs,ys,xl,yl){
@@ -1564,7 +1572,7 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
   }
   // per-frame update during a ramp: move the images, nothing else
   function vglFrame(){ const G_=VGL.geo; if(!G_||S.mode!=="V"||!VGL.cv||VGL.cv.hidden) return false;
-    const sep=VG.demand*(G_.d-S.hVtx)/100; vglRender(-G_.sgn*sep/2/G_.dev, G_.sgn*sep/2/G_.dev); return true; }
+    const sep=swSep(VG.demand,G_.d); vglRender(-G_.sgn*sep/2/G_.dev, G_.sgn*sep/2/G_.dev); return true; }
   function p3ctx(cv){ try{ return cv.getContext("2d",{colorSpace:P3?"display-p3":"srgb"}); }catch(e){ return cv.getContext("2d"); } }
   // ---- fine stereo: line stereogram, sub-pixel disparities, 3-down-1-up staircase ----
   const FS={active:false,cur:400,nc:0,last:0,rev:[],show:false,t:0,jL:0,jR:0,awaiting:false,tm:0};
@@ -1881,6 +1889,9 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
       const q=SD.px(Math.max(0,Math.min(1,a)),Math.max(0,Math.min(1,b))), p=(j*w+i)*4; D_[p]=q[0]; D_[p+1]=q[1]; D_[p+2]=q[2]; D_[p+3]=255; }
     return {img,R}; }
   // fusion frame both eyes can see, to hold the eyes aligned in the dichoptic tests
+  // software prism: total image separation (mm) for P Δ of vergence demand, measured about the eyes' centres of rotation
+  // (13.5 mm behind the cornea; d = screen distance from the eyes, mm). 100·tan(rotation) summed over both eyes = P.
+  function swSep(P,d){ return P*(d+13.5)/100; }
   function ntFrame(env,ctx,g_,sizeDeg,col){ const s=ntDegPx(env,sizeDeg/2), lw=Math.max(2,0.06*ntPPD(env)); ctx.strokeStyle=col; ctx.lineWidth=lw;
     ctx.strokeRect(g_.cxp-s,g_.cyp-s,2*s,2*s); const t=s*0.18; ctx.beginPath(); [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dx,dy])=>{ ctx.moveTo(g_.cxp+dx*s,g_.cyp+dy*s); ctx.lineTo(g_.cxp+dx*(s-t),g_.cyp+dy*(s-t)); }); ctx.stroke(); }
   // difference-of-Gaussian blob field: holds vergence without giving accommodation any blur cue (σ 0.5°/0.8°, ~0.3 c/deg)
@@ -2988,7 +2999,7 @@ at 0° the line is 1° above the cross; eccentric lines are on the horizontal me
   const VT={active:false,phase:"",tok:{},ads:null,tr:null,cache:null};
   const VT_TAU=[0,100,200,350,600,1200];
   function vtStop(){ VT.active=false; VT.phase=""; VT.tok.dead=true; VT.tok={}; }
-  function vtGeom(env,dir){ const P=+S.vtStep||4, sep=P*(env.d-S.hVtx)/100, rA=ntRA("y"), conv=dir==="BO";
+  function vtGeom(env,dir){ const P=+S.vtStep||4, sep=swSep(P,env.d), rA=ntRA("y"), conv=dir==="BO";
     // BO: right eye's image moves left (crossed). shift per eye in mm, + = rightward
     const sR=conv?-sep/2:sep/2, sL=-sR, sA=rA?sR:sL, sB=rA?sL:sR, am=mm=>Math.atan(mm/env.d)*180/Math.PI*60;
     return {P,sA,sB,dx:am(sA-sB)}; }                            // dx: eye A − eye B image offset (arcmin)
@@ -3026,11 +3037,17 @@ at 0° the line is 1° above the cross; eccentric lines are on the horizontal me
       const n=Math.round(Wd*Hd*5); for(let i=0;i<n;i++){ const x=(rnd()*2-1)*w, y=(rnd()*2-1)*h; if(Math.hypot(x,y)<hole) continue; dots.push([x,y]); } VT.cache={key:[env.W,env.H,env.d].join(),dots}; }
     const dots=VT.cache.dots, r=Math.max(1.5,0.09*ppd), rect={x:g_.cxp-w-Math.abs(sA)-r-4,y:g_.cyp-h-r-4,w:2*w+2*Math.abs(sA)+2*r+8,h:2*h+2*r+8};
     const field=(o,dx)=>{ dots.forEach(([x,y])=>{ o.beginPath(); o.arc(g_.cxp+x+dx,g_.cyp+y,r,0,7); o.fill(); }); const t=Math.max(2,0.05*ppd), a=ntDegPx(env,0.5); o.fillRect(g_.cxp+dx-a,g_.cyp-t/2,2*a*0.35,t); o.fillRect(g_.cxp+dx+a*0.3,g_.cyp-t/2,a*0.7,t); };
-    const vpx=ntDegPx(env,v/60), lw=Math.max(1,1.5/60*ppd), L_=ntDegPx(env,0.45), gap=ntDegPx(env,0.08);
+    // nonius: 3′ × 0.6° lines (≥ 2 device px). Before vergence has caught up, each eye's line lies over the OTHER eye's
+    // dots (the two fields are shifted apart), which masked it completely. So for the 2 nonius frames only, a window
+    // around every place either line can fall is cleared in BOTH eyes. It lasts 33 ms, far shorter than vergence
+    // latency, so it cannot steer the vergence it is sampling.
+    const vpx=ntDegPx(env,v/60), lw=Math.max(2,3/60*ppd), L_=ntDegPx(env,0.6), gap=ntDegPx(env,0.1);
+    const wx=Math.max(Math.abs(sA),Math.abs(sB))+Math.abs(vpx)/2+lw+ntDegPx(env,0.3), wy=gap+L_+ntDegPx(env,0.25);
+    const win=o=>{ o.fillStyle="#000"; o.fillRect(g_.cxp-wx,g_.cyp-wy,2*wx,2*wy); o.fillStyle="#fff"; };
     const nonA=(o,dx)=>o.fillRect(g_.cxp+dx+vpx/2-lw/2,g_.cyp-gap-L_,lw,L_), nonB=(o,dx)=>o.fillRect(g_.cxp+dx-vpx/2-lw/2,g_.cyp+gap,lw,L_);
     return { base:ntDichRender(g_,rect,o=>field(o,0),o=>field(o,0),SD),
              step:ntDichRender(g_,rect,o=>field(o,sA),o=>field(o,sB),SD),
-             non: ntDichRender(g_,rect,o=>{ field(o,sA); nonA(o,sA); },o=>{ field(o,sB); nonB(o,sB); },SD) }; }
+             non: ntDichRender(g_,rect,o=>{ field(o,sA); win(o); nonA(o,sA); },o=>{ field(o,sB); win(o); nonB(o,sB); },SD) }; }
   function vtResp(right){ if(!VT.active||VT.phase!=="answer") return; VT.ads[VT.tr.key].update(VT.tr.v,right); VT.phase="base"; vtTrial(); }
   NT.y={ name:"Vergence time course",
     ctl:`<label data-modes="y">Step<select data-ntk="vtStep" data-ntt="num"><option value="2">2 Δ</option><option value="4">4 Δ</option><option value="6">6 Δ</option></select></label>
@@ -3048,7 +3065,7 @@ at 0° the line is 1° above the cross; eccentric lines are on the horizontal me
       const readout=`<span>${VT.active?`${VT.tr.dir} step · delay ${VT.tr.tau} ms · nonius ${VT.tr.v.toFixed(1)}′ · trials ${Object.values(VT.ads).map(a=>a.trials()).reduce((p,q)=>p+q,0)} of about ${Object.keys(VT.ads).length*14}`:"stopped"}</span>${r?Object.entries(r.by).map(([d_,o])=>`<span>${fmtDir(d_,o)}</span>`).join(""):""}${chart}`;
       const G=vtGeom(env,S.vtDir==="BI"?"BI":"BO");
       return {readout,warns:ntWarnLeak().concat(["Experimental: a psychophysical reconstruction. Each delay needs 10–18 answers, so a run takes about 5 minutes per direction."]),
-        eq:`fused random-dot field (up to 16° × 11°) with a 1.2° central gap; step = software prism ${G.P} Δ: each eye's image shifted ±P·(d − ${S.hVtx})/200 mm (BO: right eye's image left)
+        eq:`fused random-dot field (up to 16° × 11°) with a 1.2° central gap; step = software prism ${G.P} Δ: each eye's image shifted ±P·(d + 13.5)/200 mm, i.e. P Δ of rotation about the centres of rotation (BO: right eye's image left)
 nonius: top line to eye A, bottom to eye B, flashed for 2 frames at delay τ ∈ {${VT_TAU.join(", ")}} ms after the step
 aligned offset v*(τ) (arcmin, A − B); eye A − eye B image offset of the step dx = ${G.dx.toFixed(1)}′
 vergence achieved V(τ) = P · (1 + v*/dx): 0 = not moved yet, P = fully on target
@@ -3530,13 +3547,14 @@ balance point = x where the shift is 50/50 (adaptive), in dB = 20·x; + means ey
     const fill=(a,b,c)=>{ if(b>a){ ctx.fillStyle=c; ctx.fillRect(a,y,b-a,2*hh); } };
     if(hi>lo){ fill(segs[0][0],Math.min(segs[0][1],lo),cA); fill(Math.max(segs[0][0],hi),segs[0][1],cA); fill(segs[1][0],Math.min(segs[1][1],lo),cB); fill(Math.max(segs[1][0],hi),segs[1][1],cB); fill(lo,hi,cAB); }
     else { fill(segs[0][0],segs[0][1],cA); fill(segs[1][0],segs[1][1],cB); }
-    ctx.fillStyle=cAB; const s=Math.max(2,0.08*ppd); ctx.fillRect(g_.cxp-s/2,g_.cyp+hh+ntDegPx(env,0.8),s,s);
+    ctx.fillStyle=cAB; const s=Math.max(3,0.12*ppd); ctx.fillRect(g_.cxp-s/2,g_.cyp+hh+ntDegPx(env,1.1),s,s);
+    pulRef(ctx,g_.cxp,g_.cyp,ntDegPx(env,ID_A+1),hh+ntDegPx(env,0.2),ntDegPx(env,0.5),Math.max(2,w/2),ntDegPx(env,1),cAB,0);
     ntFrame(env,ctx,g_,Math.min(2*ID_A+5,2*Math.min(ntExt(env).L,ntExt(env).R)-1),cAB); }
   function idResp(rightNearer){ if(!ID.active||ID.phase!=="answer") return; ID.ad.update(ID.tr.dl,rightNearer); idTrial(); }
   NT["1"]={ name:"Interocular delay",
     ctl:`<label data-modes="1">Run<div class="btns"><button type="button" data-nta="1:start" class="primary">Start (S)</button><button type="button" data-nta="1:stop">Stop</button></div></label>`,
     stop:idStop, clear(){ S.ntRes&&(S.ntRes["1"]={}); }, act(a){ if(a==="start") idStart(); else { idStop(); draw(); } },
-    hud(){ return !ID.active?"S start":ID.phase==="answer"?"looked nearer while moving: ← left · → right":"watch the swinging bar"; },
+    hud(){ return !ID.active?"S start":ID.phase==="answer"?"looked nearer while moving: ← left · → right":"eyes on the dot below the bar; judge the swing out of the corner of your eye"; },
     key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ idStart(); return true; } if(ID.active&&(k==="ArrowLeft"||k==="ArrowRight")){ idResp(k==="ArrowRight"); return true; } return false; },
     draw(env){ this.env=env; if(!ID.active||ID.phase!=="show") idPaint(env,ID_T/4);
       const r=ntR("1"), A=LA().name, B=LB().name, oa=r.OD, ob=r.OS, f=o=>o?`${o.tau>=0?"+":""}${o.tau} ms ± ${o.sd}`:"–";
@@ -3549,7 +3567,7 @@ null: δ* = −τ (adaptive, "which direction of travel looked nearer"); 10 ms �
 filter delay cancelled by flipping the glasses: τ = (τ1 + τ2)/2, filters = (τ1 − τ2)/2`,
         opt:`<p>Signals from the two eyes normally reach the visual cortex within a few milliseconds of each other. Demyelination (optic neuritis, multiple sclerosis) slows conduction in the affected nerve, and the delay shows up as the Pulfrich effect: a target swinging in a flat plane appears to orbit in depth, because the slower eye sees it slightly behind its true position. Here the app adds a software delay to one eye and finds the value that makes the swing flat again: that equals the eye's own delay, in milliseconds.</p><p>Healthy eyes differ by about 0–4 ms; past optic neuritis typically gives about 5–20 ms or more, and the delay persists after acuity recovers, which makes it a useful marker. Unequal retinal illuminance also causes a delay (darker = slower), including from the coloured filters, media opacity or unequal pupils, so the glasses-flipped average is the result to use, and a cataract in one eye adds its own delay.</p>`,
         rows:`<tr><th>Delay</th><th>Roughly</th></tr><tr><td>0–4 ms</td><td>Normal</td></tr><tr><td>5–8 ms</td><td>Borderline: repeat; check pupils and media</td></tr><tr><td>&gt; 8 ms</td><td>Abnormal: slowed conduction on the slower side (e.g. past optic neuritis), or unequal retinal illuminance</td></tr>`,
-        steps:`<li>Lens glasses on (${A} lens over ${S.eye["1"]}); calibrate the glasses. Full screen, room dim.</li><li>Press S. A bar swings left and right twice. It may seem to swing in an oval, nearer on one pass than the other: did it look nearer while moving left (← / tap left) or right (→ / tap right)? Guess when it looks flat.</li><li>Then flip the glasses, change "lens over" to the other eye, and run it again. The combined result appears when both are done.</li>` }; } };
+        steps:`<li>Lens glasses on (${A} lens over ${S.eye["1"]}); calibrate the glasses. Full screen, room dim.</li><li>Press S. Keep your eyes on the small dot under the bar; do not follow the bar. It swings left and right twice between two rows of fixed ticks. Judge it against the ticks: it may seem to swing in an oval, nearer on one pass than the other: did it look nearer while moving left (← / tap left) or right (→ / tap right)? Guess when it looks flat.</li><li>Then flip the glasses, change "lens over" to the other eye, and run it again. The combined result appears when both are done.</li>` }; } };
 
   // ---------------- 2: suppression depth (dichoptic masking) ----------------
   // Contrast threshold for a vertical Gabor in one eye (2-choice: left or right of fixation), with the other eye seeing
@@ -4256,7 +4274,7 @@ distance from ${+S.pmGlasses?"the spectacle plane":"the front of the eyes"}; the
         steps=S.pmType==="amp"?`<li>Start and calibrate the camera (Setup). One eye at a time (cover the other) for monocular amplitude. Hold the lens if using one, and set it above.</li><li>Start at about 40 cm and lean in slowly (a few cm per second), keeping the letters clear. Press Space at the first sustained blur.</li><li>Do 3 trials; the average and spread appear in the readout.</li>`:`<li>Start and calibrate the camera. Both eyes open, no filters.</li><li>Lean in slowly toward the letter column. Press Space the moment it doubles (or one eye drifts out), then lean back slowly and press Space when it's single again.</li><li>Do 3 trials; a near point that recedes from trial to trial is a sign of fatigue.</li>`;
       }
       else if(m==="F" && S.fdMethod!=="card"){ // flashed nonius fixation disparity under a fused lock
-        const sgn = redEye==="OD" ? 1 : -1, dem = FDX.active ? FDX.dem : 0, sep=dem*(d-S.hVtx)/100, dxR=-sgn*sep/2, dxG=sgn*sep/2;
+        const sgn = redEye==="OD" ? 1 : -1, dem = FDX.active ? FDX.dem : 0, sep=swSep(dem,d), dxR=-sgn*sep/2, dxG=sgn*sep/2;
         if(DK) dkField();
         const cR = DK?DkR:R, cG = DK?DkG:G, cB = DK?DkBoth:Bc;
         const lh=Math.max(3,am(28)), lockF=lh/digitRatio, sp=lh*1.35, fw=Math.max(40,2*d*Math.tan(5*Math.PI/180)), fh=Math.max(28,2*d*Math.tan(3.5*Math.PI/180));
@@ -4284,7 +4302,7 @@ distance from ${+S.pmGlasses?"the spectacle plane":"the front of the eyes"}; the
         readout=`<span>${FDX.active?`demand <b>${dem>0?dem+" Δ BO":dem<0?(-dem)+" Δ BI":"0 Δ"}</b> (${FDX.di+1}/${FDX.dems.length}) · trial ${FDX.ad.trials()+1} · estimate ${fmt(-fdExo()*FDX.ad.est().mu)} ± ${FDX.ad.est().sd.toFixed(1)}′`:"stopped"}</span><span>${ks.length?ks.map(k_=>`${k_>0?"+":""}${k_} Δ: <b>${fmt(R_[k_].v)}</b> ± ${R_[k_].sd.toFixed(1)}`).join(" · "):"no results yet"}</span><span>1 device px = ${(Math.atan(dev/d)/ARCMIN).toFixed(2)}′</span>`;
         eq=`nonius offset x (′) drawn on the red-lens eye's line; the two lines look aligned when x = 2 × (each eye's error)
 fixation disparity (eso +) = ${fdExo()>0?"−":"+"}x at the PSE · Bayesian adaptive, ${S.fdDur||200} ms flashes (about vergence latency, too short to realign)
-software demand P: each eye's lock shifted ±P·(d − ${S.hVtx})/200 mm, as for a real prism`;
+software demand P: each eye's lock shifted ±P·(d + 13.5)/200 mm = P Δ of rotation about each eye's centre of rotation (13.5 mm behind the cornea)`;
         opt=`<p>Fixation disparity is the small vergence error left while the eyes are fused. Here the OXO lock and frame stay seen by both eyes, so fusion is held, and only the two nonius lines are monocular. They flash for 150 ms, shorter than a vergence response takes to start, so the eyes can't move to align them. You only say whether the top line was left or right of the bottom one; the adaptive method finds the offset at which you can't tell, which is the fixation disparity, with its uncertainty.</p>
         <p>Run at several prism demands, it builds the fixation disparity curve below automatically. Where the curve crosses zero is the associated phoria (the prism that removes the disparity). A steep curve is the classic sign of a vergence system that copes badly with load, and is often symptomatic.</p>`;
         rows=`<tr><th>Result</th><th>Meaning</th></tr><tr><td>Within about ±1′ at 0 Δ</td><td>Typical</td></tr><tr><td>Exo (−) several ′, steep curve</td><td>Often symptomatic exo; base-in relieving prism ≈ associated phoria</td></tr><tr><td>Eso (+) several ′</td><td>Often symptomatic eso; plus at near or base-out prism</td></tr>`;
@@ -4654,7 +4672,7 @@ green scaled to 0.229 / 0.692 = 0.33 linear ≈ 61% encoded`;
           const aL=Math.max(8,am(90)), hh=Math.min(4,aL*0.4);
           g.appendChild(el("path",{d:`M0 ${-1} L${-hh*0.36} ${-1-hh} L${hh*0.36} ${-1-hh} Z M${-0.3} ${-1-hh} h0.6 v${-(aL-hh)} h-0.6 Z`,style:fillC(R)}));
         } else {
-          const sep=dem*(d-S.hVtx)/100, dxR=-sgn*sep/2, dxG=sgn*sep/2;   // same apparent shift as a prism worn hVtx mm in front of the eye
+          const sep=swSep(dem,d), dxR=-sgn*sep/2, dxG=sgn*sep/2;   // P Δ of vergence demand about the eyes' centres of rotation
           // Clinical Risley target: one column of letters (holds accommodation, shows blur), plus one large thin
           // frame (≈8° × 12°) that moves with it to give a calm peripheral fusion contour. Nothing else, because every
           // extra element is something to look at and, through leaky filters, another zero-disparity ghost.
@@ -4732,10 +4750,10 @@ the screen is only the target here, so the result is a standard prism-bar / Risl
             rows=`<tr><th>Demands</th><th>Rate</th></tr><tr><td>${dtxt(S.vfA)} ↔ ${dtxt(S.vfB)}</td><td>${cpm.toFixed(1)} cpm</td></tr>`;
             steps=`<li>Space counts each clear-and-single and jumps to the other demand; the first press starts the 60 s timer.</li><li>Enter pauses or resumes. R resets.</li>`;
           }
-          eq=`shift between the eyes' images = (d − prism-to-eye) · P / 100
-P = ${dtxt(dem)}  →  ${(Math.abs(dem)*(d-S.hVtx)/100).toFixed(1)} mm at ${S.dist.V} cm (prism plane ${S.hVtx} mm in front of the eye)
+          eq=`shift between the eyes' images = (d + 13.5 mm) · P / 100   (13.5 mm: cornea to centre of rotation)
+P = ${dtxt(dem)}  →  ${swSep(Math.abs(dem),d).toFixed(1)} mm at ${S.dist.V} cm  (each eye must rotate P/2 Δ)
 BO: right eye's image moved left of the left eye's (crossed)`;
-          opt=`<p>A prism worn in front of the eye shifts the apparent position of the target by P·(d − a)/100, where a is the prism-to-eye distance (about 15 mm). The red and green copies are drawn apart by exactly that (38.5 mm for 10 Δ at 40 cm), so each software demand puts the same disparity on the target as a real prism of that power. <b>The ranges still won't match prism ranges</b>: a prism moves the whole visual field, while the screen can only move the target, and the bezel, desk and room left at zero disparity hold vergence back. Expect software ranges well below prism-bar values, and use <i>Ranges, real prism</i> mode when you need numbers to compare with Morgan's norms.</p>
+          opt=`<p>A demand of P Δ means the eyes must turn by P/100 radians (in tangent terms) between them. The eyes rotate about centres about 13.5 mm behind the cornea, so the red and green copies are drawn apart by P·(d + 13.5)/100 (41.4 mm for 10 Δ at 40 cm). A real loose prism held about 15 mm in front of the eye actually demands slightly less at near, P·(d − 15)/(d + 13.5), about 7% less at 40 cm and 5% at 60 cm, so a software demand is the true value and a trial prism slightly over-labels itself. <b>The ranges still won't match prism ranges</b>: a prism moves the whole visual field, while the screen can only move the target, and the bezel, desk and room left at zero disparity hold vergence back. Expect software ranges well below prism-bar values, and use <i>Ranges, real prism</i> mode when you need numbers to compare with Morgan's norms.</p>
           <p>The stimulus is where screens fall short. A prism shifts the whole visual field; a screen target moves alone while the bezel, desk and room stay at zero disparity and pull vergence back. Red/green filters add colour rivalry, dim each eye differently, and focus the two images about 0.4 D apart. All of these lower measured ranges. The whole-screen dot texture (on by default) restores most of the large-field drive; full screen in a dark room removes the competing surroundings.</p>
           <p>Anything that stays still on screen while the images move is a zero-disparity fusion lock: a sharp-edged background, on-screen text, the page around the test. On a prism all of these shift with the rest of the view, so they don't compete. Here the leak-cancel background fades out at its edges during vergence tests, the corner guide hides while the ramp runs, and full screen removes the page.</p>
           <p>Two more effects come from the filters themselves. Leakage gives each eye a faint copy of the other eye's image, which separates as demand rises and is easily called "double" too early. And a high leak-cancel pedestal lowers target contrast in both eyes, which weakens the fusional drive; for ranges, use the lowest pedestals that still hide the squares in the filter check.</p>`;
@@ -4849,7 +4867,7 @@ red copy drawn at x(t − δ): a delay δ becomes a horizontal offset v·δ, i.e
         <p><b>How the measurement works:</b> "flat or not" is too coarse to judge near zero, so use the staircase (S). On each sweep ask one forced-choice question: <i>when the bar moves to the right, is it nearer or further than the frame?</i> Press N or F. The page nudges the delay against each answer and halves its step at every reversal; after 8 reversals the average of the last 6 is the delay that makes the bar exactly flat, which equals the difference in the eyes' processing times.</p>
         <p><b>Why two runs:</b> the two lenses differ in darkness, and dimmer images are processed later, so the filters add their own delay. Run once, swap the flippers and the eye setting, run again; the page separates the patient's own asymmetry from the filter effect.</p>`;
         rows=`<tr><th>Balance point δ</th><th>Means</th></tr><tr><td>Near 0 ms</td><td>No measurable asymmetry (normal)</td></tr><tr><td>Positive</td><td>${greenEye} (green lens) slower by about δ</td></tr><tr><td>Negative</td><td>${redEye} (red lens) slower by about |δ|</td></tr><tr><td>(run 1 − run 2) ÷ 2, flippers swapped</td><td>Patient's own asymmetry, filter effect removed</td></tr>`;
-        steps=`<li>Calibrate the filters. Dim room, full screen. Press D once so the patient knows what "swinging in depth" looks like, then D again to turn it off.</li><li>Press S to start. Each sweep, ask: "When the bar moves right, is it nearer or further than the frame?" N = nearer, F = further, Space = can't tell. It finishes itself after 8 reversals and logs the run.</li><li>Swap the flippers, switch the eye setting to match, press S again. Result: ${pulResult()}</li>`;
+        steps=`<li>Calibrate the filters. Dim room, full screen. Press D once so the patient knows what "swinging in depth" looks like, then D again to turn it off.</li><li>Press S to start. Each sweep, ask (eyes kept on the dot under the bar, not following it): "When the bar moves right, is it nearer or further than the row of ticks?" N = nearer, F = further, Space = can't tell. It finishes itself after 8 reversals and logs the run.</li><li>Swap the flippers, switch the eye setting to match, press S again. Result: ${pulResult()}</li>`;
       }
 
       else if(m==="Z"){ // graphical analysis: no patient display
@@ -6506,7 +6524,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     function showBtn(){ b.hidden=false; } })();
 
   (function(){ const s=$("fdLock"); if(!s) return; s.value=S.fdLock||"full"; s.addEventListener("change",()=>{ S.fdLock=s.value; save(); draw(); }); })();
-  try{ Object.assign(window.__thorTest,{BP,ID,SU,AM,SF,VF2,AR,arCaps,arScore,vfGrid,PN,VT,HO,AI,BF,BL,BC,vtGeom,hoEccs,pnEccs,PSE,THR,TV,tvStart,tvResp,FP,fpStart,fpResp,ANF,anfStart,anfResp,CYF,cyfStart,cyfResp,BS,bsStart,bsResp,RD,rdStart,rdResp,PS,SED,sedResp,STF,stfStart,stfResp,CT,ctStart,ctResp,VN,vnStart,vnResp,pipMake:typeof pipMake!=="undefined"?pipMake:null,pipDir:typeof pipDir!=="undefined"?pipDir:null,KC_CP:typeof KC_CP!=="undefined"?KC_CP:null,npScale:typeof npScale!=="undefined"?npScale:null}); }catch(e){}
+  try{ Object.assign(window.__thorTest,{BP,ID,SU,AM,SF,VF2,AR,arCaps,arScore,vfGrid,PN,VT,HO,AI,BF,BL,BC,vtGeom,vtImagesRaw,ntCv,hoEccs,pnEccs,PSE,THR,TV,tvStart,tvResp,FP,fpStart,fpResp,ANF,anfStart,anfResp,CYF,cyfStart,cyfResp,BS,bsStart,bsResp,RD,rdStart,rdResp,PS,SED,sedResp,STF,stfStart,stfResp,CT,ctStart,ctResp,VN,vnStart,vnResp,pipMake:typeof pipMake!=="undefined"?pipMake:null,pipDir:typeof pipDir!=="undefined"?pipDir:null,KC_CP:typeof KC_CP!=="undefined"?KC_CP:null,npScale:typeof npScale!=="undefined"?npScale:null}); }catch(e){}
   measure(); newFxText(); sync();
   // the web font usually arrives after the first measurement: measure again once it's loaded and redraw
   try{ document.fonts&&document.fonts.ready.then(()=>{ const r0=digitRatio; measure(); if(Math.abs(digitRatio-r0)>1e-4) draw(); }); document.fonts&&document.fonts.addEventListener&&document.fonts.addEventListener("loadingdone",()=>{ const r0=digitRatio; measure(); if(Math.abs(digitRatio-r0)>1e-4) draw(); }); }catch(e){}

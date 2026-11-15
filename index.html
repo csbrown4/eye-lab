@@ -4660,8 +4660,10 @@ green scaled to 0.229 / 0.692 = 0.33 linear ≈ 61% encoded`;
         const dem = m==="V" ? (S.vgMode==="fac" ? (VF.state? S.vfB : S.vfA) : S.vgMode==="obj" ? (VO.side==="BI"?-VO.dem:VO.dem) : VG.demand) : S.adDem;
         const sgn = redEye==="OD" ? 1 : -1;
         if(showScale){
-          // dissociated phoria: green scale (green-lens eye), red arrow (red-lens eye)
-          const n=Math.min(20,Math.floor((vw/2-margin)/u)), lab={"font-size":(fs*0.9).toFixed(3),style:fillC(G)};
+          // dissociated phoria: green scale (green-lens eye), red arrow (red-lens eye). The scale is in the same unit as
+          // the software demand (rotation about the centres of rotation): 1 Δ = (d + 13.5)/100 mm, so adaptation % is a
+          // true ratio
+          const u=swSep(1,d), n=Math.min(20,Math.floor((vw/2-margin)/u)), lab={"font-size":(fs*0.9).toFixed(3),style:fillC(G)};
           g.appendChild(el("line",{x1:-n*u,y1:0,x2:n*u,y2:0,style:strokeC(G,Math.max(0.35,lineW))}));
           for(let i=-n;i<=n;i++){ const x=i*u, big=i%5===0;
             g.appendChild(el("line",{x1:x,y1:0,x2:x,y2:big?t5:t1,style:strokeC(G,Math.max(0.3,lineW))}));
@@ -4689,7 +4691,7 @@ green scaled to 0.229 / 0.692 = 0.33 linear ≈ 61% encoded`;
             g.appendChild(el("rect",{x:fw/2-ins-sq,y:fh/2-ins-sq,width:sq,height:sq,style:fillC(G)})); }
           else if(vglReady()){
             const obj=m==="V"&&S.vgMode==="obj", dP=a=>d*Math.tan(a*Math.PI/180)/dev, half10=Math.round(d*Math.tan(10*ARCMIN)/dev/2);
-            vglScene({Wd:Math.round(W*dpr),Hd:Math.round(H*dpr),dpr,dev,cx,cy0,d,h,fw,fh,lw:lwF,sq,ins,tex:+S.vgTex===3?3:+S.vgTex===1?1:+S.vgTex===2||S.vgTex===true?2:0,letters:obj?[]:VG.letters,maxShiftMm:46*(d-S.hVtx)/200,
+            vglScene({Wd:Math.round(W*dpr),Hd:Math.round(H*dpr),dpr,dev,cx,cy0,d,h,fw,fh,lw:lwF,sq,ins,tex:+S.vgTex===3?3:+S.vgTex===1?1:+S.vgTex===2||S.vgTex===true?2:0,letters:obj?[]:VG.letters,maxShiftMm:swSep(46,d)/2,
               rds: obj&&VO.active ? {size:Math.min(dP(7),fw/dev*0.9),r:dP(2.2),dot:Math.max(2,d*Math.tan(4*ARCMIN)/dev),seed:VO.seed,ori:VO.ori,shR:-sgn*half10,shG:sgn*half10} : null});
             VGL.cv.hidden=false; VGL.geo={d,sgn,dev}; vglRender(dxR/dev,dxG/dev);
           } else {
@@ -4730,7 +4732,7 @@ limit = 75%-correct point of a Bayesian psychometric fit to every answer (guess 
           eq=`a prism of P Δ in front of the eye shifts the whole visual field: target, screen edge, desk and room
 the screen is only the target here, so the result is a standard prism-bar / Risley range`;
           opt=`<p>This mode uses the screen only as a well-defined near target: white letters at the set size and distance, with an accommodation-holding column, so the result is a conventional prism range that compares directly with Morgan's norms.</p>
-          <p><b>Why software ranges come out lower than prism ranges.</b> The geometry isn't the cause: the software separates the two eyes' images by exactly the amount a real prism of the same power would (P · (d − a)/100; 38.5 mm for 10 Δ at 40 cm). The difference is what moves. A prism shifts everything the eye sees, so there is nothing left at the old vergence. The software can only move what is on the screen; the bezel, keyboard, desk and room stay at zero disparity, and vergence is driven by disparity over the whole visual field, weighted by area and brightness, not by the fixated target alone. The screen covers only about ±20° × ±13° at 40 cm, so a lot of the field votes for zero. The target breaks when its disparity exceeds what the reduced vergence response can absorb, which happens at a lower demand. Red-green filters add more on top: leak ghosts that look double early, colour rivalry, and dimmer, lower-contrast images.</p>
+          <p><b>Why software ranges come out lower than prism ranges.</b> The geometry isn't the cause: the software demand is the true rotation the eyes must make, P·(d + 13.5)/100 of image separation (41.4 mm for 10 Δ at 40 cm). If anything a loose prism is slightly <i>weaker</i> than its label at near (P·(d − 15)/(d + 13.5): 9.3 Δ for a 10 Δ prism at 40 cm), which would push prism ranges down, not up. The difference is what moves. A prism shifts everything the eye sees, so there is nothing left at the old vergence. The software can only move what is on the screen; the bezel, keyboard, desk and room stay at zero disparity, and vergence is driven by disparity over the whole visual field, weighted by area and brightness, not by the fixated target alone. The screen covers only about ±20° × ±13° at 40 cm, so a lot of the field votes for zero. The target breaks when its disparity exceeds what the reduced vergence response can absorb, which happens at a lower demand. Red-green filters add more on top: leak ghosts that look double early, colour rivalry, and dimmer, lower-contrast images.</p>
           <p>So software ranges are a valid measure of their own (useful for tracking one person over time at identical settings) but they are not the same quantity as prism-bar ranges, and won't match Morgan's norms. Use this mode when you need the clinical number.</p>`;
         } else if(m==="V"){
           if(S.vgMode==="ramp"){
@@ -4743,7 +4745,7 @@ the screen is only the target here, so the result is a standard prism-bar / Risl
             <li>Space starts the BI ramp. Press 1 at blur, 2 at break (the ramp reverses toward zero), 3 when single again. The BO ramp is then ready: Space again.</li>
             <li>Space while ramping pauses. ← → step 1 Δ manually. R resets. Both small squares must stay visible; a vanishing square means suppression, not fusion.</li>
             <li><b>Break means the whole column doubles</b>: two separate columns of letters (and two frames). With <i>Black on colour</i> the letters look black to both eyes, so small fixation disparity doesn't show; a slight colour fringe or shimmer at the letter edges is not a break. With <i>Coloured on black</i> the red and green letters act like nonius lines and seem to pull apart well before a true break, so use that setting only to watch fixation disparity grow.</li>
-            <li><b>Prism cross-check:</b> hold a real 10 Δ BO prism (or Risley) and step the screen to 10 Δ BI with ←. The two cancel, so the letters should look exactly as at zero. Or leave the screen at 0 and measure ranges with the Risley on this same target: if those are also low, the red-green stimulus is the cause, not the screen's scale.</li>`;
+            <li><b>Prism cross-check:</b> hold a real 10 Δ BO prism (or Risley) about 15 mm in front of the eye and step the screen BI with ←. At ${S.dist.V} cm that prism actually demands ${(10*(d-15)/(d+13.5)).toFixed(1)} Δ, so the two cancel at about ${Math.round(10*(d-15)/(d+13.5))} Δ BI on the screen, where the letters should look exactly as at zero. Or leave the screen at 0 and measure ranges with the Risley on this same target: if those are also low, the red-green stimulus is the cause, not the screen's scale.</li>`;
           } else {
             const el_=VF.running?Date.now()-VF.start+VF.elapsed:VF.elapsed, secs=el_/1000, cpm=secs>2?(VF.clears/2)/(secs/60):0;
             readout=`<span>now <b>${dtxt(dem)}</b></span><span>time <b>${secs.toFixed(1)} s</b> · clears <b>${VF.clears}</b> · <b>${cpm.toFixed(1)} cpm</b></span>`;

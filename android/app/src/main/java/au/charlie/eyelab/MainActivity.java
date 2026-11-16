@@ -3,6 +3,11 @@ package au.charlie.eyelab;
 import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.view.ViewGroup;
+import android.webkit.JavascriptInterface;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -27,9 +32,34 @@ public class MainActivity extends Activity {
   private static final String HOST = "appassets.androidplatform.net";
   private WebView web;
   private PermissionRequest pending;
+  private SharedPreferences prefs;
+  private String crashMsg = "";
+
+  /** Crash breadcrumbs. The page marks when the camera is running and which step it has reached; a Java exception's
+   *  stack trace is saved before the process dies. If the app is opened again with the camera still marked as running,
+   *  the last session died during it (a native crash in the camera or graphics driver can't be caught, but this
+   *  catches that it happened and where), and the page is told so it can say what happened instead of crashing again. */
+  public class Bridge {
+    @JavascriptInterface public void camOn(boolean on) { prefs.edit().putBoolean("camOn", on).putString("stage", on ? "starting" : "").commit(); }
+    @JavascriptInterface public void stage(String st) { prefs.edit().putString("stage", st == null ? "" : st).commit(); }
+    @JavascriptInterface public String lastCrash() { return crashMsg; }
+  }
 
   @Override protected void onCreate(Bundle b) {
     super.onCreate(b);
+    prefs = getSharedPreferences("crash", MODE_PRIVATE);
+    String trace = prefs.getString("trace", "");
+    if (prefs.getBoolean("camOn", false)) {
+      crashMsg = "The app closed unexpectedly last time while the camera was in use (last step: " + prefs.getString("stage", "unknown") + ").";
+      if (trace.length() > 0) crashMsg += " Error: " + trace;
+    } else if (trace.length() > 0) crashMsg = "The app closed unexpectedly last time. Error: " + trace;
+    prefs.edit().putBoolean("camOn", false).putString("stage", "").putString("trace", "").commit();
+    final Thread.UncaughtExceptionHandler prev = Thread.getDefaultUncaughtExceptionHandler();
+    Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
+      try { StringWriter w = new StringWriter(); e.printStackTrace(new PrintWriter(w)); String st = w.toString();
+        prefs.edit().putString("trace", st.length() > 600 ? st.substring(0, 600) : st).commit(); } catch (Throwable ignored) { }
+      if (prev != null) prev.uncaughtException(t, e);
+    });
     getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);   // no dimming mid-test
     makeWeb();
     if (b != null) web.restoreState(b); else web.loadUrl("https://" + HOST + "/assets/index.html?app=1");
@@ -46,6 +76,7 @@ public class MainActivity extends Activity {
     s.setMediaPlaybackRequiresUserGesture(false);
     s.setAllowFileAccess(false);
     s.setTextZoom(100);                              // system font scaling would break physical sizes
+    web.addJavascriptInterface(new Bridge(), "EyeLabApp");
     // served from https://appassets.androidplatform.net/assets/ so the page is a secure origin (camera allowed)
     final WebViewAssetLoader loader = new WebViewAssetLoader.Builder()
         .addPathHandler("/assets/", new WebViewAssetLoader.AssetsPathHandler(this)).build();
@@ -56,7 +87,11 @@ public class MainActivity extends Activity {
       // If the page's renderer dies (a cheap tablet running out of memory under the camera + face tracking), Android
       // would otherwise close the whole app. Rebuild the page instead and say what happened.
       @Override public boolean onRenderProcessGone(WebView v, RenderProcessGoneDetail d) {
-        if (web == v) { try { v.destroy(); } catch (Exception e) { } makeWeb(); web.loadUrl("https://" + HOST + "/assets/index.html?app=1");
+        if (web == v) {
+          if (prefs.getBoolean("camOn", false)) prefs.edit().putBoolean("camOn", false).commit();
+          crashMsg = "The page's process was stopped by Android (usually running out of memory) and has been restarted.";
+          try { ViewGroup pv = (ViewGroup) v.getParent(); if (pv != null) pv.removeView(v); } catch (Exception e) { }
+          makeWeb(); try { v.destroy(); } catch (Exception e) { } web.loadUrl("https://" + HOST + "/assets/index.html?app=1");
           Toast.makeText(MainActivity.this, "The page ran out of memory and was restarted. Close other apps before camera tests.", Toast.LENGTH_LONG).show(); }
         return true;
       }
@@ -70,19 +105,33 @@ public class MainActivity extends Activity {
     web.setWebChromeClient(new WebChromeClient() {
       @Override public void onPermissionRequest(final PermissionRequest req) {
         runOnUiThread(() -> {
-          if (Build.VERSION.SDK_INT < 23 || checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-            req.grant(req.getResources());
-          } else { pending = req; requestPermissions(new String[]{Manifest.permission.CAMERA}, 1); }
+          try {
+            if (Build.VERSION.SDK_INT < 23 || checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+              grantVideo(req);
+            } else if (pending != null) {
+              req.deny();                              // a system dialog is already up for an earlier request
+            } else { pending = req; requestPermissions(new String[]{Manifest.permission.CAMERA}, 1); }
+          } catch (Exception e) { try { req.deny(); } catch (Exception ignored) { } }
         });
       }
+      @Override public void onPermissionRequestCanceled(PermissionRequest req) { if (req == pending) pending = null; }
     });
   }
 
-  @Override public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
-    if (pending == null) return;
-    if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) pending.grant(pending.getResources()); else pending.deny();
-    pending = null;
+  /** Grant only the camera, whatever else the page's request listed. */
+  private void grantVideo(PermissionRequest req) {
+    for (String r : req.getResources()) if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) { req.grant(new String[]{r}); return; }
+    req.deny();
   }
+
+  @Override public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
+    final PermissionRequest p = pending; pending = null;
+    if (p == null) return;
+    try { if (res.length > 0 && res[0] == PackageManager.PERMISSION_GRANTED) grantVideo(p); else p.deny(); } catch (Exception e) { }
+  }
+
+  @Override protected void onPause() { super.onPause(); if (web != null) web.onPause(); }
+  @Override protected void onResume() { super.onResume(); if (web != null) web.onResume(); }
 
   @Override public void onWindowFocusChanged(boolean focus) { super.onWindowFocusChanged(focus); if (focus) hideBars(); }
   @Override protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); web.saveState(out); }

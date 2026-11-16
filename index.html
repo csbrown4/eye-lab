@@ -118,6 +118,7 @@ input[type=number]{font-family:var(--f-data);font-size:.88rem}
 input[type=range]{padding:0;border:0;background:transparent;accent-color:var(--accent);height:30px}
 select{cursor:pointer}
 button{cursor:pointer;background:var(--panel);border-color:var(--line2);transition:background .12s,border-color .12s}
+#tapPad button,#tapX button,#tapL .tz,#tapGo button{-webkit-tap-highlight-color:transparent;touch-action:none}
 button:hover{background:var(--raise)}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:700}
 button.primary:hover{filter:brightness(1.07);background:var(--accent)}
@@ -1226,14 +1227,24 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
   // cancelling at another. S.gcurve[ch] = [[code 0..1, linear 0..1], ...] from the half-tone matches in the tuner.
   function curveOf(ch){ const c=S.gcurve&&S.gcurve[ch]; return Array.isArray(c)&&c.length>=2?[...c].sort((a,b)=>a[0]-b[0]):null; }
   function curvePts(c){ return [...c,[1,1]].filter((p,i,a)=>p[0]>0&&p[1]>0&&(i===0||p[0]>a[i-1][0]&&p[1]>a[i-1][1])); }
-  function linC(v,ch){ v=clamp01(v); const c=ch>=0?curveOf(ch):null; if(!c) return lin(v); if(v<=0) return 0; const P=curvePts(c);
+  function linCx(v,ch){ v=clamp01(v); const c=ch>=0?curveOf(ch):null; if(!c) return lin(v); if(v<=0) return 0; const P=curvePts(c);
     for(let i=0;i<P.length;i++){ if(v<=P[i][0]){ const a=i?P[i-1]:P[1]?[P[0][0],P[0][1]]:null, b=P[i];
         if(i===0){ const g=Math.log(P[1][1]/P[0][1])/Math.log(P[1][0]/P[0][0]); return P[0][1]*Math.pow(v/P[0][0],g); }
         const g=Math.log(b[1]/a[1])/Math.log(b[0]/a[0]); return a[1]*Math.pow(v/a[0],g); } } return 1; }
-  function encC(L,ch){ L=clamp01(L); const c=ch>=0?curveOf(ch):null; if(!c) return enc(L); if(L<=0) return 0; const P=curvePts(c);
+  function encCx(L,ch){ L=clamp01(L); const c=ch>=0?curveOf(ch):null; if(!c) return enc(L); if(L<=0) return 0; const P=curvePts(c);
     for(let i=0;i<P.length;i++){ if(L<=P[i][1]){
         if(i===0){ const g=Math.log(P[1][1]/P[0][1])/Math.log(P[1][0]/P[0][0]); return P[0][0]*Math.pow(L/P[0][1],1/g); }
         const a=P[i-1], b=P[i], g=Math.log(b[1]/a[1])/Math.log(b[0]/a[0]); return a[0]*Math.pow(L/a[1],1/g); } } return 1; }
+  // Fast versions: the measured curves are turned into lookup tables once (rebuilt whenever S.gcurve changes, checked at
+  // most every 300 ms). The exact functions sort and filter the curve on every call, which made per-pixel drawing (the
+  // tritan patches, any image built pixel by pixel) take seconds on a slow tablet.
+  const GC_N=2048; let gcKey="", gcT=0, gcTab={};
+  function gcTables(){ const now=performance.now(); if(now-gcT<300) return gcTab; gcT=now; const k=JSON.stringify(S.gcurve||null); if(k===gcKey) return gcTab; gcKey=k; gcTab={};
+    [0,1,2].forEach(ch=>{ if(!curveOf(ch)) return; const E=new Float32Array(GC_N+1), Lt=new Float32Array(GC_N+1);
+      for(let i=0;i<=GC_N;i++){ const u=i/GC_N; E[i]=encCx(Math.pow(u,2.4),ch); Lt[i]=linCx(u,ch); } gcTab[ch]={E,Lt}; }); return gcTab; }
+  const gcLook=(T,x)=>{ const f=x*GC_N, i=Math.min(GC_N-1,Math.floor(f)), w=f-i; return T[i]+(T[i+1]-T[i])*w; };
+  function encC(L,ch){ L=clamp01(L); const t=ch>=0?gcTables()[ch]:null; if(!t) return enc(L); return gcLook(t.E,Math.pow(L,1/2.4)); }
+  function linC(v,ch){ v=clamp01(v); const t=ch>=0?gcTables()[ch]:null; if(!t) return lin(v); return gcLook(t.Lt,v); }
   const pureCh=v=>{ const nz=[0,1,2].filter(k=>v[k]>0); return nz.length===1&&v[nz[0]]===1?nz[0]:-1; };
   const chA=()=>pureCh(LA().vec), chB=()=>pureCh(LB().vec);
   const linA=v=>linC(v,chA()), linB=v=>linC(v,chB()), encA=v=>encC(v,chA()), encB=v=>encC(v,chB());
@@ -3803,7 +3814,10 @@ tolerance = largest level with threshold ≤ 2 × the matched (0) threshold`,
           const cov=T_.ax==="H"?o=>o.fillRect(g_.cxp+vpx-lw2/2,g_.cyp-gap-L_,lw2,L_):o=>o.fillRect(g_.cxp-gap-L_,g_.cyp-vpx-lw2/2,L_,lw2);
           const fix=T_.ax==="H"?o=>o.fillRect(g_.cxp-lw2/2,g_.cyp+gap,lw2,L_):o=>o.fillRect(g_.cxp+gap,g_.cyp-lw2/2,L_,lw2);
           lineA=aIsCov?cov:fix; lineB=aIsCov?fix:cov; }
-        ntPut(g_,ntDichRender(g_,big,o=>{ if(fixA[0]) cross(o,0,0); if(lineA) lineA(o); },o=>{ if(fixA[1]) cross(o,0,0); if(lineB) lineB(o); },SD)); }
+        // render only the area that can hold something (the whole canvas made every frame slow on a tablet)
+        let x0=g_.cxp-Math.max(arm,gap+L_)-8, x1=g_.cxp+Math.max(arm,gap+L_)+8, y0=g_.cyp-Math.max(arm,gap+L_)-8, y1=g_.cyp+Math.max(arm,gap+L_)+8;
+        if(act&&ph==="flash"){ const vpx=ctPx(env,T_.v); if(T_.ax==="H"){ x0=Math.min(x0,g_.cxp+vpx-lw2-8); x1=Math.max(x1,g_.cxp+vpx+lw2+8); } else { y0=Math.min(y0,g_.cyp-vpx-lw2-8); y1=Math.max(y1,g_.cyp-vpx+lw2+8); } }
+        ntPut(g_,ntDichRender(g_,{x:x0,y:y0,w:x1-x0,h:y1-y0},o=>{ if(fixA[0]) cross(o,0,0); if(lineA) lineA(o); },o=>{ if(fixA[1]) cross(o,0,0); if(lineB) lineB(o); },SD)); }
       const R=ntR("8"), sw=ctSoft(R.soft), cm=R.cam, pd=v=>v==null||!isFinite(v)?"–":`${Math.abs(v).toFixed(1)} Δ ${v>=0?"eso":"exo"}`, pv=(v,e)=>v==null||!isFinite(v)?"–":`${e} ${v>=0?"up":"down"} ${Math.abs(v).toFixed(1)} Δ`;
       let res="";
       if(sw) res+=`<span>dichoptic: OD covered ${pd(sw.eOD)}, ${pv(sw.hOD,"OD")} · OS covered ${pd(sw.eOS)}, ${pv(sw.hOS,"OS")}</span><span>horizontal deviation <b>${pd(sw.H)}</b> · vertical <b>${sw.dvd?`covered eye goes up whichever eye is covered (OD ${sw.hOD.toFixed(1)}, OS ${sw.hOS.toFixed(1)} Δ): DVD pattern`:sw.RL==null?"–":Math.abs(sw.RL)<0.75?"none":`${sw.RL>0?"R":"L"} hyper ${Math.abs(sw.RL).toFixed(1)} Δ`}</b>${sw.eOD!=null&&sw.eOS!=null&&Math.abs(sw.eOD-sw.eOS)>4?" · <b>differs by eye covered</b> (incomitance or a fixation preference)":""}</span>`;
@@ -4056,7 +4070,7 @@ perceived slant ≈ w·σd + (1 − w)·σp ⇒ stereo weight w = (x* − σp)/(
         rows:`<tr><th>Stereo weight</th><th>Reading</th></tr><tr><td>0.4–0.8</td><td>Typical combination</td></tr><tr><td>under 0.2</td><td>Stereo contributing little to depth</td></tr><tr><td>over 0.9</td><td>Perspective largely ignored</td></tr>`,
         steps:`<li>Glasses on (${LA().name} lens over ${S.eye["4"]}), calibrated. Set your PD. Usual near correction.</li><li>Press S. Two dotted surfaces, each turned like a door. Which one is turned more, with its right edge further away: left (← / tap left) or right (→ / tap right)? Guess when they look the same. 40 answers.</li>` }; } };
 
-  try{ Object.assign(window.__thorTest,{PF,pfStart,pfResp,pfSolve,pfDemo,SB,sbStart,sbSummary,DC,dcStart,dcResp,dcPlane,DC_COND,swSep}); }catch(e){}
+  try{ Object.assign(window.__thorTest,{encC,encCx,linC,linCx,PF,pfStart,pfResp,pfSolve,pfDemo,SB,sbStart,sbSummary,DC,dcStart,dcResp,dcPlane,DC_COND,swSep}); }catch(e){}
 
     // ---------------- w: tritan test (odd-one-out, large soft-edged patches) ----------------
   // Not the Landolt C. Four large patches round a fixation dot; one differs from the other three only along the tritan
@@ -4083,12 +4097,16 @@ perceived slant ≈ w·σd + (1 − w)·σp ⇒ stereo weight w = (x* − σp)/(
     if(t.demo){ if(!ok&&!(t.miss>=1)){ TRI.tr={...t,odd:Math.floor(Math.random()*4),miss:1}; TRI.img=null; draw(); return; } triNext(); return; }
     TRI.ad.update(t.x,ok); triNext(); }
   // positions: 0 right, 1 up, 2 left, 3 down (matches the arrow keys)
-  function triRender(env,g_){ const ppd=ntPPD(env), t=TRI.tr, dl=Math.pow(10,t.x), R=TRI_R*ppd, sw=TRI_SOFT*ppd, Ro=R+sw, ecc=TRI_ECC*ppd, half=Math.ceil(ecc+Ro+2), W_=2*half;
-    const bg=kcRGB(KC_BG[0],KC_BG[1],0.27), cols=[0,1,2,3].map(i=>{ const Y=TRI_Y[0]+Math.random()*(TRI_Y[1]-TRI_Y[0]); return i===t.odd?kcRGB(KC_BG[0]+TRI.dir.u*dl,KC_BG[1]+TRI.dir.v*dl,Y):kcRGB(KC_BG[0],KC_BG[1],Y); });
-    const pos=[[1,0],[0,-1],[-1,0],[0,1]].map(([a,b])=>[half+a*ecc,half+b*ecc]), img=ntImg(g_.ctx,W_,W_), D_=img.data;
-    for(let y=0;y<W_;y++) for(let x=0;x<W_;x++){ let c=bg; for(let i=0;i<4;i++){ const r=Math.hypot(x+0.5-pos[i][0],y+0.5-pos[i][1]); if(r<Ro){ const w=r<=R?1:0.5+0.5*Math.cos(Math.PI*(r-R)/sw); c=[0,1,2].map(ch=>w*cols[i][ch]+(1-w)*bg[ch]); break; } }
-      const k=(y*W_+x)*4; for(let ch=0;ch<3;ch++){ const v=255*encC(Math.max(0,Math.min(1,c[ch])),ch); D_[k+ch]=Math.min(255,Math.max(0,Math.floor(v+Math.random()))); } D_[k+3]=255; }
-    return {img,x:Math.round(g_.cxp-half),y:Math.round(g_.cyp-half)}; }
+  function triRender(env,g_){ const ppd=ntPPD(env), t=TRI.tr, dl=Math.pow(10,t.x), R=TRI_R*ppd, sw=TRI_SOFT*ppd, Ro=R+sw, ecc=TRI_ECC*ppd, B=Math.ceil(Ro)+1, W_=2*B;
+    const bg=kcRGB(KC_BG[0],KC_BG[1],0.27), NL=48, out=[];
+    for(let i=0;i<4;i++){ const Y=TRI_Y[0]+Math.random()*(TRI_Y[1]-TRI_Y[0]), col=i===t.odd?kcRGB(KC_BG[0]+TRI.dir.u*dl,KC_BG[1]+TRI.dir.v*dl,Y):kcRGB(KC_BG[0],KC_BG[1],Y);
+      // encoded colour (0–255, unrounded) for NL+1 steps of the edge weight, mixed in linear light
+      const lut=new Float32Array((NL+1)*3); for(let q=0;q<=NL;q++){ const w=q/NL; for(let ch=0;ch<3;ch++) lut[q*3+ch]=255*encC(Math.max(0,Math.min(1,w*col[ch]+(1-w)*bg[ch])),ch); }
+      const img=ntImg(g_.ctx,W_,W_), D_=img.data;
+      for(let y=0;y<W_;y++) for(let x=0;x<W_;x++){ const r=Math.hypot(x+0.5-B,y+0.5-B), w=r<=R?1:r>=Ro?0:0.5+0.5*Math.cos(Math.PI*(r-R)/sw), q=Math.round(w*NL)*3, k=(y*W_+x)*4;
+        D_[k]=Math.min(255,(lut[q]+Math.random())|0); D_[k+1]=Math.min(255,(lut[q+1]+Math.random())|0); D_[k+2]=Math.min(255,(lut[q+2]+Math.random())|0); D_[k+3]=255; }
+      const [a,b_]=[[1,0],[0,-1],[-1,0],[0,1]][i]; out.push({img,x:Math.round(g_.cxp+a*ecc-B),y:Math.round(g_.cyp+b_*ecc-B)}); }
+    return out; }
   NT.w={ name:"Tritan test",
     ctl:`<label data-modes="w">Age <span class="u">(for the normal limit)</span><input data-ntk="trAge" data-ntt="num" type="number" min="5" max="95" step="1" placeholder="years"></label>
       <label data-modes="w">Run<div class="btns"><button type="button" data-nta="w:start" class="primary">Start (S)</button><button type="button" data-nta="w:stop">Stop</button></div></label>`+ccCtl("w"),
@@ -4097,7 +4115,7 @@ perceived slant ≈ w·σd + (1 − w)·σp ⇒ stereo weight w = (x* − σp)/(
     key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ triStart(); return true; } if(!TRI.active) return false;
       const map={ArrowRight:0,ArrowUp:1,ArrowLeft:2,ArrowDown:3}; if(k in map){ triResp(map[k]); return true; } if(k===" "){ triResp(-1); return true; } return false; },
     draw(env){ this.env=env; const g_=ntCv(env,kcCss(kcRGB(KC_BG[0],KC_BG[1],0.27))), ctx=g_.ctx, ppd=ntPPD(env);
-      if(TRI.active&&TRI.tr){ if(!TRI.img) TRI.img=triRender(env,g_); ntPut(g_,TRI.img); }
+      if(TRI.active&&TRI.tr){ if(!TRI.img) TRI.img=triRender(env,g_); TRI.img.forEach(p=>ntPut(g_,p)); }
       const s=Math.max(3,0.1*ppd); ctx.fillStyle="#000"; ctx.fillRect(g_.cxp-s/2,g_.cyp-s/2,s,s);
       const R=ntR("w"), dir=TRI.dir||triDir();
       const fmt=e=>{ const o=R[e]; if(!o) return `${e}: –`; const L=triLim(o.age), rT=o.T/L.T;
@@ -6392,7 +6410,8 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
   }
   $("ldStart").onclick=()=>ldStart();
   // the app reports how the last session ended, if it ended badly
-  try{ const why=APP_BRIDGE&&APP_BRIDGE.lastCrash(); if(why){ LD.crashWhy=why; setTimeout(()=>ldSet(why),500); } }catch(e){}
+  try{ const why=APP_BRIDGE&&APP_BRIDGE.lastCrash(); if(why){ LD.crashWhy=why; setTimeout(()=>ldSet(why),500); }
+    else if(APP_BRIDGE&&APP_BRIDGE.version) setTimeout(()=>{ if(!LD.on) ldSet(`Camera off. (Eye Lab app build ${APP_BRIDGE.version()}.)`); },500); }catch(e){}
   $("ldCal").onclick=()=>{ if(!LD.on){ ldSet("Start the camera first."); return; } LD.calBuf=[]; };
   $("ldFollow").checked=!!S.ldFollow; $("ldFollow").onchange=e=>{ S.ldFollow=e.target.checked; ldChip(); save(); };
   ldChip();
@@ -6760,8 +6779,15 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     const KN={" ":"Space","Enter":"Enter","ArrowLeft":"←","ArrowRight":"→","ArrowUp":"↑","ArrowDown":"↓"}, kn=k=>k==null?"":(KN[k]||String(k).toUpperCase());
     // desktop wording of the same instructions: keys instead of taps
     const deskHow=c=>{ const z=(c.z||[]).concat(c.x||[]); return `Press <b>${kn(c.start)}</b> to start.`+(z.length?` Then answer with the keys: ${z.map(([k,l])=>`<b>${kn(k)}</b> ${l.toLowerCase()}`).join(" · ")}.`:c.pad?" Then type the answer on the keyboard.":""); };
-    const bindHold=(el,key)=>{ el.addEventListener("pointerdown",e=>{ e.preventDefault(); el.classList.add("dn"); try{ el.setPointerCapture(e.pointerId); }catch(_){} send("keydown",key); if(navigator.vibrate) try{ navigator.vibrate(8); }catch(_){} });
-      const up=()=>{ if(!el.classList.contains("dn")) return; el.classList.remove("dn"); send("keyup",key); }; el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up); };
+    // Touch answers act on pointerdown. The browser still sends a "click" about 100–300 ms after the finger lifts, to
+    // whatever is under it by then; once the answer has changed the screen, that is a different button, which then got
+    // pressed on its own ("ghost click"). touchstart is cancelled on answer elements, so no click is made, and any
+    // click that still arrives within 700 ms of an answer tap, anywhere else, is swallowed.
+    let tapT=0, tapEl=null;
+    document.addEventListener("click",e=>{ if(performance.now()-tapT<700&&!(tapEl&&tapEl.contains(e.target))){ e.preventDefault(); e.stopPropagation(); } },true);
+    const bindHold=(el,key)=>{ el.addEventListener("touchstart",e=>{ if(e.cancelable) e.preventDefault(); },{passive:false});
+      el.addEventListener("pointerdown",e=>{ e.preventDefault(); tapT=performance.now(); tapEl=el; el.classList.add("dn"); try{ el.setPointerCapture(e.pointerId); }catch(_){} send("keydown",key); if(navigator.vibrate) try{ navigator.vibrate(8); }catch(_){} try{ document.activeElement&&document.activeElement.blur&&document.activeElement.blur(); }catch(_){} });
+      const up=()=>{ if(!el.classList.contains("dn")) return; el.classList.remove("dn"); tapT=performance.now(); send("keyup",key); }; el.addEventListener("pointerup",up); el.addEventListener("pointercancel",up); el.addEventListener("lostpointercapture",up); };
     // when a test finishes, show its result on the test screen (in full screen the panel with the result is hidden)
     let wasRun=false, runMode="";
     const resultCard=()=>{ const r=$("readout"); if(!r) return; const txt=[...r.querySelectorAll("span")].map(s=>s.innerText.trim()).filter(s=>s&&!/^pitch /.test(s)).slice(0,4).join("\n")||r.innerText.trim(); if(!txt) return;

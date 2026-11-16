@@ -43,6 +43,7 @@ public class MainActivity extends Activity {
     @JavascriptInterface public void camOn(boolean on) { prefs.edit().putBoolean("camOn", on).putString("stage", on ? "starting" : "").commit(); }
     @JavascriptInterface public void stage(String st) { prefs.edit().putString("stage", st == null ? "" : st).commit(); }
     @JavascriptInterface public String lastCrash() { return crashMsg; }
+    @JavascriptInterface public String version() { try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; } catch (Exception e) { return "?"; } }
   }
 
   @Override protected void onCreate(Bundle b) {

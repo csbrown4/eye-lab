@@ -889,6 +889,7 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
   if(saved){ Object.assign(S,saved); S.dist=Object.assign({},S0.dist,saved.dist||{}); S.eye=Object.assign({},S0.eye,saved.eye||{}); if(!("fdScale" in saved)) S.fdScale=1.5; if(saved.slV!==2){ S.slMethod="cmp"; S.slDur=2500; S.slV=2; } if(saved.fxV!==4){ S.fxPer=40; S.fxV=4; } if(saved.calV!==3){ S.calBg="cal"; S.kBg=0; S.kBr=0; S.calV=3; } }
   // first run: guess the screen from its shape (a guess only; the Setup sheet shows it)
   if(!S.scr){ if(saved && saved.preset){ S.scr = saved.preset==="custom" ? "card" : "mbp13"; }
+    else if(/Android|iPad|iPhone/i.test(navigator.userAgent)||(matchMedia("(pointer:coarse)").matches&&!matchMedia("(pointer:fine)").matches)){ S.scr="card"; }   // a 16:10 tablet is not a MacBook
     else { const a=(screen.width&&screen.height)?screen.width/screen.height:1.6; S.scr = Math.abs(a-1.6)<0.01 ? "mbp13" : Math.abs(a-1.5)<0.01 ? "sl135" : Math.abs(a-1.538)<0.012 ? "mba136" : "monitor"; } }
   if(S.monDiag==null) S.monDiag=24; if(S.monAsp==null) S.monAsp="auto"; if(S.scrW==null) S.scrW=300;
   S.nullOn = S.nullOn===true?1:(+S.nullOn||0);
@@ -946,7 +947,14 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
     if(S.scr==="monitor"){ const a=S.monAsp==="auto"?scrAsp():+S.monAsp; return (+S.monDiag||24)*25.4*a/Math.hypot(a,1); }
     if(S.scr==="width") return +S.scrW||300;
     return null; }
-  const mmpp=()=> S.scr==="card" ? S.mmpp : scrWidthMM()/(screen.width||1440);
+  const mmpp=()=> S.scr==="card" ? (S.mmpp||scrWidthMM()/(screen.width||1440)) : scrWidthMM()/(screen.width||1440);
+  // Every physical size (prism shifts, letter sizes, blur discs) is scaled by the screen size. A touch device left on a
+  // laptop preset (16:10 tablets used to be guessed as a MacBook Pro 13″: about 30% too big on a 10″ tablet) or on a
+  // card setting that was never dragged is wrong everywhere.
+  function scrSuspect(){ const touch=/Android|iPad|iPhone/i.test(navigator.userAgent)||(matchMedia("(pointer:coarse)").matches&&!matchMedia("(pointer:fine)").matches), P=SCREENS[S.scr];
+    if(S.scr==="card"&&!S.mmpp) return "<b>Screen size not calibrated</b>: every size, prism and blur on this screen is a guess. Setup → screen → hold a bank card to the screen and match the outline.";
+    if(touch&&P&&!/tablet|phone|iPad/i.test((P.g||"")+(P.n||""))) return `<b>Screen size is set to ${P.n}</b>, which is not this device: every size, prism and blur is scaled wrongly. Setup → screen → pick this tablet or calibrate with a bank card.`;
+    return ""; }
   const scrName=()=> S.scr==="monitor" ? `${S.monDiag||24}″ screen` : S.scr==="card" ? "card-calibrated screen" : S.scr==="width" ? `${S.scrW||300} mm-wide screen` : (SCREENS[S.scr]||SCREENS.mbp13).n.replace(/ \(.*\)/,"");
   const grey=p=>{const v=Math.round(255*p/100);return `rgb(${v},${v},${v})`;};
   const svgNS="http://www.w3.org/2000/svg";
@@ -1665,7 +1673,7 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
     const out=new Float32Array(W_*H_);
     for(let y=0;y<H_;y++) for(let x=0;x<W_;x++){ let a=0; for(const [dy,c] of rows){ const yy=y+dy; if(yy<0||yy>=H_) continue; const o=yy*(W_+1); a+=at(o,x+0.5+c)-at(o,x+0.5-c); } out[y*W_+x]=a/wsum; }
     return out; }
-  function coLag(k){ return k/(2*LCA); }
+  function coLag(k){ return k/(2*LCA*asbSCE(+S.coPupil||4)); }   // Stiles–Crawford: the eye's own blur is smaller than a uniform pupil's
   function coResp(greenClearer){ if(!CO.active) return;
     CO.ad.update(CO.s, !greenClearer);   // blur on green (s > 0) makes "red clearer" more likely
     if(CO.ad.done()){ const e=CO.ad.est(), sm=e.mu; S.coRes=S.coRes||{}; S.coRes[String(S.coLens)]=Math.round(100*coLag(sm))/100; S.coResEdge=Math.abs(coLag(sm))>1.05; CO.active=false; save(); }
@@ -1690,7 +1698,7 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
     CC.raf=requestAnimationFrame(tick); }
   function ccResp(greenClearer){ if(!CC.active||CC.phase!=="answer") return;
     CC.ad.update(CC.s, !greenClearer);
-    if(CC.ad.done()){ const e=CC.ad.est(), sm=e.mu, toL=b=>b*Math.abs(b)/(2*LCA), L=toL(sm), sdL=Math.max(0.03,(toL(sm+e.sd)-toL(sm-e.sd))/2);   // interval, not slope: L is flat at b = 0
+    if(CC.ad.done()){ const e=CC.ad.est(), sm=e.mu, toL=b=>b*Math.abs(b)/(2*LCA*asbSCE(+S.coPupil||4)), L=toL(sm), sdL=Math.max(0.03,(toL(sm+e.sd)-toL(sm-e.sd))/2);   // interval, not slope: L is flat at b = 0
       S.ccRes=S.ccRes||{}; (S.ccRes[ccCond()]=S.ccRes[ccCond()]||[]).push({L:+L.toFixed(3),sd:+sdL.toFixed(3),pupil:S.coPupil,dist:S.dist.I,dur:+S.ccDur||150,when:Date.now(),secs:Math.round((Date.now()-CC.t0)/1000)});
       ccStop(); save(); draw(); beep(660,200); return; }
     CC.s=Math.round(1000*CC.ad.next())/1000; CC.phase="fix"; draw(); ccSchedule(1100+Math.random()*500); }
@@ -3600,15 +3608,19 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
   const asOris=()=>[0,30,60,90,120,150];
   const asSmax=()=>Math.sqrt(2*LCA*2.5);                                        // spans focus errors of ±2.5 D in any meridian
   const asC=()=>asbSCE(+S.coPupil||4);
-  function asStart(){ AS.active=true; AS.G=asbNew(LCA,asC()); AS.order=[]; asTrial(); }
+  function asStart(){ AS.active=true; AS.G=asbNew(LCA,asC()); AS.order=[]; AS.rolls=[]; asTrial(); }
   function asStop(){ AS.active=false; }
   function asTrial(){ const G=AS.G; if(G.n>=(+S.asTrials||40)){ asFinish(); return; }
     if(!AS.order.length) AS.order=asOris().slice().sort(()=>Math.random()-0.5);
     const o=AS.order.pop(), phi=(o+90)%180, W=asbWeights(G), sm=asbSample(G,W,Math.random), c2=Math.cos(2*phi*Math.PI/180), s2=Math.sin(2*phi*Math.PI/180);
     const pd=sm.A0+sm.A1*c2+sm.A2*s2, K=asSmax()**2, k=Math.max(-K,Math.min(K,2*LCA*G.c*pd));
     AS.tr={o,k:Math.round(1000*k)/1000,pd}; draw(); }
-  function asResp(redSharper){ if(!AS.active||!AS.tr) return; asbUpdate(AS.G,AS.tr.k,(AS.tr.o+90)%180,redSharper); asTrial(); }
+  function asResp(redSharper){ if(!AS.active||!AS.tr) return; if(typeof LD!=="undefined"&&LD.on&&LD.rollT&&performance.now()-LD.rollT<600) AS.rolls.push(LD.roll); asbUpdate(AS.G,AS.tr.k,(AS.tr.o+90)%180,redSharper); asTrial(); }
   function asFinish(){ const G=AS.G, f=asbSummary(G), W=asbWeights(G);
+    // The axis is measured on the screen; the eye's meridians turn with the head. With the camera running, the median
+    // head roll during the run is taken off (a 10° head tilt is otherwise a 10° axis error).
+    const rl=AS.rolls.length>=Math.min(10,G.n/2)?AS.rolls.slice().sort((a,b)=>a-b)[Math.floor(AS.rolls.length/2)]:null;
+    f.axScreen=f.axP; f.roll=rl; if(rl!=null){ f.axP=(((f.axP-rl)%180)+180)%180; let t=Math.round(180-f.axP)%180; if(t<=0) t+=180; f.tabo=t; }
     // per-meridian focus implied by the posterior (for the table and chart)
     const pts=asOris().map(o=>{ const phi=(o+90)%180, c2=Math.cos(2*phi*Math.PI/180), s2=Math.sin(2*phi*Math.PI/180); let m=0,v=0,i=0;
       for(const s_ of G.S) for(const a0 of G.A0) for(const a1 of G.A) for(const a2 of G.A){ const w=W[i++], d=a0+a1*c2+a2*s2; m+=w*d; v+=w*d*d; }
@@ -3638,10 +3650,11 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
       const pf=v=>(v>=0?"+":"")+v.toFixed(2);
       const fitTxt=(e,o_)=>{ if(!o_||!o_.fit) return `${e}: –`; const F=o_.fit, small=F.amp<Math.max(0.12,F.seC);
         let t=`${e}: <b>${small?"no measurable astigmatism":`${pf(F.cyl)} × ${F.tabo}`}</b> (± ${F.seC.toFixed(2)} D${small?"":`, axis ± ${Math.round(F.seAx)}°`}) · mean focus ${F.A0>=0?"behind":"in front of"} the screen by ${Math.abs(F.A0).toFixed(2)} D`;
+        t+=F.roll!=null?` · head tilt ${F.roll>=0?"+":""}${F.roll.toFixed(0)}° taken off the axis`:" · head tilt not measured: keep the head upright (or start the camera in Setup and it is corrected)";
         if(F.Dmax<-0.25) t+=` · <b>every meridian focused in front of the screen</b> (myopic, accommodation can't help): distance Rx ≈ <b>${pf(F.Dmax-mDist)} / ${pf(F.cyl)} × ${F.tabo}</b> (screen at ${dcm} cm; check at a second distance)`;
         if(o_.pts.some(p=>p.edge)) t+=` · <b>some meridians hit the end of the range</b>: move the screen so the lines look reasonably clear`;
         return t; };
-      const res=`<span>${fitTxt("OD",r.OD)}</span><span>${fitTxt("OS",r.OS)}</span>`+(eyeR?`<span>${S.eye["5"]} per meridian: ${eyeR.pts.slice().sort((a,b)=>a.phi-b.phi).map(p=>`${p.phi}°: ${pf(p.D)}±${p.sd.toFixed(2)}`).join(" · ")}${f?` · fit rms ${f.rms.toFixed(2)} D`:""}</span>`:"")+(eyeR?asChart(eyeR):"");
+      const res=`<span>${fitTxt("OD",r.OD)}</span><span>${fitTxt("OS",r.OS)}</span>`+(eyeR?`<span>${S.eye["5"]} per meridian: ${eyeR.pts.slice().sort((a,b)=>a.phi-b.phi).map(p=>`${p.phi}°: ${pf(p.D)}±${p.sd.toFixed(2)}`).join(" · ")}</span>`:"")+(eyeR?asChart(eyeR):"");
       const readout=`<span>${AS.active?`lines at ${AS.tr.o}° (meridian ${(AS.tr.o+90)%180}°) · blur ${Math.sqrt(Math.abs(AS.tr.k)).toFixed(2)} D on ${AS.tr.k>0?"green":AS.tr.k<0?"red":"neither"} · answer ${AS.G.n+1} of ${+S.asTrials||40}`:"stopped"}</span>${res}`;
       const warns=["Experimental. One eye at a time with the other covered; no glasses or filters (a contact lens or spectacles give the residual astigmatism over them). Measure the pupil in this light: the cylinder scales with the square of any pupil error, but the axis does not."];
       return {readout,warns,
@@ -3661,7 +3674,7 @@ lines ${degArc(env,P_.p).toFixed(0)}′ apart, ${degArc(env,P_.w).toFixed(0)}′
     const X=a=>pl+(W_-pl-pr)*a/180, Y=v=>H_-pb-(H_-pb-pt)*(v-lo)/(hi-lo); let s=`<svg viewBox="0 0 ${W_} ${H_}" style="width:100%;max-width:${W_}px;display:block;margin-top:6px" font-size="10" fill="currentColor">`;
     [0,45,90,135,180].forEach(a=>{ s+=`<line x1="${X(a)}" y1="${pt}" x2="${X(a)}" y2="${H_-pb}" stroke="currentColor" stroke-opacity=".12"/><text x="${X(a)}" y="${H_-6}" text-anchor="middle">${a}°</text>`; });
     for(let v=Math.ceil(lo*2)/2; v<=hi; v+=0.5) s+=`<line x1="${pl}" y1="${Y(v)}" x2="${W_-pr}" y2="${Y(v)}" stroke="currentColor" stroke-opacity=".12"/><text x="${pl-4}" y="${Y(v)+3}" text-anchor="end">${v.toFixed(1)}</text>`;
-    let d_=""; for(let a=0;a<=180;a+=3){ const v=F.A0+F.amp*Math.cos(2*(a-F.axP)*Math.PI/180); d_+=(a?"L":"M")+X(a).toFixed(1)+" "+Y(v).toFixed(1); } s+=`<path d="${d_}" fill="none" stroke="var(--accent,#c0392b)" stroke-width="1.5"/>`;
+    let d_=""; for(let a=0;a<=180;a+=3){ const v=F.A0+F.amp*Math.cos(2*(a-(F.axScreen!=null?F.axScreen:F.axP))*Math.PI/180); d_+=(a?"L":"M")+X(a).toFixed(1)+" "+Y(v).toFixed(1); } s+=`<path d="${d_}" fill="none" stroke="var(--accent,#c0392b)" stroke-width="1.5"/>`;
     o.pts.forEach(p=>{ s+=`<line x1="${X(p.phi)}" y1="${Y(p.D-p.sd)}" x2="${X(p.phi)}" y2="${Y(p.D+p.sd)}" stroke="currentColor"/><circle cx="${X(p.phi)}" cy="${Y(p.D)}" r="3"/>`; });
     return s+`<text x="${pl}" y="${pt+8}">focus error by meridian (D, + = behind the screen), patient's view</text></svg>`; }
 
@@ -3685,7 +3698,7 @@ lines ${degArc(env,P_.p).toFixed(0)}′ apart, ${degArc(env,P_.w).toFixed(0)}′
   function anResp(osSharper){ if(!AN.active) return; AN.ad.update(AN.tr.k,osSharper); anTrial(); }
   function anSolve(r){ const a=r.OD, b=r.OS; if(!a||!b) return null; const k1=a.k, k2=b.k, dk=k2-k1, se=Math.hypot(a.sd,b.sd);
     // ∂Δ/∂k1 = −2ΔD·k2/dk², ∂Δ/∂k2 = 2ΔD·k1/dk²
-    const m=dk/(4*LCA), mse=se/(4*LCA), D=Math.abs(dk)>1e-6?-LCA*(k1+k2)/dk:NaN, Dse=Math.abs(dk)>1e-6?2*LCA/dk**2*Math.hypot(k2*a.sd,k1*b.sd):NaN;
+    const cS=asbSCE(+S.coPupil||4), m=dk/(4*LCA*cS), mse=se/(4*LCA*cS), D=Math.abs(dk)>1e-6?-LCA*(k1+k2)/dk:NaN, Dse=Math.abs(dk)>1e-6?2*LCA/dk**2*Math.hypot(k2*a.sd,k1*b.sd):NaN;
     return {m,mse,D,Dse}; }
   function anPanels(env,ctx,SD){ const d=env.d, dev=env.dev, pxPerD=(S.coPupil/1000)*d/dev, hp=Math.max(ntDegPx(env,25/60),anSmax()*pxPerD/0.6), pw=Math.round(hp*7.5), ph=Math.round(hp*5.2);
     const k=AN.active&&AN.tr?AN.tr.k:0, txt=AN.text||["EHN","KZC","DOS","RVH"], ck=[k,txt.join(),env.W,env.H,d,S.coPupil,S.eye["9"]].join();
@@ -3738,7 +3751,7 @@ letters ${degArc(env,P_.hp).toFixed(0)}′ high; disc ${((S.coPupil/1000)*env.d/
     const tok=TL.tok; setTimeout(()=>{ if(tok.dead) return; TL.phase="show"; ntFlash(700,()=>draw(),()=>{ if(tok.dead) return; TL.phase="answer"; draw(); },tok); },450+Math.random()*300); }
   function tlResp(front){ if(!TL.active||TL.phase!=="answer") return; TL.ads[TL.tr.l].update(TL.tr.lt,(front?1:-1)===TL.tr.sgn); tlTrial(); }
   function tlRender(env,g_,SD){ const T_=TL.tr, ppd=ntPPD(env), R=ntDegPx(env,2.4), rin=R*0.5, dsz=Math.max(2,5/60*ppd), disp=Math.pow(10,T_.lt)/3600*ppd*T_.sgn;
-    const rA=ntRA("0"), modA=(S.tlEye==="OD")===rA, size=TL.mode==="size", mag=size?1+T_.l/100:1, blurPx=size?0:T_.l*(S.coPupil/1000)*env.d/env.dev;
+    const rA=ntRA("0"), modA=(S.tlEye==="OD")===rA, size=TL.mode==="size", mag=size?1+T_.l/100:1, blurPx=size?0:T_.l*(S.coPupil/1000)*env.d/env.dev*Math.sqrt(asbSCE(+S.coPupil||4));
     let s_=T_.seed; const rnd=()=>{ s_=(s_*1103515245+12345)&0x7fffffff; return s_/0x7fffffff; }, n=Math.round(0.2*Math.PI*R*R/(dsz*dsz)), dots=[];
     for(let i=0;i<n;i++){ const a=rnd()*2*Math.PI, q=Math.sqrt(rnd())*R; dots.push([q*Math.cos(a),q*Math.sin(a)]); }
     const pad=Math.ceil(R*(size?1.1:1)+Math.abs(disp)+dsz+blurPx+4), W_=2*pad, cx=pad, cy=pad;
@@ -5736,7 +5749,7 @@ ${cs?"letters 2.8° tall (the size of Pelli–Robson letters at 1 m); threshold 
       }
 
       else if(NT[m]){ const r_=NT[m].draw({W,H,dpr,dev,cx,cy0,d,k,vw,vh,eye,other,g,svg,stage,am})||{};
-        readout=r_.readout||""; eq=r_.eq||""; opt=r_.opt||""; rows=r_.rows||""; steps=r_.steps||""; (r_.warns||[]).forEach(w=>warns.push(w)); }
+        readout=r_.readout||""; eq=r_.eq||""; opt=r_.opt||""; rows=r_.rows||""; steps=r_.steps||""; const sw=scrSuspect(); if(sw) warns.push(sw); (r_.warns||[]).forEach(w=>warns.push(w)); }
       else if(m==="e"){ // eye movements
         const deg_=a=>d*Math.tan(a*Math.PI/180), Wt="#e8e8e8", typ=S.emType;
         const res=(S.emRes||{})[typ];
@@ -6350,6 +6363,8 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     if(!lm||lm.length<478){ if(++LD.miss>8){ LD.d=null; ldSet("No face found. Face the screen, with your eyes in view of the camera."); ldChip(); } return; }
     LD.miss=0; LD.faceT=performance.now(); const F=ldFeatures(lm,W,H); LD.feat=F; LD.lm=lm;
     if(window.__ctHook){ try{ window.__ctHook(r.image,lm,W,H); }catch(e){} }
+    // head roll in the patient's view (+ = top of the head toward the patient's left), from the outer eye corners
+    try{ LD.roll=Math.atan2((lm[263].y-lm[33].y)*H,(lm[263].x-lm[33].x)*W)*180/Math.PI; LD.rollT=performance.now(); }catch(e){}
     if(PP.on&&S.mode==="u"){ try{ ppFrame(r.image,lm,W,H); }catch(e){} }
     if(ET.rec){ const [e1,e2]=F.eyes, R_=etRaw(r.image,lm,W,H), q={t:LD.frameT||performance.now(),ear:Math.min(e1.ear,e2.ear),yaw:F.yaw,u:F.u,ir:F.iris};
       if(R_){ const [a_,b_]=R_.e, od=a_[2]<b_[2]?a_:b_, os=a_[2]<b_[2]?b_:a_;     // unmirrored video: the right eye is on the image's left

@@ -3585,24 +3585,33 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
     const G={A0:[],A:[],S:[0.1,0.18,0.3],lam:0.04,dD,c,n:0};
     for(let v=-2.0;v<=3.0001;v+=0.1) G.A0.push(+v.toFixed(2));
     for(let v=-1.6;v<=1.6001;v+=0.1) G.A.push(+v.toFixed(2));
+    G.A1=G.A; G.A2=G.A; G.hist=[];
     const N=G.S.length*G.A0.length*G.A.length*G.A.length; G.L=new Float64Array(N);
-    let i=0; for(const s of G.S) for(const a0 of G.A0) for(const a1 of G.A) for(const a2 of G.A){ G.L[i++]=-0.5*((a0-0.5)/1.3)**2-0.5*(a1*a1+a2*a2)/(1.0*1.0); }
+    let i=0; for(const s of G.S) for(const a0 of G.A0) for(const a1 of G.A1) for(const a2 of G.A2){ G.L[i++]=-0.5*((a0-0.5)/1.3)**2-0.5*(a1*a1+a2*a2)/(1.0*1.0); }
     return G; }
   function asbUpdate(G,k,phiDeg,r){ const c2=Math.cos(2*phiDeg*Math.PI/180), s2=Math.sin(2*phiDeg*Math.PI/180), x=k/(2*G.dD*G.c), L=G.L, lam=G.lam; let i=0;
-    for(const s of G.S) for(const a0 of G.A0) for(const a1 of G.A){ const b=a0+a1*c2; for(const a2 of G.A){ const p=lam/2+(1-lam)*asbPhi((x-(b+a2*s2))/s); L[i++]+=Math.log(r?p:1-p); } }
-    G.n++; }
+    for(const s of G.S) for(const a0 of G.A0) for(const a1 of G.A1){ const b=a0+a1*c2; for(const a2 of G.A2){ const p=lam/2+(1-lam)*asbPhi((x-(b+a2*s2))/s); L[i++]+=Math.log(r?p:1-p); } }
+    G.n++; if(G.hist) G.hist.push([k,phiDeg,r]); }
   function asbWeights(G){ const L=G.L; let m=-Infinity; for(let i=0;i<L.length;i++) if(L[i]>m) m=L[i]; const W=new Float64Array(L.length); let t=0; for(let i=0;i<L.length;i++){ const w=Math.exp(L[i]-m); W[i]=w; t+=w; } for(let i=0;i<L.length;i++) W[i]/=t; return W; }
   function asbSample(G,W,rnd){ let u=rnd(), i=0; for(;i<W.length-1;i++){ u-=W[i]; if(u<=0) break; }
-    const nA=G.A.length, nA0=G.A0.length, a2=i%nA, a1=Math.floor(i/nA)%nA, a0=Math.floor(i/(nA*nA))%nA0, s=Math.floor(i/(nA*nA*nA0)); return {A0:G.A0[a0],A1:G.A[a1],A2:G.A[a2],s:G.S[s]}; }
+    const n2=G.A2.length, n1=G.A1.length, nA0=G.A0.length, a2=i%n2, a1=Math.floor(i/n2)%n1, a0=Math.floor(i/(n2*n1))%nA0, s=Math.floor(i/(n2*n1*nA0)); return {A0:G.A0[a0],A1:G.A1[a1],A2:G.A2[a2],s:G.S[s]}; }
   function asbSummary(G){ const W=asbWeights(G), nA=G.A.length, nA0=G.A0.length; let m0=0,m1=0,m2=0,v1=0,v2=0,v0=0,i=0;
-    for(const s of G.S) for(const a0 of G.A0) for(const a1 of G.A) for(const a2 of G.A){ const w=W[i++]; m0+=w*a0; m1+=w*a1; m2+=w*a2; }
+    for(const s of G.S) for(const a0 of G.A0) for(const a1 of G.A1) for(const a2 of G.A2){ const w=W[i++]; m0+=w*a0; m1+=w*a1; m2+=w*a2; }
     i=0; let angS=0, angW=0; const ax2=Math.atan2(m2,m1);
-    for(const s of G.S) for(const a0 of G.A0) for(const a1 of G.A) for(const a2 of G.A){ const w=W[i++]; v0+=w*(a0-m0)**2; v1+=w*(a1-m1)**2; v2+=w*(a2-m2)**2;
+    for(const s of G.S) for(const a0 of G.A0) for(const a1 of G.A1) for(const a2 of G.A2){ const w=W[i++]; v0+=w*(a0-m0)**2; v1+=w*(a1-m1)**2; v2+=w*(a2-m2)**2;
       const amp=Math.hypot(a1,a2); if(amp>0.04){ let d=Math.atan2(a2,a1)-ax2; d=Math.atan2(Math.sin(d),Math.cos(d)); angS+=w*d*d; angW+=w; } }
     const amp=Math.hypot(m1,m2); let axP=0.5*ax2*180/Math.PI; axP=((axP%180)+180)%180; let tabo=Math.round(180-axP)%180; if(tabo<=0) tabo+=180;
     const seC=2*Math.sqrt((v1+v2)/2), seAx=angW>0?Math.min(90,0.5*Math.sqrt(angS/angW)*180/Math.PI):90;
     return {A0:m0,A0sd:Math.sqrt(v0),A1:m1,A2:m2,amp,cyl:-2*amp,axP,tabo,Dmax:m0+amp,Dmin:m0-amp,seC,seAx,rms:0}; }
 
+  // Final estimate on a fine grid. The running grid (0.1 D steps) is coarse for steering trials; once the posterior is
+  // narrower than a step it collapses onto one node, giving values on a 0.05 D lattice and an absurdly small ± (0.02).
+  // Here all answers are re-scored on a 0.02 D grid centred on the running estimate, with finer noise levels too.
+  function asbRefine(G){ const c=asbSummary(G), sd1=c.seC/2, span=(m,sd)=>{ const h=Math.max(0.3,4*Math.max(sd,0.05)), a=[]; for(let v=m-h;v<=m+h+1e-9;v+=2*h/30) a.push(v); return a; };
+    const F={A0:span(c.A0,c.A0sd),A1:span(c.A1,sd1),A2:span(c.A2,sd1),S:[0.05,0.08,0.12,0.18,0.27,0.4],lam:G.lam,dD:G.dD,c:G.c,n:0,hist:null};
+    F.A=F.A1; const N=F.S.length*F.A0.length*F.A1.length*F.A2.length; F.L=new Float64Array(N);
+    let i=0; for(const s of F.S) for(const a0 of F.A0) for(const a1 of F.A1) for(const a2 of F.A2){ F.L[i++]=-0.5*((a0-0.5)/1.3)**2-0.5*(a1*a1+a2*a2); }
+    G.hist.forEach(([k,phi,r])=>asbUpdate(F,k,phi,r)); F.n=G.n; return F; }
   [["asTrials",40]].forEach(([k,v])=>{ if(S[k]==null) S[k]=v; });
   const AS={active:false,G:null,tr:null,cache:null,order:[]};
   const asOris=()=>[0,30,60,90,120,150];
@@ -3616,14 +3625,14 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
     const pd=sm.A0+sm.A1*c2+sm.A2*s2, K=asSmax()**2, k=Math.max(-K,Math.min(K,2*LCA*G.c*pd));
     AS.tr={o,k:Math.round(1000*k)/1000,pd}; draw(); }
   function asResp(redSharper){ if(!AS.active||!AS.tr) return; if(typeof LD!=="undefined"&&LD.on&&LD.rollT&&performance.now()-LD.rollT<600) AS.rolls.push(LD.roll); asbUpdate(AS.G,AS.tr.k,(AS.tr.o+90)%180,redSharper); asTrial(); }
-  function asFinish(){ const G=AS.G, f=asbSummary(G), W=asbWeights(G);
+  function asFinish(){ const G=asbRefine(AS.G), f=asbSummary(G), W=asbWeights(G);
     // The axis is measured on the screen; the eye's meridians turn with the head. With the camera running, the median
     // head roll during the run is taken off (a 10° head tilt is otherwise a 10° axis error).
     const rl=AS.rolls.length>=Math.min(10,G.n/2)?AS.rolls.slice().sort((a,b)=>a-b)[Math.floor(AS.rolls.length/2)]:null;
     f.axScreen=f.axP; f.roll=rl; if(rl!=null){ f.axP=(((f.axP-rl)%180)+180)%180; let t=Math.round(180-f.axP)%180; if(t<=0) t+=180; f.tabo=t; }
     // per-meridian focus implied by the posterior (for the table and chart)
     const pts=asOris().map(o=>{ const phi=(o+90)%180, c2=Math.cos(2*phi*Math.PI/180), s2=Math.sin(2*phi*Math.PI/180); let m=0,v=0,i=0;
-      for(const s_ of G.S) for(const a0 of G.A0) for(const a1 of G.A) for(const a2 of G.A){ const w=W[i++], d=a0+a1*c2+a2*s2; m+=w*d; v+=w*d*d; }
+      for(const s_ of G.S) for(const a0 of G.A0) for(const a1 of G.A1) for(const a2 of G.A2){ const w=W[i++], d=a0+a1*c2+a2*s2; m+=w*d; v+=w*d*d; }
       return {ori:o,phi,D:+m.toFixed(2),sd:+Math.sqrt(Math.max(0,v-m*m)).toFixed(2),edge:Math.abs(m)>2.3}; });
     const r=ntR("5"); r[S.eye["5"]]={pts,fit:f,pupil:S.coPupil,sce:+G.c.toFixed(3),n:G.n,dist:S.dist["5"],when:Date.now()}; AS.active=false; save(); draw(); beep(660,200); }
   function asPanels(env,ctx,o,k){ const d=env.d, dev=env.dev, pxPerD=(S.coPupil/1000)*d/dev, discMax=asSmax()*pxPerD;
@@ -3649,7 +3658,7 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
       const r=ntR("5"), eyeR=r[S.eye["5"]], dcm=S.dist["5"], f=eyeR&&eyeR.fit, mDist=100/dcm;
       const pf=v=>(v>=0?"+":"")+v.toFixed(2);
       const fitTxt=(e,o_)=>{ if(!o_||!o_.fit) return `${e}: –`; const F=o_.fit, cylM=2*F.amp, zC=cylM/Math.max(0.05,F.seC), small=cylM<0.25||zC<1.5, weak=!small&&zC<2.5;   // cylinder vs ITS OWN standard error (it compared half the cylinder with the cylinder's SE)
-        let t=`${e}: <b>${small?(cylM>=0.25?`no clear astigmatism (${pf(F.cyl)} × ${F.tabo} is within its own noise)`:"no measurable astigmatism"):`${pf(F.cyl)} × ${F.tabo}`}</b> (± ${F.seC.toFixed(2)} D${small?"":`, axis ± ${Math.round(F.seAx)}°`})${weak?" · <b>borderline</b>: repeat, or run 80 answers":""} · mean focus ${F.A0>=0?"behind":"in front of"} the screen by ${Math.abs(F.A0).toFixed(2)} D`;
+        let t=`${e}: <b>${small?(cylM>=0.25?`no clear astigmatism (${pf(F.cyl)} × ${F.tabo} is within its own noise)`:`${pf(F.cyl)} × ${F.tabo}: under 0.25 D, not clinically significant`):`${pf(F.cyl)} × ${F.tabo}`}</b> (± ${F.seC.toFixed(2)} D${small?"":`, axis ± ${Math.round(F.seAx)}°`})${weak?" · <b>borderline</b>: repeat, or run 80 answers":""} · mean focus ${F.A0>=0?"behind":"in front of"} the screen by ${Math.abs(F.A0).toFixed(2)} D`;
         t+=F.roll!=null?` · head tilt ${F.roll>=0?"+":""}${F.roll.toFixed(0)}° taken off the axis`:" · head tilt not measured: keep the head upright (or start the camera in Setup and it is corrected)";
         if(F.Dmax<-0.25) t+=` · <b>every meridian focused in front of the screen</b> (myopic, accommodation can't help): distance Rx ≈ <b>${pf(F.Dmax-mDist)} / ${pf(F.cyl)} × ${F.tabo}</b> (screen at ${dcm} cm; check at a second distance)`;
         if(o_.pts.some(p=>p.edge)) t+=` · <b>some meridians hit the end of the range</b>: move the screen so the lines look reasonably clear`;

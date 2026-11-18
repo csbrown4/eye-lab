@@ -6526,10 +6526,13 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
   renderLog();
 
   // 15 Hz flicker for the leak null: squares on for 33 ms, off for 33 ms, timed by the clock
-  let FLK={raf:0,n:0};
-  function flkRun(){ if(FLK.raf) return; const tick=()=>{ const g_=document.getElementById("flkSq");
+  let FLK={raf:0,n:0,last:0,dts:[]};
+  // locked to whole refreshes with an even number per half-cycle (see LCD SAFETY in the leak tuner): 15 Hz at 60 Hz
+  function flkRun(){ if(FLK.raf) return; const tick=ts=>{ const g_=document.getElementById("flkSq");
       if(!g_||!S.check||!S.flk){ FLK.raf=0; if(g_) g_.removeAttribute("visibility"); return; }
-      g_.setAttribute("visibility", Math.floor(performance.now()*0.03)&1 ? "hidden" : "visible"); FLK.raf=requestAnimationFrame(tick); };   // 15 Hz whatever the refresh rate (60/120 Hz)
+      if(FLK.last){ FLK.dts.push(ts-FLK.last); if(FLK.dts.length>30) FLK.dts.shift(); } FLK.last=ts;
+      const fps=FLK.dts.length>5?1000/FLK.dts.slice().sort((a,b)=>a-b)[FLK.dts.length>>1]:60, half=Math.max(2,2*Math.round(fps/60));
+      g_.setAttribute("visibility", Math.floor(FLK.n++/half)%2 ? "hidden" : "visible"); FLK.raf=requestAnimationFrame(tick); };
     FLK.raf=requestAnimationFrame(tick); }
 
   // ---- near points measured by the camera ----
@@ -6950,14 +6953,26 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
       // Flicker null (heterochromatic flicker photometry): the squares swap with the background at 15 Hz. Leaked light
       // differs from the background in COLOUR as well as brightness, so a steady square never fully vanishes even at the
       // right setting; at 15 Hz colour differences fuse but brightness differences still flicker. Null = flicker stops.
-      const HZ=[30,15,20,10], hzTxt=()=>flick?`Flicker ${S.tunHz||30} Hz`:"Flicker off";
-      const fbtn=B(hzTxt(),()=>{ if(!flick){ flick=true; S.tunHz=30; } else { const i=HZ.indexOf(+(S.tunHz||30)); if(i===HZ.length-1) flick=false; else S.tunHz=HZ[i+1]; } fbtn.textContent=hzTxt(); });
+      // LCD SAFETY: an LCD drives each pixel with alternating polarity on alternate refreshes. A pattern that changes on
+      // EVERY refresh (30 Hz on a 60 Hz panel) always shows the same state on the same polarity, which puts a DC bias on
+      // the liquid crystal: within seconds that region can keep flickering faintly on mid-tone backgrounds (image
+      // sticking) until the charge drains away. So the flicker is locked to whole refreshes, with an EVEN number of
+      // refreshes in each half-cycle (each state sees both polarities equally): 15 Hz or 7.5 Hz at 60 Hz.
+      if(![15,7.5].includes(+S.tunHz)) S.tunHz=15;
+      const HZ=[15,7.5], hzTxt=()=>flick?`Flicker ${S.tunHz} Hz`:"Flicker off";
+      const fbtn=B(hzTxt(),()=>{ if(!flick){ flick=true; S.tunHz=15; } else { const i=HZ.indexOf(+S.tunHz); if(i===HZ.length-1) flick=false; else S.tunHz=HZ[i+1]; } fbtn.textContent=hzTxt(); });
       B("Screen curve…",()=>{ alive=false; o.remove(); curveCal(()=>open(step)); });
       // Colour flicker stops being visible above roughly 12–15 Hz while brightness flicker stays visible to ~50 Hz, so the
       // null needs ≥15 Hz. "Smooth" swaps square-wave switching for a sine-wave fade: a slow panel's red and green pixels
       // rise and fall at different speeds, and hard switching leaves a flicker of its own that no setting can cancel.
       const sbtn=B(S.tunSmooth?"Smooth: on":"Smooth: off",()=>{ S.tunSmooth=!S.tunSmooth; sbtn.textContent=S.tunSmooth?"Smooth: on":"Smooth: off"; });
-      const loop=ts=>{ if(!alive) return; const hz=+S.tunHz||30; fph = S.tunSmooth ? 0.5-0.5*Math.cos(2*Math.PI*hz*ts/1000) : Math.floor(ts/(1000/(2*hz)))%2; paint(); requestAnimationFrame(loop); };
+      let nF=0, lastTs=0, dts=[]; const t0L=performance.now();
+      const loop=ts=>{ if(!alive) return;
+        if(lastTs){ dts.push(ts-lastTs); if(dts.length>30) dts.shift(); } lastTs=ts;
+        const fps=dts.length>5?1000/dts.slice().sort((a,b)=>a-b)[dts.length>>1]:60, half=Math.max(2,2*Math.round(fps/(4*(+S.tunHz||15))));   // even
+        fph = S.tunSmooth ? 0.5-0.5*Math.cos(Math.PI*nF/half) : Math.floor(nF/half)%2; nF++;
+        if(performance.now()-t0L>90000&&!down){ flick=false; fbtn.textContent=hzTxt(); }   // stop flickering after 90 s
+        paint(); requestAnimationFrame(loop); };
       function paint(){ const dpr=devicePixelRatio||1, W=o.clientWidth, H=o.clientHeight; if(cv.width!==Math.round(W*dpr)){ cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr); cv.style.width=cv.width/dpr+"px"; cv.style.height=cv.height/dpr+"px"; } g.setTransform(dpr,0,0,dpr,0,0);
         { const {x,y}=crosstalk(), pr=linA(S.ped/100), pg=linB(S.gped/100); RGBG={A:pr+x*pg,B:pg+y*pr}; }
         const bg=lensC3(S.ped/100,S.gped/100);

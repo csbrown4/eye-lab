@@ -3648,8 +3648,8 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
       const s=Math.max(2,0.06*ntPPD(env)); ctx.fillStyle="#666"; ctx.fillRect(g_.cxp-s/2,g_.cyp-s/2,s,s);
       const r=ntR("5"), eyeR=r[S.eye["5"]], dcm=S.dist["5"], f=eyeR&&eyeR.fit, mDist=100/dcm;
       const pf=v=>(v>=0?"+":"")+v.toFixed(2);
-      const fitTxt=(e,o_)=>{ if(!o_||!o_.fit) return `${e}: –`; const F=o_.fit, small=F.amp<Math.max(0.12,F.seC);
-        let t=`${e}: <b>${small?"no measurable astigmatism":`${pf(F.cyl)} × ${F.tabo}`}</b> (± ${F.seC.toFixed(2)} D${small?"":`, axis ± ${Math.round(F.seAx)}°`}) · mean focus ${F.A0>=0?"behind":"in front of"} the screen by ${Math.abs(F.A0).toFixed(2)} D`;
+      const fitTxt=(e,o_)=>{ if(!o_||!o_.fit) return `${e}: –`; const F=o_.fit, cylM=2*F.amp, zC=cylM/Math.max(0.05,F.seC), small=cylM<0.25||zC<1.5, weak=!small&&zC<2.5;   // cylinder vs ITS OWN standard error (it compared half the cylinder with the cylinder's SE)
+        let t=`${e}: <b>${small?(cylM>=0.25?`no clear astigmatism (${pf(F.cyl)} × ${F.tabo} is within its own noise)`:"no measurable astigmatism"):`${pf(F.cyl)} × ${F.tabo}`}</b> (± ${F.seC.toFixed(2)} D${small?"":`, axis ± ${Math.round(F.seAx)}°`})${weak?" · <b>borderline</b>: repeat, or run 80 answers":""} · mean focus ${F.A0>=0?"behind":"in front of"} the screen by ${Math.abs(F.A0).toFixed(2)} D`;
         t+=F.roll!=null?` · head tilt ${F.roll>=0?"+":""}${F.roll.toFixed(0)}° taken off the axis`:" · head tilt not measured: keep the head upright (or start the camera in Setup and it is corrected)";
         if(F.Dmax<-0.25) t+=` · <b>every meridian focused in front of the screen</b> (myopic, accommodation can't help): distance Rx ≈ <b>${pf(F.Dmax-mDist)} / ${pf(F.cyl)} × ${F.tabo}</b> (screen at ${dcm} cm; check at a second distance)`;
         if(o_.pts.some(p=>p.edge)) t+=` · <b>some meridians hit the end of the range</b>: move the screen so the lines look reasonably clear`;

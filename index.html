@@ -4566,6 +4566,8 @@ calibration: ${cs.txt}`,
     const dkField=()=>svg.appendChild(el("rect",{x:-cx*k,y:-cy0*k,width:vw,height:vh,style:`fill:${DkField}`}));
     const am=a=>d*Math.tan(a*ARCMIN);
 
+      // starting a test ends glasses calibration: otherwise its flickering squares and labels stay behind the test
+      if(S.check){ try{ const f_=TAPS[m], c_=f_&&f_(); if(c_&&c_.run&&c_.start){ S.check=false; setTimeout(()=>{ try{ sync(); }catch(e){} },0); } }catch(e){} }
       if(usesRG && S.check){
         const sq=Math.min(22, vw/10), gap=sq*0.35, lfs=Math.max(1.8,am(16))/digitRatio;
         const lab={fill:"#9a9a9a","font-size":lfs.toFixed(3),"font-weight":"400","text-anchor":"middle"};

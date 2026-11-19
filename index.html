@@ -3720,8 +3720,11 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
   function asFinish(){ const G=AS.G, Pe=asPe(); let f=as2Fit(G,false), self=null;
     if(S.asPup==="self"&&S.asMeth!=="chrom"){ const g=as2Fit(G,true); self={ok:isFinite(g.qRelSE)&&g.qRelSE<0.15&&2*g.amp>=0.5,Q:g.Q,rel:g.qRelSE,P:as2Pupil(g.Q,Pe)}; if(self.ok) f=g; }
     f.seAx=Math.min(90,f.seAx*1.7);                  // Laplace understates the axis spread (simulation: ×1.7 matches the real scatter)
+    f.seC*=1.5;                                      // and the cylinder spread (simulation, 40 answers: real rms 1.2–1.8 × the Laplace SE)
     const rl=AS.rolls.length>=Math.min(10,G.n/2)?AS.rolls.slice().sort((a,b)=>a-b)[Math.floor(AS.rolls.length/2)]:null;
-    const pts=[0,30,60,90,120,150].map(o=>{ const phi=(o+90)%180, m=f.meri(phi); return {ori:o,phi,D:+m.D.toFixed(2),sd:+m.sd.toFixed(2),edge:Math.abs(m.D)>2.3}; });
+    const pts=[0,30,60,90,120,150].map(o=>{ const phi=(o+90)%180, m=f.meri(phi); return {ori:o,phi,D:+m.D.toFixed(2),sd:+(1.5*m.sd).toFixed(2),edge:Math.abs(m.D)>2.3}; });
+    const tm=phi=>{ let v=Math.round(((180-(phi-(rl||0)))%180+180)%180); return v===0?180:v; };   // meridian in TABO (examiner's view), head tilt removed
+    pts.forEach(p=>p.tm=tm(p.phi));
     const fit={...f}; delete fit.meri; fit.axScreen=fit.axP; fit.roll=rl;
     if(rl!=null){ fit.axP=(((fit.axP-rl)%180)+180)%180; let tb=Math.round(180-fit.axP)%180; if(tb<=0) tb+=180; fit.tabo=tb; }
     const r=ntR("5"); r[S.eye["5"]]={pts,fit,self,pupil:+Pe.toFixed(1),pupSrc:S.asPup,pupSd:S.asPup==="model"?asPupModel().sd:null,col:S.asCol,lum:AS.cfg.cal?AS.cfg.cal.f:null,meth:S.asMeth,dD:+G.dD.toFixed(3),n:G.n,dist:S.dist["5"],when:Date.now()};
@@ -3808,7 +3811,7 @@ result f = geometric mean of ${ASL.N} settings / standard; used as the ${an} lev
         if(o_.pts.some(p=>p.edge)) t+=` · <b>some meridians hit the end of the range</b>: move the screen so the lines look reasonably clear`;
         t+=` · ${AS2_PAIR[o_.col||"RG"].n}, ${o_.meth==="chrom"?"colour comparisons only":"colour + orientation"}, ${o_.n} answers`;
         return t; };
-      const res=`<span>${fitTxt("OD",r.OD)}</span><span>${fitTxt("OS",r.OS)}</span>`+(eyeR&&eyeR.pts?`<span>${S.eye["5"]} per meridian: ${eyeR.pts.slice().sort((a,b)=>a.phi-b.phi).map(p=>`${p.phi}°: ${pf(p.D)}±${p.sd.toFixed(2)}`).join(" · ")}</span>`+asChart(eyeR):"");
+      const res=`<span>${fitTxt("OD",r.OD)}</span><span>${fitTxt("OS",r.OS)}</span>`+(eyeR&&eyeR.pts?`<span>${S.eye["5"]} focus by meridian (TABO): ${eyeR.pts.map(p=>({...p,tm:p.tm!=null?p.tm:((180-p.phi)%180||180)})).sort((a,b)=>a.tm-b.tm).map(p=>`${p.tm}°: ${pf(p.D)}±${p.sd.toFixed(2)}`).join(" · ")}</span>`+asChart(eyeR):"");
       const T_=AS.tr, desc=!AS.active||!T_?"stopped":T_.t.type===1?`colour comparison: lines at ${T_.t.ori}° · blur ${Math.sqrt(Math.abs(T_.k)).toFixed(2)} D on ${T_.k>0?AS2_CN[cfg.S]:T_.k<0?AS2_CN[cfg.L]:"neither"} · answer ${AS.G.n+1} of ${+S.asTrials||40}`
         :`orientation comparison in ${AS2_CN[T_.t.col==="L"?cfg.L:cfg.S]}: ${T_.t.oriA}° vs ${T_.t.oriB}° lines · blur ${Math.sqrt(Math.abs(T_.k)).toFixed(2)} D on the ${T_.k>0?T_.t.oriA:T_.t.oriB}° set · answer ${AS.G.n+1} of ${+S.asTrials||40}`;
       const warns=["Experimental. One eye at a time, the other covered; no glasses or filters (spectacles or contact lenses give the residual astigmatism over them). Look at each patch in turn before answering; keep the head upright."];
@@ -3833,9 +3836,10 @@ lines ≥ 14′ apart, spacing 2.2 × the larger of the screen and expected eye 
     const X=a=>pl+(W_-pl-pr)*a/180, Y=v=>H_-pb-(H_-pb-pt)*(v-lo)/(hi-lo); let s=`<svg viewBox="0 0 ${W_} ${H_}" style="width:100%;max-width:${W_}px;display:block;margin-top:6px" font-size="10" fill="currentColor">`;
     [0,45,90,135,180].forEach(a=>{ s+=`<line x1="${X(a)}" y1="${pt}" x2="${X(a)}" y2="${H_-pb}" stroke="currentColor" stroke-opacity=".12"/><text x="${X(a)}" y="${H_-6}" text-anchor="middle">${a}°</text>`; });
     for(let v=Math.ceil(lo*2)/2; v<=hi; v+=0.5) s+=`<line x1="${pl}" y1="${Y(v)}" x2="${W_-pr}" y2="${Y(v)}" stroke="currentColor" stroke-opacity=".12"/><text x="${pl-4}" y="${Y(v)+3}" text-anchor="end">${v.toFixed(1)}</text>`;
-    let d_=""; for(let a=0;a<=180;a+=3){ const v=F.A0+F.amp*Math.cos(2*(a-(F.axScreen!=null?F.axScreen:F.axP))*Math.PI/180); d_+=(a?"L":"M")+X(a).toFixed(1)+" "+Y(v).toFixed(1); } s+=`<path d="${d_}" fill="none" stroke="var(--accent,#c0392b)" stroke-width="1.5"/>`;
-    o.pts.forEach(p=>{ s+=`<line x1="${X(p.phi)}" y1="${Y(p.D-p.sd)}" x2="${X(p.phi)}" y2="${Y(p.D+p.sd)}" stroke="currentColor"/><circle cx="${X(p.phi)}" cy="${Y(p.D)}" r="3"/>`; });
-    return s+`<text x="${pl}" y="${pt+8}">focus error by meridian (D, + = behind the screen), patient's view</text></svg>`; }
+    const rl_=F.roll||0, tmOf=p=>p.tm!=null?p.tm:((180-p.phi)%180||180);
+    let d_=""; for(let a=0;a<=180;a+=3){ const v=F.A0+F.amp*Math.cos(2*((180-a+rl_)-(F.axScreen!=null?F.axScreen:F.axP))*Math.PI/180); d_+=(a?"L":"M")+X(a).toFixed(1)+" "+Y(v).toFixed(1); } s+=`<path d="${d_}" fill="none" stroke="var(--accent,#c0392b)" stroke-width="1.5"/>`;
+    o.pts.forEach(p=>{ const x=X(tmOf(p)); s+=`<line x1="${x}" y1="${Y(p.D-p.sd)}" x2="${x}" y2="${Y(p.D+p.sd)}" stroke="currentColor"/><circle cx="${x}" cy="${Y(p.D)}" r="3"/>`; });
+    return s+`<text x="${pl}" y="${pt+8}">focus error (D, + behind screen) by TABO meridian</text></svg>`; }
 
   // ---------------- 9: lens-free anisometropia (dichoptic chromatic) ----------------
   // Through the glasses one eye sees only red, the other only green. Each eye sees its own panel of letters. Each eye's

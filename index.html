@@ -3680,7 +3680,7 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
     return {A0:M,A0sd:Math.sqrt(Math.max(0,V[0][0])),A1,A2,amp,cyl:-2*amp,axP,tabo,Dmax:M+amp,Dmin:M-amp,seC,seAx,Q,qRelSE:freeQ?Math.sqrt(Math.max(0,V[5][5])):null,s1:Math.exp(x[3]),s2:Math.exp(x[4]),meri,freeQ}; }
   if(S.asMethV!==2){ S.asMeth="chrom"; if(S.asPup==="self") S.asPup="entered"; S.asMethV=2; }
   S.asLumM="mdb";
-  [["asTrials",40],["asMeth","chrom"],["asHold","on"],["asAge",30],["asLight","indoor"],["asCol","RG"],["asPup","entered"],["asLumM","mdb"],["asLumUse","match"],["asLumCal",{}]].forEach(([k,v])=>{ if(S[k]==null) S[k]=v; });
+  [["asTrials",40],["asMeth","chrom"],["asAge",30],["asLight","indoor"],["asCol","RG"],["asPup","entered"],["asLumM","mdb"],["asLumUse","match"],["asLumCal",{}]].forEach(([k,v])=>{ if(S[k]==null) S[k]=v; });
   const AS2_LAMBDA=P3?[615,544,465]:[611,549,464], AS2_Y=P3?[0.2290,0.6917,0.0793]:[0.2126,0.7152,0.0722];
   const AS2_PAIR={RG:{L:0,S:1,n:"red / green"},RB:{L:0,S:2,n:"red / blue"},GB:{L:1,S:2,n:"green / blue"}};
   const AS2_CN=["red","green","blue"];
@@ -3710,7 +3710,7 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
     const k=Math.max(-K,Math.min(K,as2Pred(t,sm.M,sm.A1,sm.A2,G.Q0,G.dD)));
     const Dm=ph=>sm.M+sm.A1*Math.cos(2*ph*Math.PI/180)+sm.A2*Math.sin(2*ph*Math.PI/180);
     const eye=t.type===1?Math.abs(Dm(t.phi))+G.dD/2:Math.max(Math.abs(Dm(t.phiA)),Math.abs(Dm(t.phiB)))+G.dD/2;   // expected eye blur, for the line spacing
-    AS.tr={t,k:Math.round(1000*k)/1000,left:Math.random()<0.5,top:Math.random()<0.5,eye}; draw(); }
+    AS.tr={t,k:Math.round(1000*k)/1000,left:Math.random()<0.5,eye}; draw(); }
   // leftSharper: the answer. r = "the side that k > 0 blurs looked worse"
   function asResp(leftSharper){ if(!AS.active||!AS.tr) return; const T_=AS.tr, t=T_.t;
     const r=t.type===1?(leftSharper===T_.left):(leftSharper===!T_.left);     // T1: left = long colour if T_.left; T2: left = set A if T_.left
@@ -3724,7 +3724,7 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
     const pts=[0,30,60,90,120,150].map(o=>{ const phi=(o+90)%180, m=f.meri(phi); return {ori:o,phi,D:+m.D.toFixed(2),sd:+m.sd.toFixed(2),edge:Math.abs(m.D)>2.3}; });
     const fit={...f}; delete fit.meri; fit.axScreen=fit.axP; fit.roll=rl;
     if(rl!=null){ fit.axP=(((fit.axP-rl)%180)+180)%180; let tb=Math.round(180-fit.axP)%180; if(tb<=0) tb+=180; fit.tabo=tb; }
-    const r=ntR("5"); r[S.eye["5"]]={pts,fit,self,pupil:+Pe.toFixed(1),pupSrc:S.asPup,pupSd:S.asPup==="model"?asPupModel().sd:null,hold:S.asHold!=="off",col:S.asCol,lum:AS.cfg.cal?AS.cfg.cal.f:null,meth:S.asMeth,dD:+G.dD.toFixed(3),n:G.n,dist:S.dist["5"],when:Date.now()};
+    const r=ntR("5"); r[S.eye["5"]]={pts,fit,self,pupil:+Pe.toFixed(1),pupSrc:S.asPup,pupSd:S.asPup==="model"?asPupModel().sd:null,col:S.asCol,lum:AS.cfg.cal?AS.cfg.cal.f:null,meth:S.asMeth,dD:+G.dD.toFixed(3),n:G.n,dist:S.dist["5"],when:Date.now()};
     AS.active=false; save(); draw(); beep(660,200); }
   // ---- brightness match for the colour pair, per screen ----
   // Static "minimally distinct border" (default: nothing changes on screen, so no flicker at all): 8 sectors in the two
@@ -3758,15 +3758,13 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
     const t=T_.t, k=T_.k, sB=Math.sqrt(Math.abs(k));
     // line spacing follows this trial's blur (screen disc or expected eye blur, whichever is larger); both panels share it
     const bl=Math.max(sB,T_.eye)*pxPerD, p=Math.max(ntDegPx(env,14/60),2.2*bl,6), w=Math.max(2,0.3*p), Rp=2.5*p, Rf=Rp+0.5*p, soft=0.6*p, pw=Math.ceil(2*(Rf+soft))+2, ph=pw;
-    const ck=[JSON.stringify(t),k,T_.left,T_.top,env.W,env.H,d,asPe(),S.asHold,P3,S.asCol,cfg.lvL,cfg.lvS,Math.round(p)].join();
+    const ck=[JSON.stringify(t),k,T_.left,env.W,env.H,d,asPe(),P3,S.asCol,cfg.lvL,cfg.lvS,Math.round(p)].join();
     if(AS.cache&&AS.cache.ck===ck) return AS.cache;
     const lines=o=>maskFrom(pw,ph,c=>{ c.translate(pw/2,ph/2); c.rotate(-o*Math.PI/180); c.beginPath(); c.arc(0,0,Rp,0,7); c.clip(); for(let i=-3;i<=3;i++) c.fillRect(-Rp-2,i*p-w/2,2*Rp+4,w); });
     const blur=(M,on)=>on&&sB>0?discBlur(M,pw,ph,sB*pxPerD):M;
     let A,B;   // A = the panel that k > 0 blurs
     if(t.type===1){ const M=lines(t.ori); A=chromPanel2(ctx,blur(M,k>0),pw,ph,cfg.S,cfg.lvS,Rf,soft); B=chromPanel2(ctx,blur(M,k<0),pw,ph,cfg.L,cfg.lvL,Rf,soft);
-      AS.cache={ck,left:T_.left?B:A,right:T_.left?A:B,pw,ph,p,w};        // T1: T_.left → long colour (B) on the left
-      if(S.asHold!=="off"){ const M2=lines((t.ori+90)%180), A2=chromPanel2(ctx,M2,pw,ph,cfg.S,cfg.lvS,Rf,soft), B2=chromPanel2(ctx,M2,pw,ph,cfg.L,cfg.lvL,Rf,soft);
-        AS.cache.oL=T_.left?B2:A2; AS.cache.oR=T_.left?A2:B2; AS.cache.top=T_.top; } }
+      AS.cache={ck,left:T_.left?B:A,right:T_.left?A:B,pw,ph,p,w}; }        // T1: T_.left → long colour (B) on the left
     else { const ch=t.col==="L"?cfg.L:cfg.S, lv=t.col==="L"?cfg.lvL:cfg.lvS; A=chromPanel2(ctx,blur(lines(t.oriA),k>0),pw,ph,ch,lv,Rf,soft); B=chromPanel2(ctx,blur(lines(t.oriB),k<0),pw,ph,ch,lv,Rf,soft);
       AS.cache={ck,left:T_.left?A:B,right:T_.left?B:A,pw,ph,p,w}; }        // T2: T_.left → set A on the left
     return AS.cache; }
@@ -3784,7 +3782,6 @@ result f = geometric mean of ${ASL.N} settings / standard; used as the ${an} lev
       <label data-modes="5">Colours<select data-ntk="asCol"><option value="RG">Red / green</option><option value="RB">Red / blue (experimental)</option><option value="GB">Green / blue (experimental)</option></select></label>
       <label data-modes="5">Brightness of the two colours<select data-ntk="asLumUse"><option value="match">Your own match, if made (else standard)</option><option value="std">Standard observer</option></select></label>
       <label data-modes="5">Match<div class="btns"><button type="button" data-nta="5:lum">Match brightness (B)</button><button type="button" data-nta="5:lumclr">Clear match</button></div></label>
-      <label data-modes="5">Hold focus<select data-ntk="asHold"><option value="on">Show the perpendicular lines too (recommended)</option><option value="off">Off (one orientation at a time, previous)</option></select></label>
       <label data-modes="5">Pupil<select data-ntk="asPup"><option value="entered">As entered (mm)</option><option value="model">Estimated from lighting and age (model)</option><option value="self">Self-calibrating (experimental: adds error; needs colour + orientation and a cylinder ≥ 0.5 D)</option></select></label>
       <label data-modes="5" data-ntm="model" data-ntmk="asPup">Your age<input data-ntk="asAge" data-ntt="num" type="number" min="5" max="100" step="1"></label>
       <label data-modes="5" data-ntm="model" data-ntmk="asPup">Room lighting during the test<select data-ntk="asLight">${Object.entries(AS_LIGHT).map(([k,v])=>`<option value="${k}">${v[1]}</option>`).join("")}</select></label>
@@ -3798,18 +3795,13 @@ result f = geometric mean of ${ASL.N} settings / standard; used as the ${an} lev
       if(k==="s"||k==="S"){ asStart(); return true; } if(AS.active&&(k==="ArrowLeft"||k==="ArrowRight")){ asResp(k==="ArrowLeft"); return true; } return false; },
     draw(env){ this.env=env; if(ASL.active) return aslDrawNT(env);
       const g_=ntCv(env,"#000"), ctx=g_.ctx, P_=asPanels(env,ctx), gap=ntDegPx(env,0.6), cfg=AS.cfg||as2Cfg();
-      if(P_.oL){ // hold-focus layout: the compared pair (outlined) and the perpendicular lines in the other row, so the stimulus always contains both orientations
-        const yC=P_.top?g_.cyp-gap/2-P_.ph:g_.cyp+gap/2, yO=P_.top?g_.cyp+gap/2:g_.cyp-gap/2-P_.ph, xL=Math.round(g_.cxp-gap/2-P_.pw), xR=Math.round(g_.cxp+gap/2);
-        ctx.putImageData(P_.left,xL,Math.round(yC)); ctx.putImageData(P_.right,xR,Math.round(yC)); ctx.putImageData(P_.oL,xL,Math.round(yO)); ctx.putImageData(P_.oR,xR,Math.round(yO));
-        ctx.strokeStyle="#777"; ctx.lineWidth=Math.max(1,env.dpr||1); ctx.strokeRect(xL-3,Math.round(yC)-3,2*P_.pw+gap+6,P_.ph+6); }
-      else { ctx.putImageData(P_.left,Math.round(g_.cxp-gap/2-P_.pw),Math.round(g_.cyp-P_.ph/2)); ctx.putImageData(P_.right,Math.round(g_.cxp+gap/2),Math.round(g_.cyp-P_.ph/2)); }
+      { ctx.putImageData(P_.left,Math.round(g_.cxp-gap/2-P_.pw),Math.round(g_.cyp-P_.ph/2)); ctx.putImageData(P_.right,Math.round(g_.cxp+gap/2),Math.round(g_.cyp-P_.ph/2)); }
       const s=Math.max(2,0.06*ntPPD(env)); ctx.fillStyle="#666"; ctx.fillRect(g_.cxp-s/2,g_.cyp-s/2,s,s);
       const r=ntR("5"), eyeR=r[S.eye["5"]], dcm=S.dist["5"], mDist=100/dcm, pf=v=>(v>=0?"+":"")+v.toFixed(2);
       const fitTxt=(e,o_)=>{ if(!o_||!o_.fit) return `${e}: –`; const F=o_.fit, cylM=2*F.amp, zC=cylM/Math.max(0.05,F.seC), small=cylM<0.25||zC<1.5, weak=!small&&zC<2.5;
         let t=`${e}: <b>${small?(cylM>=0.25?`no clear astigmatism (${pf(F.cyl)} × ${F.tabo} is within its own noise)`:`${pf(F.cyl)} × ${F.tabo}: under 0.25 D, not clinically significant`):`${pf(F.cyl)} × ${F.tabo}`}</b> (± ${F.seC.toFixed(2)} D${small?"":`, axis ± ${Math.round(F.seAx)}°`})${weak?" · <b>borderline</b>: repeat, or run 80 answers":""} · mean focus ${F.A0>=0?"behind":"in front of"} the screen by ${Math.abs(F.A0).toFixed(2)} D`;
         if(o_.pupSrc==="model"&&!(o_.self&&o_.self.ok)){ const P=o_.pupil, sc=Q=>asbSCE(P)*P*P/(asbSCE(Q)*Q*Q), lo=Math.abs(F.cyl)*sc(P+o_.pupSd), hi=Math.abs(F.cyl)*sc(Math.max(2,P-o_.pupSd));
           t+=` · pupil from the model: ${P.toFixed(1)} ± ${o_.pupSd} mm, so the cylinder could be ${lo.toFixed(2)}–${hi.toFixed(2)} D from the pupil alone`; }
-        if(o_.hold===false) t+=" · hold-focus off";
         if(o_.self) t+=o_.self.ok?` · <b>self-calibrated</b>: effective pupil ${o_.self.P.toFixed(1)} mm (entered ${o_.pupil} mm; scale ± ${Math.round(100*o_.self.rel)}%)`:` · self-calibration not possible on this run (needs a clear cylinder of 0.5 D or more): sized from the entered ${o_.pupil} mm pupil`;
         t+=F.roll!=null?` · head tilt ${F.roll>=0?"+":""}${F.roll.toFixed(0)}° taken off the axis`:" · head tilt not measured: keep the head upright (or start the camera in Setup and it is corrected)";
         if(F.Dmax<-0.25) t+=` · <b>every meridian focused in front of the screen</b> (myopic, accommodation can't help): distance Rx ≈ <b>${pf(F.Dmax-mDist)} / ${pf(F.cyl)} × ${F.tabo}</b> (screen at ${dcm} cm; check at a second distance)`;
@@ -3836,7 +3828,7 @@ cylinder = −2√(A1² + A2²) · axis = meridian of max D · TABO = 180° − 
 lines ≥ 14′ apart, spacing 2.2 × the larger of the screen and expected eye blur`,
         opt:`<p><b>The ruler.</b> The eye focuses shorter wavelengths more strongly: green about ${(thibos(AS2_LAMBDA[0])-thibos(AS2_LAMBDA[1])).toFixed(2)} D more than red, blue about ${(thibos(AS2_LAMBDA[0])-thibos(AS2_LAMBDA[2])).toFixed(2)} D more than red. Lines are blurred only by the focus across them, so lines at one orientation test one meridian.</p><p><b>Two comparisons.</b> In the colour comparison, the same lines in both colours are matched for sharpness by blurring one; that measures each meridian's focus directly. In the orientation comparison, perpendicular line sets in one colour are matched, like a clinical fan-and-block chart; done in both colours, the difference measures the cylinder and the ratio measures the mean focus without needing the pupil. Both feed one model. In simulations with an ideal observer the two methods are equally accurate (power-vector error ≈ 0.2 D at 40 answers); the orientation comparisons are also exposed to orientation-specific perceptual effects (the oblique effect, adaptation to your own astigmatism) that the colour comparisons cancel, so colour comparisons are the default.</p><p><b>Limits.</b> The cylinder's size depends on the pupil (unless self-calibrated, which needs a cylinder of about 0.5 D or more and assumes the colour judgement has no built-in bias) and on this eye's own chromatic aberration (about ±10% between people); the axis depends on neither but needs the head upright. Research method: confirm with a refraction.</p>`,
         rows:`<tr><th>Result</th><th>Meaning</th></tr><tr><td>Under 0.25 D, or within its ±</td><td>No meaningful astigmatism</td></tr><tr><td>With-the-rule (axis near 180)</td><td>Most common in young eyes</td></tr><tr><td>Against-the-rule (axis near 90)</td><td>Common after about 50</td></tr><tr><td>Borderline</td><td>Repeat with 80 answers</td></tr>`,
-        steps:`<li>No filters, no glasses. Cover the eye not being tested, and set it above. Enter the pupil measured in this light (or choose self-calibrating).</li><li>Screen distance: anything you can see reasonably clearly.</li><li>Press S. Compare the two patches inside the grey outline (the other row is there to hold your focus steady: ignore it). Look at each in turn and answer which side's lines are sharper: ← / tap left, → / tap right. Guess when they look the same. ${+S.asTrials||40} answers.</li><li>Repeat for the other eye.</li>` }; } };
+        steps:`<li>No filters, no glasses. Cover the eye not being tested, and set it above. Enter the pupil measured in this light (or choose self-calibrating).</li><li>Screen distance: anything you can see reasonably clearly.</li><li>Press S. Two patches of lines appear. Look at each in turn and answer which side's lines are sharper: ← / tap left, → / tap right. Guess when they look the same. ${+S.asTrials||40} answers.</li><li>Repeat for the other eye.</li>` }; } };
   function asChart(o){ if(!o.fit) return ""; const W_=380,H_=150,pl=36,pb=22,pt=8,pr=8, F=o.fit, Ds=o.pts.map(p=>[p.D-p.sd,p.D+p.sd]).flat().concat([F.Dmax,F.Dmin]), lo=Math.min(...Ds)-0.1, hi=Math.max(...Ds)+0.1;
     const X=a=>pl+(W_-pl-pr)*a/180, Y=v=>H_-pb-(H_-pb-pt)*(v-lo)/(hi-lo); let s=`<svg viewBox="0 0 ${W_} ${H_}" style="width:100%;max-width:${W_}px;display:block;margin-top:6px" font-size="10" fill="currentColor">`;
     [0,45,90,135,180].forEach(a=>{ s+=`<line x1="${X(a)}" y1="${pt}" x2="${X(a)}" y2="${H_-pb}" stroke="currentColor" stroke-opacity=".12"/><text x="${X(a)}" y="${H_-6}" text-anchor="middle">${a}°</text>`; });
@@ -6948,7 +6940,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     "1":()=>({run:PF.active||PF.demo,ans:PF.phase==="answer",start:"s",v:1,z:[["ArrowUp","Moving band IN FRONT"],["ArrowDown","Moving band BEHIND"]],how:"Eyes on the dot. A dotty band slides between two still bands; when it stops, tap the TOP half if it was in front of them, the BOTTOM half if behind."}),
     "3":()=>({run:SB.active,ans:SB.active,start:"s",v:1,z:[["ArrowUp","Only TOP line (hold)"],["ArrowLeft","DOUBLE (hold)"],["ArrowDown","Only BOTTOM line (hold)"]],how:"Look at the centre dot. Hold the top while only the top line is there, the bottom while only the bottom line is there, the middle while things look double. Let go when normal."}),
     "4":()=>({run:DC.active,ans:true,start:"s",z:[["ArrowLeft","LEFT more turned"],["ArrowRight","RIGHT more turned"]],how:"Two dotted surfaces turned like doors. Tap the side whose surface is turned more (right edge further away). Guess if equal."}),
-    "5":()=>ASL.active?({run:true,ans:true,start:"s",v:1,z:[["ArrowUp",`${AS2_CN[as2Base().adj]} brighter`],["ArrowDown",`${AS2_CN[as2Base().adj]} dimmer`]],x:[[" ","Matched"]],how:""}):({run:AS.active,ans:true,start:"s",z:[["ArrowLeft","Left lines sharper"],["ArrowRight","Right lines sharper"]],how:"Compare the two OUTLINED patches (ignore the other row). Look at each in turn. Tap the LEFT half if the left lines are sharper, the RIGHT half if the right lines are. Guess if they look the same."}),
+    "5":()=>ASL.active?({run:true,ans:true,start:"s",v:1,z:[["ArrowUp",`${AS2_CN[as2Base().adj]} brighter`],["ArrowDown",`${AS2_CN[as2Base().adj]} dimmer`]],x:[[" ","Matched"]],how:""}):({run:AS.active,ans:true,start:"s",z:[["ArrowLeft","Left lines sharper"],["ArrowRight","Right lines sharper"]],how:"Look at each patch in turn. Tap the LEFT half if the left lines are sharper, the RIGHT half if the right lines are. Guess if they look the same."}),
     "9":()=>({run:AN.active,ans:true,start:"s",z:[["ArrowLeft","Left panel sharper"],["ArrowRight","Right panel sharper"]],how:"Each eye sees one panel. Tap the LEFT half if the left panel's letters are sharper, the RIGHT half if the right panel's are. Guess if equal."}),
     "0":()=>({run:TL.active,ans:TL.phase==="answer",start:"s",v:1,z:[["ArrowUp","Disc IN FRONT"],["ArrowDown","Disc BEHIND"]],how:"Look at the centre dot. A dotty patch flashes with a disc floating in front or behind: tap the TOP half for in front, the BOTTOM half for behind."}),
     "8":()=>(S.ctMethod==="cam"?{run:CVT.active,ans:false,start:"s",z:[],how:"Look at the cross the whole time, head still. It jumps to five dots first, then stays in the middle."}:CVT.tr&&CVT.tr.ax==="V"?{run:CVT.active,ans:CVT.phase==="answer",start:"s",v:1,z:[["ArrowUp","Left line HIGHER"],["ArrowDown","Left line LOWER"]],how:"Look at the cross. Two lines flash. One above the other: tap LEFT or RIGHT for where the top one was. Side by side: tap TOP if the left one was higher, BOTTOM if lower."}:{run:CVT.active,ans:CVT.phase==="answer",start:"s",z:[["ArrowLeft","Top line LEFT"],["ArrowRight","Top line RIGHT"]],how:"Look at the cross. Two lines flash. One above the other: tap LEFT or RIGHT for where the top one was. Side by side: tap TOP if the left one was higher, BOTTOM if lower."}),

@@ -1,0 +1,383 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body style="margin:0"><title>Astig Finder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow working column (setup → test → result), study log below; the test itself is a full-screen black stage. */
+:root{
+  --bg:#f3f5f8; --panel:#ffffff; --ink:#18202b; --muted:#5b6676; --line:#d9dee6;
+  --accent:#1d4fc4; --accent-ink:#ffffff; --ok:#1d7a4a; --warn:#a15c00; --bad:#b3261e;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){ --bg:#11151b; --panel:#1a2029; --ink:#e7ebf1; --muted:#9aa5b5; --line:#2c3440; --accent:#7ea2ff; --accent-ink:#0d1320; --ok:#5cc28a; --warn:#e3a346; --bad:#ff8a80; color-scheme:dark } }
+:root[data-theme="dark"]{ --bg:#11151b; --panel:#1a2029; --ink:#e7ebf1; --muted:#9aa5b5; --line:#2c3440; --accent:#7ea2ff; --accent-ink:#0d1320; --ok:#5cc28a; --warn:#e3a346; --bad:#ff8a80; color-scheme:dark }
+[hidden]{ display:none!important; }
+body{ background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.5; }
+.wrap{ max-width:760px; margin:0 auto; padding-block:20px 48px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); display:grid; gap:18px; }
+header{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+h1{ font-size:1.5rem; font-weight:600; margin:0; letter-spacing:-0.01em; }
+h2{ font-size:1.05rem; font-weight:600; margin:0; }
+.sub{ color:var(--muted); font-size:.9rem; margin:0; }
+.card{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:18px; display:grid; gap:14px; min-width:0; }
+.grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; }
+label{ display:grid; gap:4px; font-size:.82rem; color:var(--muted); font-weight:500; letter-spacing:.01em; }
+input,select,textarea{ font:inherit; font-size:1rem; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:9px 10px; min-width:0; }
+input:focus-visible,select:focus-visible,button:focus-visible,textarea:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+.seg{ display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.seg button{ flex:1; border:0; border-radius:0; background:var(--bg); color:var(--ink); font-weight:600; padding:10px; }
+.seg button[aria-pressed="true"]{ background:var(--accent); color:var(--accent-ink); }
+button{ font:inherit; font-weight:500; border-radius:8px; border:1px solid var(--line); background:var(--panel); color:var(--ink); padding:9px 14px; cursor:pointer; }
+button.primary{ background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:600; padding:12px 18px; font-size:1.02rem; }
+button.danger{ color:var(--bad); }
+button:disabled{ opacity:.45; cursor:not-allowed; }
+.row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.note{ font-size:.85rem; color:var(--muted); margin:0; }
+.pill{ display:inline-block; font-size:.75rem; font-weight:600; padding:2px 9px; border-radius:99px; border:1px solid currentColor; letter-spacing:.02em; }
+.pill.ok{ color:var(--ok); } .pill.warn{ color:var(--warn); } .pill.bad{ color:var(--bad); } .pill.mute{ color:var(--muted); }
+.cal-bar{ height:54px; background:var(--accent); border-radius:6px; position:relative; max-width:100%; }
+.cal-bar span{ position:absolute; inset:0; display:grid; place-items:center; color:var(--accent-ink); font-size:.8rem; font-weight:600; }
+.big{ font-family:var(--mono); font-size:2.1rem; font-weight:500; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; }
+.kv{ display:grid; grid-template-columns:max-content 1fr; gap:4px 14px; font-size:.9rem; }
+.kv dt{ color:var(--muted); } .kv dd{ margin:0; font-family:var(--mono); font-variant-numeric:tabular-nums; }
+.tablewrap{ overflow-x:auto; border:1px solid var(--line); border-radius:8px; }
+table{ border-collapse:collapse; width:100%; font-size:.84rem; font-variant-numeric:tabular-nums; }
+th,td{ text-align:left; padding:7px 9px; border-bottom:1px solid var(--line); white-space:nowrap; }
+th{ color:var(--muted); font-weight:500; font-size:.76rem; letter-spacing:.03em; text-transform:uppercase; background:var(--bg); position:sticky; top:0; }
+td.num{ font-family:var(--mono); }
+tr:last-child td{ border-bottom:0; }
+.empty{ padding:22px; text-align:center; color:var(--muted); font-size:.9rem; }
+ol.steps{ margin:0; padding-left:1.2em; display:grid; gap:6px; }
+textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size:.75rem; }
+.confirm{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; font-size:.85rem; }
+/* test stage: always black, independent of theme */
+#stage{ position:fixed; inset:0; background:#000; z-index:50; touch-action:none; user-select:none; -webkit-user-select:none; }
+#stage canvas{ position:absolute; inset:0; width:100%; height:100%; }
+#hud{ position:absolute; left:0; right:0; bottom:0; padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px)); display:flex; justify-content:space-between; align-items:center; color:#6b6b6b; font:500 13px var(--sans); pointer-events:none; }
+#hud button{ pointer-events:auto; background:#111; color:#888; border-color:#333; font-size:12px; padding:6px 10px; }
+#msg{ position:absolute; left:50%; top:max(18px,env(safe-area-inset-top,0px)); transform:translateX(-50%); color:#8a8a8a; font:500 14px var(--sans); text-align:center; pointer-events:none; max-width:90vw; }
+@media (prefers-reduced-motion: reduce){ *{ transition:none!important; } }
+</style>
+
+<div class="wrap" id="app">
+  <header>
+    <div>
+      <h1>Astig Finder</h1>
+      <p class="sub">Lens-free astigmatism test from the eye's own red–green focus difference</p>
+    </div>
+    <span id="store" class="pill mute">Connecting to the study log…</span>
+  </header>
+
+  <!-- 1. screen size (once per device) -->
+  <section class="card" id="calCard">
+    <div class="row" style="justify-content:space-between">
+      <h2>1 · Screen size</h2><span id="calState" class="pill warn">Not set on this device</span>
+    </div>
+    <p class="note">Hold a bank card (or any ID-1 card, 85.6 mm wide) against the screen and drag the slider until the blue bar is exactly as wide as the card. Do this once per device and whenever the display zoom changes.</p>
+    <div class="cal-bar" id="calBar"><span>85.6 mm</span></div>
+    <input type="range" id="calSlider" min="150" max="700" step="0.5" aria-label="Bar width">
+    <div class="row"><button id="calSave">Save screen size</button><span class="note" id="calInfo"></span></div>
+  </section>
+
+  <!-- 2. test details -->
+  <section class="card" id="setupCard">
+    <h2>2 · Test details</h2>
+    <div class="grid">
+      <label for="pid">Participant code<input id="pid" autocomplete="off" placeholder="e.g. P014"></label>
+      <label>Eye tested
+        <div class="seg" role="group" aria-label="Eye tested"><button type="button" id="eyeOD" aria-pressed="true">OD (right)</button><button type="button" id="eyeOS" aria-pressed="false">OS (left)</button></div>
+      </label>
+      <label for="tester">Tester initials<input id="tester" autocomplete="off" placeholder="e.g. CB"></label>
+      <label for="dist">Eye to screen (cm)<input id="dist" type="number" min="25" max="200" step="1" value="50"></label>
+      <label for="pupil">Pupil diameter (mm)<input id="pupil" type="number" min="2" max="9" step="0.1" value="4"></label>
+      <label for="nAns">Answers<select id="nAns"><option value="40">40 (about 3 min)</option><option value="80">80 (more precise)</option></select></label>
+    </div>
+    <label for="notes">Notes (optional)<input id="notes" autocomplete="off" placeholder="Lighting, current Rx worn, anything unusual"></label>
+    <p class="note">Use a participant code, not a name. Measure the pupil in the test lighting while the participant looks at the screen. The cylinder's size scales with the square of any pupil error; the axis does not depend on it.</p>
+    <div class="row"><button class="primary" id="startBtn">Start test</button><span class="note" id="startWarn"></span></div>
+  </section>
+
+  <!-- instructions shown before the stage -->
+  <section class="card" id="howCard" hidden>
+    <h2>Before you start</h2>
+    <ol class="steps">
+      <li>Glasses and contact lenses off (or on, to measure the astigmatism left over them: record which in Notes). No coloured filters.</li>
+      <li>Cover the eye not being tested. Keep the head upright and at <b id="howDist">50</b> cm from the screen.</li>
+      <li>Two patches of lines appear, one red and one green. Look at each in turn, then answer which side's <b>lines</b> look sharper (ignore which colour looks brighter).</li>
+      <li>Answer with ← / → keys, or tap the left or right half of the screen. If they look the same, guess.</li>
+      <li>Three practice answers come first. Press Esc or "Stop" to abandon.</li>
+    </ol>
+    <div class="row"><button class="primary" id="goBtn">Begin (full screen)</button><button id="backBtn">Back</button></div>
+  </section>
+
+  <!-- result -->
+  <section class="card" id="resCard" hidden>
+    <div class="row" style="justify-content:space-between"><h2 id="resTitle">Result</h2><span id="resSaved" class="pill mute"></span></div>
+    <div class="big" id="resMain"></div>
+    <p id="resVerdict" style="margin:0"></p>
+    <dl class="kv" id="resKv"></dl>
+    <div id="resChart"></div>
+    <div class="row"><button class="primary" id="otherEyeBtn">Test the other eye</button><button id="newBtn">New participant</button></div>
+  </section>
+
+  <!-- log -->
+  <section class="card" id="logCard">
+    <div class="row" style="justify-content:space-between">
+      <h2>Results log</h2>
+      <div class="row"><input id="filter" placeholder="Filter by participant" aria-label="Filter by participant" style="width:12em"><button id="csvBtn">Export CSV</button></div>
+    </div>
+    <div class="tablewrap"><table><thead><tr><th>Date</th><th>Participant</th><th>Eye</th><th>Cyl × axis</th><th>±</th><th>Status</th><th>Mean focus</th><th>Dist</th><th>Pupil</th><th>Tester</th><th></th></tr></thead><tbody id="logBody"></tbody></table></div>
+    <div id="exportBox" hidden><p class="note">If the file didn't download, copy this text into a .csv file:</p><textarea class="export" id="exportText" readonly></textarea><div class="row"><button id="copyBtn">Copy</button></div></div>
+    <p class="note">Each record also keeps every answer (orientation, blur shown, response, response time), so a run can be re-analysed later. Cylinder in minus form, axis in TABO.</p>
+  </section>
+</div>
+
+<div id="stage" hidden>
+  <canvas id="cv"></canvas>
+  <div id="msg"></div>
+  <div id="hud"><span id="prog"></span><button id="stopBtn" type="button">Stop</button></div>
+</div>
+
+<script>
+// ---- lens-free astigmatism v2: chromatic (long vs short colour) + within-colour orientation nulls, one joint model ----
+// Notation: D(φ) = M + A1·cos2φ + A2·sin2φ is the focus error (+ = behind the screen) in meridian φ at the MIDDLE of
+// the two colours; the long colour sees D + ΔD/2, the short colour D − ΔD/2. Q = scale of the eye's own blur relative to
+// the screen blur, which is drawn for the entered pupil P (Q = c(P_true)·P_true²/P² ≈ c(P) if P is right).
+// Blur seen across lines whose normal is n: Q·|F_X n|² + s² (screen disc s, in entered-pupil dioptres). The oblique
+// (cross) term of |F n|² is the same for both colours and for orthogonal normals, so it cancels from every null:
+//   T1 (same lines, long vs short colour):  k = s_S² − s_L² at equality = Q·[(D+oL)² − (D+oS)²] = 2ΔD·Q·D(φ)
+//   T2 (one colour X, lines A vs lines ⟂):   k = s_A² − s_B² at equality = Q·[(D(φB)+oX)² − (D(φA)+oX)²]
+// T2 in both colours: k_L − k_S = −4·ΔD·Q·J(φA) and k_L/k_S = (M+ΔD/2)/(M−ΔD/2): the ratio gives M in dioptres with Q
+// cancelled; T1 then gives Q·M, hence Q (the eye's effective pupil) without entering one. Needs J ≠ 0 (a cylinder).
+function as2Erf(x){ const t=1/(1+0.3275911*Math.abs(x)), y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x); return x>=0?y:-y; }
+const as2Phi=z=>0.5*(1+as2Erf(z/Math.SQRT2));
+const AS2_LAM=0.04;
+function as2Pred(t,M,A1,A2,Q,dD){ const D=ph=>M+A1*Math.cos(2*ph*Math.PI/180)+A2*Math.sin(2*ph*Math.PI/180);
+  if(t.type===1){ const d=D(t.phi); return Q*((d+dD/2)**2-(d-dD/2)**2); }
+  const o=t.col==="L"?dD/2:-dD/2; return Q*((D(t.phiB)+o)**2-(D(t.phiA)+o)**2); }
+function as2New(dD,Q0){ const G={dD,Q0,M:[],A:[],S:[0.04,0.09,0.2],n:0,hist:[]};
+  for(let v=-1.5;v<=2.5001;v+=0.1) G.M.push(+v.toFixed(2)); for(let v=-1.5;v<=1.5001;v+=0.1) G.A.push(+v.toFixed(2));
+  const nM=G.M.length,nA=G.A.length; G.L=new Float64Array(9*nM*nA*nA);
+  for(let s=0;s<9;s++) for(let a=0;a<nM;a++) for(let b=0;b<nA;b++) for(let c=0;c<nA;c++) G.L[((s*nM+a)*nA+b)*nA+c]=-0.5*((G.M[a]-0.5)/1.3)**2-0.5*(G.A[b]**2+G.A[c]**2);
+  return G; }
+// r = true when the response says the side that k > 0 blurs looked WORSE (P(r) rises with k)
+function as2Update(G,t,k,r){ const nM=G.M.length,nA=G.A.length,blk=nM*nA*nA,L=G.L;
+  for(let a=0;a<nM;a++) for(let b=0;b<nA;b++) for(let c=0;c<nA;c++){ const pk=as2Pred(t,G.M[a],G.A[b],G.A[c],G.Q0,G.dD), j=(a*nA+b)*nA+c;
+    for(let si=0;si<3;si++){ const p=AS2_LAM/2+(1-AS2_LAM)*as2Phi((k-pk)/G.S[si]), lp=Math.log(r?p:1-p);
+      for(let sj=0;sj<3;sj++){ const s=t.type===1?si*3+sj:sj*3+si; L[s*blk+j]+=lp; } } }
+  G.n++; G.hist.push({t,k,r}); }
+function as2Weights(G){ const L=G.L; let m=-Infinity; for(let i=0;i<L.length;i++) if(L[i]>m) m=L[i]; const W=new Float64Array(L.length); let s=0; for(let i=0;i<L.length;i++){ const w=Math.exp(L[i]-m); W[i]=w; s+=w; } for(let i=0;i<L.length;i++) W[i]/=s; return W; }
+function as2Sample(G,W,rnd){ let u=rnd(), i=0; for(;i<W.length-1;i++){ u-=W[i]; if(u<=0) break; } const nM=G.M.length,nA=G.A.length, j=i%(nM*nA*nA);
+  return {M:G.M[Math.floor(j/(nA*nA))],A1:G.A[Math.floor(j/nA)%nA],A2:G.A[j%nA]}; }
+function as2Mean(G){ const W=as2Weights(G), nM=G.M.length,nA=G.A.length; let m=0,a=0,b=0,s1=0,s2=0;
+  for(let i=0;i<W.length;i++){ const w=W[i]; if(w<1e-12) continue; const s=Math.floor(i/(nM*nA*nA)), j=i%(nM*nA*nA); m+=w*G.M[Math.floor(j/(nA*nA))]; a+=w*G.A[Math.floor(j/nA)%nA]; b+=w*G.A[j%nA]; s1+=w*Math.log(G.S[Math.floor(s/3)]); s2+=w*Math.log(G.S[s%3]); }
+  return {M:m,A1:a,A2:b,ls1:s1,ls2:s2}; }
+// ---- final estimate: MAP over continuous parameters (Nelder–Mead) + Laplace (numerical Hessian) for uncertainties
+function as2LogPost(G,x,freeQ){ const [M,A1,A2,ls1,ls2,lq]=x, Q=freeQ?Math.exp(lq):G.Q0, s1=Math.exp(ls1), s2=Math.exp(ls2); let lp=0;
+  for(const h of G.hist){ const pk=as2Pred(h.t,M,A1,A2,Q,G.dD), p=AS2_LAM/2+(1-AS2_LAM)*as2Phi((h.k-pk)/(h.t.type===1?s1:s2)); lp+=Math.log(h.r?p:1-p); }
+  lp+=-0.5*((M-0.5)/1.3)**2-0.5*(A1*A1+A2*A2)-0.5*((ls1-Math.log(0.09))/1)**2-0.5*((ls2-Math.log(0.09))/1)**2; if(freeQ) lp+=-0.5*((lq-Math.log(G.Q0))/1.0)**2; return lp; }
+function as2NM(f,x0,step,iters){ const n=x0.length; let P=[x0.slice()]; for(let i=0;i<n;i++){ const x=x0.slice(); x[i]+=step[i]; P.push(x); } let F=P.map(f);
+  for(let it=0;it<iters;it++){ const o=[...P.keys()].sort((a,b)=>F[b]-F[a]); P=o.map(i=>P[i]); F=o.map(i=>F[i]);      // maximise
+    const c=new Array(n).fill(0); for(let i=0;i<n;i++) for(let j=0;j<n;j++) c[j]+=P[i][j]/n;
+    const pt=(a)=>c.map((v,j)=>v+a*(P[n][j]-v)), xr=pt(-1), fr=f(xr);
+    if(fr>F[0]){ const xe=pt(-2), fe=f(xe); if(fe>fr){ P[n]=xe; F[n]=fe; } else { P[n]=xr; F[n]=fr; } }
+    else if(fr>F[n-1]){ P[n]=xr; F[n]=fr; }
+    else { const xc=pt(0.5), fc=f(xc); if(fc>F[n]){ P[n]=xc; F[n]=fc; } else { for(let i=1;i<=n;i++){ P[i]=P[i].map((v,j)=>P[0][j]+0.5*(v-P[0][j])); F[i]=f(P[i]); } } } }
+  const o=[...P.keys()].sort((a,b)=>F[b]-F[a]); return {x:P[o[0]],f:F[o[0]]}; }
+function as2Inv(H){ const n=H.length, A=H.map((r,i)=>[...r,...r.map((_,j)=>i===j?1:0)]);
+  for(let i=0;i<n;i++){ let p=i; for(let r=i+1;r<n;r++) if(Math.abs(A[r][i])>Math.abs(A[p][i])) p=r; [A[i],A[p]]=[A[p],A[i]]; const d=A[i][i]; if(Math.abs(d)<1e-12) return null;
+    for(let j=0;j<2*n;j++) A[i][j]/=d; for(let r=0;r<n;r++) if(r!==i){ const f=A[r][i]; for(let j=0;j<2*n;j++) A[r][j]-=f*A[i][j]; } } return A.map(r=>r.slice(n)); }
+function as2Fit(G,freeQ){ const m=as2Mean(G), x0=[m.M,m.A1,m.A2,m.ls1,m.ls2].concat(freeQ?[Math.log(G.Q0)]:[]), f=x=>as2LogPost(G,x,freeQ);
+  let best=as2NM(f,x0,x0.map((_,i)=>i<3?0.15:0.4),400); best=as2NM(f,best.x,best.x.map((_,i)=>i<3?0.05:0.15),400);
+  const x=best.x, n=x.length, h=x.map((_,i)=>i<3?0.02:0.05), H=[...Array(n)].map(()=>new Array(n).fill(0));
+  for(let i=0;i<n;i++) for(let j=i;j<n;j++){ const e=(a,b)=>{ const y=x.slice(); y[i]+=a*h[i]; y[j]+=b*h[j]; return f(y); };
+    const v=i===j?-(e(1,0)-2*best.f+e(-1,0))/(h[i]*h[i]):-(e(1,1)-e(1,-1)-e(-1,1)+e(-1,-1))/(4*h[i]*h[j]); H[i][j]=H[j][i]=v; }
+  const V=as2Inv(H)||H.map((r,i)=>r.map((_,j)=>i===j?0.25:0)); const [M,A1,A2]=x, Q=freeQ?Math.exp(x[5]):G.Q0;
+  const amp=Math.hypot(A1,A2), vA=amp>1e-6?(A1*A1*V[1][1]+2*A1*A2*V[1][2]+A2*A2*V[2][2])/(amp*amp):(V[1][1]+V[2][2])/2, seC=2*Math.sqrt(Math.max(1e-6,vA));
+  const vT=amp>1e-6?(A2*A2*V[1][1]-2*A1*A2*V[1][2]+A1*A1*V[2][2])/(4*amp**4):1, seAx=Math.min(90,Math.sqrt(Math.max(0,vT))*180/Math.PI);
+  let axP=0.5*Math.atan2(A2,A1)*180/Math.PI; axP=((axP%180)+180)%180; let tabo=Math.round(180-axP)%180; if(tabo<=0) tabo+=180;
+  const meri=phi=>{ const c=Math.cos(2*phi*Math.PI/180), s=Math.sin(2*phi*Math.PI/180), g=[1,c,s]; let v=0; for(let i=0;i<3;i++) for(let j=0;j<3;j++) v+=g[i]*g[j]*V[i][j]; return {D:M+A1*c+A2*s,sd:Math.sqrt(Math.max(0,v))}; };
+  return {A0:M,A0sd:Math.sqrt(Math.max(0,V[0][0])),A1,A2,amp,cyl:-2*amp,axP,tabo,Dmax:M+amp,Dmin:M-amp,seC,seAx,Q,qRelSE:freeQ?Math.sqrt(Math.max(0,V[5][5])):null,s1:Math.exp(x[3]),s2:Math.exp(x[4]),meri,freeQ}; }
+
+(function(){
+"use strict";
+const APP_VERSION="astig-finder 1.0 (engine v2, colour comparisons)";
+const $=id=>document.getElementById(id);
+const LS={ get(k,d){ try{ const v=localStorage.getItem("astig."+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem("astig."+k,JSON.stringify(v)); }catch(e){} } };
+
+// ---------- display colour ----------
+let P3=false; try{ P3=matchMedia("(color-gamut: p3)").matches&&!!(window.CSS&&CSS.supports("color","color(display-p3 1 0 0)")); }catch(e){}
+const LAM=P3?[615,544]:[611,549], YRG=P3?[0.2290,0.6917]:[0.2126,0.7152];
+const thibos=l=>1.68524-633.46/(l-214.102);                 // chromatic difference of refraction, Thibos et al. 1992
+const DD=thibos(LAM[0])-thibos(LAM[1]);                      // red is focused this much further back than green
+const LV_R=1, LV_G=YRG[0]/YRG[1];                            // equal luminance (standard observer): green dimmed to red
+const enc=v=>v<=0.0031308?12.92*v:1.055*Math.pow(v,1/2.4)-0.055;
+function sce(p){ const a=p/2,b=0.05*Math.LN10; let n=0,d=0; for(let i=0;i<400;i++){ const r=(i+0.5)/400*a, w=Math.exp(-b*r*r)*r; n+=w*r*r; d+=w; } return (n/d)/(a*a/2); }
+
+// ---------- screen calibration ----------
+const CARD_MM=85.6; let mmPerPx=LS.get("mmPerPx",null);
+function calShow(){ const w=+$("calSlider").value; $("calBar").style.width=w+"px";
+  $("calInfo").textContent=mmPerPx?`Saved: ${(1/mmPerPx).toFixed(2)} px per mm · ${P3?"wide-gamut (P3)":"standard (sRGB)"} colour`:`${P3?"Wide-gamut (P3)":"Standard (sRGB)"} colour detected`;
+  $("calState").textContent=mmPerPx?"Set":"Not set on this device"; $("calState").className="pill "+(mmPerPx?"ok":"warn"); }
+$("calSlider").max=Math.max(300,Math.floor(Math.min(innerWidth-40,900)));
+$("calSlider").value=mmPerPx?CARD_MM/mmPerPx:Math.min(+$("calSlider").max,CARD_MM/0.2646);
+$("calSlider").addEventListener("input",calShow);
+$("calSave").onclick=()=>{ mmPerPx=CARD_MM/(+$("calSlider").value); LS.set("mmPerPx",mmPerPx); calShow(); checkReady(); };
+calShow();
+
+// ---------- form ----------
+let eye="OD";
+function setEye(e){ eye=e; $("eyeOD").setAttribute("aria-pressed",e==="OD"); $("eyeOS").setAttribute("aria-pressed",e==="OS"); }
+$("eyeOD").onclick=()=>setEye("OD"); $("eyeOS").onclick=()=>setEye("OS");
+const keep=["tester","dist","pupil","nAns"]; keep.forEach(k=>{ const v=LS.get("f."+k,null); if(v!=null) $(k).value=v; $(k).addEventListener("change",()=>LS.set("f."+k,$(k).value)); });
+function checkReady(){ const w=[]; if(!mmPerPx) w.push("Set the screen size first.");
+  if(!$("pid").value.trim()) w.push("Enter a participant code.");
+  const d=+$("dist").value, p=+$("pupil").value; if(!(d>=25&&d<=200)) w.push("Distance must be 25–200 cm."); if(!(p>=2&&p<=9)) w.push("Pupil must be 2–9 mm.");
+  $("startWarn").textContent=w.join(" "); $("startBtn").disabled=w.length>0; return !w.length; }
+["pid","dist","pupil"].forEach(k=>$(k).addEventListener("input",checkReady)); checkReady();
+$("startBtn").onclick=()=>{ if(!checkReady()) return; $("howDist").textContent=$("dist").value; $("setupCard").hidden=true; $("calCard").hidden=true; $("resCard").hidden=true; $("howCard").hidden=false; $("howCard").scrollIntoView({block:"start"}); };
+$("backBtn").onclick=()=>{ $("howCard").hidden=true; $("setupCard").hidden=false; $("calCard").hidden=false; };
+
+// ---------- test ----------
+const ORIS=[0,30,60,90,120,150];
+let T=null;      // running test state
+function degPx(deg){ return T.d*Math.tan(deg*Math.PI/180)/T.dev; }
+function maskFrom(pw,ph,f){ const c=document.createElement("canvas"); c.width=pw; c.height=ph; const o=c.getContext("2d"); o.fillStyle="#fff"; f(o); const s=o.getImageData(0,0,pw,ph).data, M=new Float32Array(pw*ph); for(let i=0;i<M.length;i++) M[i]=s[i*4+3]/255; return M; }
+function discBlur(src,W_,H_,diam){ const r=diam/2; if(r<0.35) return src;
+  const P_=new Float64Array((W_+1)*H_); for(let y=0;y<H_;y++){ let a=0; const o=y*(W_+1); for(let x=0;x<W_;x++){ a+=src[y*W_+x]; P_[o+x+1]=a; } }
+  const at=(o,x)=>{ if(x<=0) return 0; if(x>=W_) return P_[o+W_]; const i=Math.floor(x), f=x-i; return P_[o+i]+(i<W_?f*(P_[o+i+1]-P_[o+i]):0); };
+  const R=Math.ceil(r), rows=[]; let wsum=0; for(let dy=-R;dy<=R;dy++){ const c2=r*r-dy*dy; if(c2<=0) continue; const c=Math.sqrt(c2); rows.push([dy,c]); wsum+=2*c; }
+  const out=new Float32Array(W_*H_);
+  for(let y=0;y<H_;y++) for(let x=0;x<W_;x++){ let a=0; for(const [dy,c] of rows){ const yy=y+dy; if(yy<0||yy>=H_) continue; const o=yy*(W_+1); a+=at(o,x+0.5+c)-at(o,x+0.5-c); } out[y*W_+x]=a/wsum; }
+  return out; }
+function imgData(ctx,w,h){ try{ return ctx.createImageData(w,h,{colorSpace:P3?"display-p3":"srgb"}); }catch(e){ return ctx.createImageData(w,h); } }
+function panel(ctx,M,pw,ph,ch,lvl,Rf,soft){ const img=imgData(ctx,pw,ph), D_=img.data, cx=pw/2, cy=ph/2;
+  for(let y=0;y<ph;y++) for(let x=0;x<pw;x++){ const i=y*pw+x, r=Math.hypot(x+0.5-cx,y+0.5-cy), win=r<=Rf?1:r>=Rf+soft?0:0.5+0.5*Math.cos(Math.PI*(r-Rf)/soft), v=win*lvl*Math.max(0,1-Math.min(1,M[i]));
+    D_[i*4]=0; D_[i*4+1]=0; D_[i*4+2]=0; D_[i*4+ch]=Math.round(255*enc(v)); D_[i*4+3]=255; }
+  return img; }
+function render(){ const cv=$("cv"), dpr=window.devicePixelRatio||1, W=Math.round(innerWidth*dpr), H=Math.round(innerHeight*dpr);
+  if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; }
+  T.dev=mmPerPx/dpr; const ctx=cv.getContext("2d",P3?{colorSpace:"display-p3"}:undefined); ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
+  const tr=T.tr; if(!tr||T.blank) return;
+  const pxPerD=(T.pupil/1000)*T.d/T.dev, k=tr.k, sB=Math.sqrt(Math.abs(k));
+  const bl=Math.max(sB,tr.eye)*pxPerD, p=Math.max(degPx(14/60),2.2*bl,6), w=Math.max(2,0.3*p), Rp=2.5*p, Rf=Rp+0.5*p, soft=0.6*p, pw=Math.ceil(2*(Rf+soft))+2, ph=pw;
+  const M=maskFrom(pw,ph,c=>{ c.translate(pw/2,ph/2); c.rotate(-tr.ori*Math.PI/180); c.beginPath(); c.arc(0,0,Rp,0,7); c.clip(); for(let i=-3;i<=3;i++) c.fillRect(-Rp-2,i*p-w/2,2*Rp+4,w); });
+  const blur=on=>on&&sB>0?discBlur(M,pw,ph,sB*pxPerD):M;
+  const G=panel(ctx,blur(k>0),pw,ph,1,LV_G,Rf,soft), Rd=panel(ctx,blur(k<0),pw,ph,0,LV_R,Rf,soft);   // k > 0 blurs green (short), k < 0 red (long)
+  const gap=degPx(0.6), cx=W/2, cy=H/2, L=tr.left?Rd:G, Rr=tr.left?G:Rd;
+  ctx.putImageData(L,Math.round(cx-gap/2-pw),Math.round(cy-ph/2)); ctx.putImageData(Rr,Math.round(cx+gap/2),Math.round(cy-ph/2));
+  const s=Math.max(2,degPx(0.06)); ctx.fillStyle="#666"; ctx.fillRect(cx-s/2,cy-s/2,s,s);
+  T.fits=(2*pw+gap)<W*0.98&&ph<H*0.9; }
+function nextTrial(){ const G=T.G;
+  if(T.practice<3){ const ori=ORIS[Math.floor(Math.random()*6)], k=(Math.random()<0.5?1:-1)*3.2;
+    T.tr={type:1,phi:(ori+90)%180,ori,k,left:Math.random()<0.5,eye:1,practice:true}; }
+  else { if(G.n>=T.N){ finish(); return; }
+    if(!T.order.length) T.order=ORIS.slice().sort(()=>Math.random()-0.5);
+    const ori=T.order.pop(), t={type:1,phi:(ori+90)%180}, sm=as2Sample(G,as2Weights(G),Math.random);
+    const k=Math.max(-4,Math.min(4,as2Pred(t,sm.M,sm.A1,sm.A2,G.Q0,G.dD)));
+    const Dm=sm.M+sm.A1*Math.cos(2*t.phi*Math.PI/180)+sm.A2*Math.sin(2*t.phi*Math.PI/180);
+    T.tr={type:1,phi:t.phi,ori,k:Math.round(1000*k)/1000,left:Math.random()<0.5,eye:Math.abs(Dm)+G.dD/2}; }
+  T.blank=true; render(); updHud();
+  setTimeout(()=>{ if(!T) return; T.blank=false; render(); T.shownAt=performance.now(); T.ready=true;
+    if(!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; }, 250); }
+function updHud(){ const pr=T.practice<3; $("prog").textContent=pr?`Practice ${T.practice+1} of 3`:`${T.G.n+1} of ${T.N}`;
+  if(!$("msg").dataset.hold) $("msg").textContent=pr?"Which side's LINES are sharper?  ← left · right →":""; }
+function answer(leftSharper){ if(!T||!T.ready) return; T.ready=false; const tr=T.tr, rt=Math.round(performance.now()-T.shownAt);
+  const r=(leftSharper===tr.left);           // r = green (blurred when k > 0) looked worse = red sharper
+  if(tr.practice){ const correct=(tr.k>0)===r; T.practice++; if(!correct) T.pracWrong++;
+    $("msg").dataset.hold=1; $("msg").textContent=correct?"✓":"Look again: one side was clearly blurred. Compare the lines, not the colours.";
+    setTimeout(()=>{ delete $("msg").dataset.hold; nextTrial(); }, correct?350:1600); return; }
+  T.log.push([tr.ori,tr.k,tr.left?"R":"G",leftSharper?"L":"R",r?1:0,rt]);
+  as2Update(T.G,{type:1,phi:tr.phi},tr.k,r); setTimeout(nextTrial,0); }
+function onKey(e){ if(!T) return; if(e.key==="ArrowLeft"){ e.preventDefault(); answer(true); } else if(e.key==="ArrowRight"){ e.preventDefault(); answer(false); } else if(e.key==="Escape"){ stopTest(); } }
+let lastTap=0;
+$("stage").addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return; e.preventDefault(); const now=performance.now(); if(now-lastTap<300) return; lastTap=now; answer(e.clientX<innerWidth/2); });
+$("stopBtn").onclick=()=>stopTest();
+let wake=null;
+async function enterStage(){ $("stage").hidden=false; try{ if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); }catch(e){} try{ wake=await navigator.wakeLock.request("screen"); }catch(e){} }
+function leaveStage(){ $("stage").hidden=true; $("msg").textContent=""; try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} try{ wake&&wake.release(); }catch(e){} wake=null; }
+addEventListener("resize",()=>{ if(T&&!T.blank) render(); });
+$("goBtn").onclick=async()=>{ const pupil=+$("pupil").value;
+  T={ pid:$("pid").value.trim(), eye, tester:$("tester").value.trim(), notes:$("notes").value.trim(), distCm:+$("dist").value, d:+$("dist").value*10, pupil, N:+$("nAns").value,
+      G:as2New(DD,sce(pupil)), order:[], log:[], practice:0, pracWrong:0, started:new Date() };
+  $("howCard").hidden=true; await enterStage(); addEventListener("keydown",onKey); nextTrial(); };
+function stopTest(){ removeEventListener("keydown",onKey); T=null; leaveStage(); $("setupCard").hidden=false; $("calCard").hidden=false; }
+
+// ---------- result ----------
+const pf=v=>(v>=0?"+":"")+v.toFixed(2);
+function finish(){ removeEventListener("keydown",onKey); const G=T.G, f=as2Fit(G,false);
+  f.seAx=Math.min(90,f.seAx*1.7); f.seC*=1.5;                          // calibrated by simulation (Laplace understates both)
+  const cyl=-2*f.amp, zC=2*f.amp/Math.max(0.05,f.seC), status=2*f.amp<0.25?"under 0.25 D":zC<1.5?"not significant":zC<2.5?"borderline":"significant";
+  const mer=ORIS.map(o=>{ const phi=(o+90)%180, m=f.meri(phi), tm=((180-phi)%180)||180; return {tabo:tm,D:+m.D.toFixed(2),sd:+(1.5*m.sd).toFixed(2)}; }).sort((a,b)=>a.tabo-b.tabo);
+  const sph=f.Dmax<-0.25?+(f.Dmax-100/T.distCm).toFixed(2):null;
+  const rec={ created:new Date().toISOString(), participant:T.pid, eye:T.eye, tester:T.tester, notes:T.notes, distance_cm:T.distCm, pupil_mm:T.pupil, answers:G.n,
+    cyl_D:+cyl.toFixed(2), axis_tabo:f.tabo, cyl_se_D:+f.seC.toFixed(2), axis_se_deg:Math.round(f.seAx), status, mean_focus_D:+f.A0.toFixed(2),
+    J0:+(-(cyl/2)*Math.cos(2*f.tabo*Math.PI/180)).toFixed(3), J45:+(-(cyl/2)*Math.sin(2*f.tabo*Math.PI/180)).toFixed(3), meridians:mer, distance_sph_if_myopic:sph, practice_errors:T.pracWrong,
+    duration_s:Math.round((Date.now()-T.started.getTime())/1000), screen_mm_per_px:+mmPerPx.toFixed(5), colour:P3?"P3":"sRGB", lca_D:+DD.toFixed(3),
+    device:navigator.userAgent.slice(0,160), app:APP_VERSION,
+    trials:JSON.stringify({cols:["line_ori_deg","k_D2","left_colour","answer","red_sharper","rt_ms"],rows:T.log}) };
+  T=null; leaveStage(); showResult(rec); save(rec); }
+function verdict(r){ const c=Math.abs(r.cyl_D);
+  if(r.status==="under 0.25 D") return ["ok",`No clinically significant astigmatism (${pf(r.cyl_D)} D is under 0.25 D).`];
+  if(r.status==="not significant") return ["mute",`No clear astigmatism: ${pf(r.cyl_D)} × ${r.axis_tabo} is within its own uncertainty.`];
+  if(r.status==="borderline") return ["warn",`Borderline: ${pf(r.cyl_D)} × ${r.axis_tabo}. Repeat, or run 80 answers.`];
+  return [c>=0.75?"bad":"warn",`Astigmatism of ${c.toFixed(2)} D, axis ${r.axis_tabo}.`]; }
+function chart(r){ const W_=360,H_=140,pl=38,pb=22,pt=10,pr=10, Ds=r.meridians.flatMap(m=>[m.D-m.sd,m.D+m.sd]), lo=Math.min(...Ds)-0.1, hi=Math.max(...Ds)+0.1;
+  const X=a=>pl+(W_-pl-pr)*a/180, Y=v=>H_-pb-(H_-pb-pt)*(v-lo)/(hi-lo);
+  let s=`<svg viewBox="0 0 ${W_} ${H_}" style="width:100%;max-width:${W_}px;display:block" font-size="10" fill="var(--muted)" role="img" aria-label="Focus error by meridian">`;
+  [0,45,90,135,180].forEach(a=>{ s+=`<line x1="${X(a)}" y1="${pt}" x2="${X(a)}" y2="${H_-pb}" stroke="var(--line)"/><text x="${X(a)}" y="${H_-6}" text-anchor="middle">${a}°</text>`; });
+  for(let v=Math.ceil(lo*4)/4; v<=hi; v+=0.25) s+=`<line x1="${pl}" y1="${Y(v)}" x2="${W_-pr}" y2="${Y(v)}" stroke="var(--line)"/><text x="${pl-5}" y="${Y(v)+3}" text-anchor="end">${v.toFixed(2)}</text>`;
+  const amp=Math.abs(r.cyl_D)/2, ax=r.axis_tabo; let d="";
+  for(let a=0;a<=180;a+=3){ const v=r.mean_focus_D+amp*Math.cos(2*(a-ax)*Math.PI/180); d+=(a?"L":"M")+X(a).toFixed(1)+" "+Y(v).toFixed(1); }
+  s+=`<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+  r.meridians.forEach(m=>{ s+=`<line x1="${X(m.tabo)}" y1="${Y(m.D-m.sd)}" x2="${X(m.tabo)}" y2="${Y(m.D+m.sd)}" stroke="var(--ink)"/><circle cx="${X(m.tabo)}" cy="${Y(m.D)}" r="3" fill="var(--ink)"/>`; });
+  return s+`</svg><p class="note">Focus error (D, + = behind the screen) by TABO meridian. The most-plus meridian is the minus-cylinder axis.</p>`; }
+function showResult(r){ $("resCard").hidden=false; $("setupCard").hidden=true; $("calCard").hidden=true;
+  $("resTitle").textContent=`${r.participant} · ${r.eye}`; $("resMain").textContent=`${pf(r.cyl_D)} × ${r.axis_tabo}`;
+  const [cls,txt]=verdict(r); $("resVerdict").innerHTML=`<span class="pill ${cls}">${r.status}</span> ${txt}`;
+  const kv=[["Uncertainty",`± ${r.cyl_se_D.toFixed(2)} D, axis ± ${r.axis_se_deg}°`],["Mean focus",`${pf(r.mean_focus_D)} D (${r.mean_focus_D>=0?"behind":"in front of"} the screen)`],["Power vector",`J0 ${pf(r.J0)} · J45 ${pf(r.J45)}`],
+    ["By meridian",r.meridians.map(m=>`${m.tabo}°: ${pf(m.D)}`).join("  ")],["Setup",`${r.distance_cm} cm · pupil ${r.pupil_mm} mm · ${r.answers} answers · ${r.colour}`]];
+  if(r.distance_sph_if_myopic!=null) kv.push(["Distance Rx (myopic)",`≈ ${pf(r.distance_sph_if_myopic)} / ${pf(r.cyl_D)} × ${r.axis_tabo} (all meridians in front of the screen)`]);
+  if(r.practice_errors>=2) kv.push(["Caution",`${r.practice_errors} of 3 practice answers wrong: check the participant understood the task.`]);
+  $("resKv").innerHTML=kv.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join(""); $("resChart").innerHTML=chart(r);
+  $("resSaved").textContent="Saving…"; $("resSaved").className="pill mute"; $("resCard").scrollIntoView({block:"start"});
+  $("otherEyeBtn").textContent=`Test ${r.eye==="OD"?"OS (left)":"OD (right)"}`;
+  $("otherEyeBtn").onclick=()=>{ setEye(r.eye==="OD"?"OS":"OD"); $("resCard").hidden=true; $("startBtn").click(); };
+  $("newBtn").onclick=()=>{ $("pid").value=""; $("notes").value=""; setEye("OD"); $("resCard").hidden=true; $("setupCard").hidden=false; $("calCard").hidden=false; checkReady(); $("pid").focus(); }; }
+
+// ---------- storage: shared study log (db) with an on-device fallback ----------
+let DB=null, shared=[], local=LS.get("results",[]);
+function setStore(t,c){ $("store").textContent=t; $("store").className="pill "+c; }
+async function save(rec){ rec.id=rec.created.replace(/\D/g,"").slice(0,14)+"-"+Math.random().toString(36).slice(2,6);
+  if(DB){ try{ await DB.collection("results").doc(rec.id).set(rec); $("resSaved").textContent="Saved to study log"; $("resSaved").className="pill ok"; return; }catch(e){} }
+  local.push(rec); LS.set("results",local); renderLog();
+  $("resSaved").textContent=DB?"Study log refused: saved on this device":"Saved on this device"; $("resSaved").className="pill warn"; }
+function allRecs(){ const m=new Map(); local.forEach(r=>m.set(r.id,{...r,_where:"device"})); shared.forEach(r=>m.set(r.id,{...r,_where:"log"})); return [...m.values()].sort((a,b)=>b.created.localeCompare(a.created)); }
+let pendingDel=null;
+function renderLog(){ const f=$("filter").value.trim().toLowerCase(), rows=allRecs().filter(r=>!f||String(r.participant).toLowerCase().includes(f));
+  if(!rows.length){ $("logBody").innerHTML=`<tr><td colspan="11"><div class="empty">${f?"No results for that participant.":"No results yet. Finished tests appear here, newest first."}</div></td></tr>`; return; }
+  const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const cls={"significant":"bad","borderline":"warn","not significant":"mute","under 0.25 D":"ok"};
+  $("logBody").innerHTML=rows.map(r=>`<tr><td class="num">${esc(r.created.slice(0,16).replace("T"," "))}</td><td>${esc(r.participant)}</td><td>${esc(r.eye)}</td><td class="num">${pf(r.cyl_D)} × ${r.axis_tabo}</td><td class="num">${r.cyl_se_D.toFixed(2)} / ${r.axis_se_deg}°</td><td><span class="pill ${cls[r.status]||"mute"}">${esc(r.status)}</span></td><td class="num">${pf(r.mean_focus_D)}</td><td class="num">${r.distance_cm}</td><td class="num">${r.pupil_mm}</td><td>${esc(r.tester)}${r._where==="device"?' <span class="pill warn" title="Only on this device">device</span>':""}</td><td>${pendingDel===r.id?`<span class="confirm">Delete? <button class="danger" data-del="${r.id}">Delete</button><button data-cancel="1">Keep</button></span>`:`<button data-ask="${r.id}" aria-label="Delete this result">✕</button>`}</td></tr>`).join(""); }
+$("logBody").addEventListener("click",async e=>{ const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.ask){ pendingDel=b.dataset.ask; renderLog(); return; } if(b.dataset.cancel){ pendingDel=null; renderLog(); return; }
+  if(b.dataset.del){ const id=b.dataset.del; pendingDel=null; local=local.filter(r=>r.id!==id); LS.set("results",local); if(DB&&shared.some(r=>r.id===id)){ try{ await DB.collection("results").doc(id).delete(); }catch(e){} } renderLog(); } });
+$("filter").addEventListener("input",renderLog);
+const COLS=["created","participant","eye","tester","cyl_D","axis_tabo","cyl_se_D","axis_se_deg","status","mean_focus_D","J0","J45","distance_cm","pupil_mm","answers","distance_sph_if_myopic","practice_errors","duration_s","colour","lca_D","screen_mm_per_px","notes","meridians","app","device","trials"];
+function csv(){ const q=v=>{ const s=v==null?"":typeof v==="object"?JSON.stringify(v):String(v); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; };
+  return [COLS.join(",")].concat(allRecs().map(r=>COLS.map(c=>q(r[c])).join(","))).join("\n"); }
+$("csvBtn").onclick=async()=>{ const text=csv(), name=`astig-results-${new Date().toISOString().slice(0,10)}.csv`; let done=false;
+  try{ const dl=window.claude&&await window.claude.use("downloads"); if(dl){ await dl.save({filename:name,data:text}); done=true; } }catch(e){}
+  if(!done&&!(window.claude)){ try{ const a=document.createElement("a"); a.href=URL.createObjectURL(new Blob([text],{type:"text/csv"})); a.download=name; document.body.appendChild(a); a.click(); a.remove(); done=true; }catch(e){} }
+  $("exportText").value=text; $("exportBox").hidden=done; };
+$("copyBtn").onclick=async()=>{ try{ await navigator.clipboard.writeText($("exportText").value); $("copyBtn").textContent="Copied"; }catch(e){ $("exportText").select(); } };
+renderLog();
+window.__astigTest={ tr:()=>T&&T.tr, G:()=>T&&T.G, ready:()=>!!(T&&T.ready), answer };
+(async()=>{ if(!window.claude||!window.claude.use){ setStore("Saved on this device only","warn"); return; }
+  const timer=setTimeout(()=>{ if(!DB) setStore("Study log unavailable: saving on this device","warn"); },10000);
+  try{ const db=await window.claude.use("db"); if(!db){ clearTimeout(timer); setStore("Study log unavailable: saving on this device","warn"); return; }
+    db.collection("results").onSnapshot(s=>{ clearTimeout(timer); DB=db; shared=s.docs.map(d=>({id:d.id,...d.data()})); setStore(`Study log · ${shared.length} result${shared.length===1?"":"s"}`,"ok"); renderLog(); },
+      ()=>{ clearTimeout(timer); setStore("Study log not available to you: saving on this device","warn"); }); }
+  catch(e){ clearTimeout(timer); setStore("Study log unavailable: saving on this device","warn"); } })();
+})();
+</script>
+</body></html>

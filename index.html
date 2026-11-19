@@ -3678,18 +3678,22 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
     let axP=0.5*Math.atan2(A2,A1)*180/Math.PI; axP=((axP%180)+180)%180; let tabo=Math.round(180-axP)%180; if(tabo<=0) tabo+=180;
     const meri=phi=>{ const c=Math.cos(2*phi*Math.PI/180), s=Math.sin(2*phi*Math.PI/180), g=[1,c,s]; let v=0; for(let i=0;i<3;i++) for(let j=0;j<3;j++) v+=g[i]*g[j]*V[i][j]; return {D:M+A1*c+A2*s,sd:Math.sqrt(Math.max(0,v))}; };
     return {A0:M,A0sd:Math.sqrt(Math.max(0,V[0][0])),A1,A2,amp,cyl:-2*amp,axP,tabo,Dmax:M+amp,Dmin:M-amp,seC,seAx,Q,qRelSE:freeQ?Math.sqrt(Math.max(0,V[5][5])):null,s1:Math.exp(x[3]),s2:Math.exp(x[4]),meri,freeQ}; }
-  [["asTrials",40],["asMeth","mix"],["asCol","RG"],["asPup","entered"]].forEach(([k,v])=>{ if(S[k]==null) S[k]=v; });
+  [["asTrials",40],["asMeth","mix"],["asCol","RG"],["asPup","entered"],["asLumM","mdb"],["asLumUse","match"],["asLumCal",{}]].forEach(([k,v])=>{ if(S[k]==null) S[k]=v; });
   const AS2_LAMBDA=P3?[615,544,465]:[611,549,464], AS2_Y=P3?[0.2290,0.6917,0.0793]:[0.2126,0.7152,0.0722];
   const AS2_PAIR={RG:{L:0,S:1,n:"red / green"},RB:{L:0,S:2,n:"red / blue"},GB:{L:1,S:2,n:"green / blue"}};
   const AS2_CN=["red","green","blue"];
-  function as2Cfg(){ const P=AS2_PAIR[S.asCol]||AS2_PAIR.RG, dD=thibos(AS2_LAMBDA[P.L])-thibos(AS2_LAMBDA[P.S]);
-    return {...P,dD,lvL:Math.min(1,AS2_Y[P.S]/AS2_Y[P.L]),lvS:Math.min(1,AS2_Y[P.L]/AS2_Y[P.S])}; }   // equal luminance: the brighter primary is dimmed
+  // brightness: the brighter primary is dimmed to the dimmer one, by the standard observer or by this person's own match
+  function as2Base(){ const P=AS2_PAIR[S.asCol]||AS2_PAIR.RG, adjL=AS2_Y[P.L]>AS2_Y[P.S]; return {P,adjL,adj:adjL?P.L:P.S,fix:adjL?P.S:P.L,std:adjL?AS2_Y[P.S]/AS2_Y[P.L]:AS2_Y[P.L]/AS2_Y[P.S]}; }
+  const asLumKey=()=>(S.asCol||"RG")+(P3?"-p3":"-srgb");
+  function as2Cfg(){ const P=AS2_PAIR[S.asCol]||AS2_PAIR.RG, dD=thibos(AS2_LAMBDA[P.L])-thibos(AS2_LAMBDA[P.S]), b=as2Base(), cal=(S.asLumCal||{})[asLumKey()]||null;
+    let a=b.std*(cal&&S.asLumUse!=="std"?cal.f:1), o=1; if(a>1){ o=1/a; a=1; }
+    return {...P,dD,lvL:b.adjL?a:o,lvS:b.adjL?o:a,cal:S.asLumUse!=="std"?cal:null}; }
   const AS={active:false,G:null,tr:null,cache:null,order:[],rolls:[],cfg:null};
   const asC=()=>asbSCE(+S.coPupil||4);
   function as2Conds(){ const L=[]; [0,30,60,90,120,150].forEach(o=>L.push({type:1,phi:(o+90)%180,ori:o}));
     if(S.asMeth!=="chrom") [0,60,120].forEach(a=>["L","S"].forEach(col=>L.push({type:2,phiA:(a+90)%180,phiB:a,oriA:a,oriB:(a+90)%180,col})));
     return L; }
-  function asStart(){ AS.active=true; AS.cfg=as2Cfg(); AS.G=as2New(AS.cfg.dD,asC()); AS.order=[]; AS.rolls=[]; asTrial(); }
+  function asStart(){ aslStop(); AS.active=true; AS.cfg=as2Cfg(); AS.G=as2New(AS.cfg.dD,asC()); AS.order=[]; AS.rolls=[]; asTrial(); }
   function asStop(){ AS.active=false; }
   function asTrial(){ const G=AS.G; if(G.n>=(+S.asTrials||40)){ asFinish(); return; }
     if(!AS.order.length) AS.order=as2Conds().sort(()=>Math.random()-0.5);
@@ -3711,8 +3715,49 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
     const pts=[0,30,60,90,120,150].map(o=>{ const phi=(o+90)%180, m=f.meri(phi); return {ori:o,phi,D:+m.D.toFixed(2),sd:+m.sd.toFixed(2),edge:Math.abs(m.D)>2.3}; });
     const fit={...f}; delete fit.meri; fit.axScreen=fit.axP; fit.roll=rl;
     if(rl!=null){ fit.axP=(((fit.axP-rl)%180)+180)%180; let tb=Math.round(180-fit.axP)%180; if(tb<=0) tb+=180; fit.tabo=tb; }
-    const r=ntR("5"); r[S.eye["5"]]={pts,fit,self,pupil:Pe,col:S.asCol,meth:S.asMeth,dD:+G.dD.toFixed(3),n:G.n,dist:S.dist["5"],when:Date.now()};
+    const r=ntR("5"); r[S.eye["5"]]={pts,fit,self,pupil:Pe,col:S.asCol,lum:AS.cfg.cal?AS.cfg.cal.f:null,meth:S.asMeth,dD:+G.dD.toFixed(3),n:G.n,dist:S.dist["5"],when:Date.now()};
     AS.active=false; save(); draw(); beep(660,200); }
+  // ---- brightness match for the colour pair, per screen ----
+  // Static "minimally distinct border" (default: nothing changes on screen, so no flicker at all): 8 sectors in the two
+  //  colours; the edge between them is softest when they're equally bright to this eye (Boynton & Kaiser).
+  // Optional flicker photometry, made LCD-safe: each colour is held for an EVEN number of refreshes (2 at 60 Hz → 15 Hz),
+  //  so every pixel gets the same drive in both polarity-inversion phases (no DC across the liquid crystal, the cause of
+  //  the earlier retention, which toggled every single refresh). Refused unless the refresh rate is a clean multiple of
+  //  60 Hz; frames counted from vsync timestamps so a dropped frame can't shift the phase; small 2.5° patch only; each
+  //  setting's flicker stops after 15 s and the whole match after 3 min of flicker; stops when the tab is hidden.
+  const ASL={cur:"B",active:false,v:0,set:[],i:0,N:4,raf:0,t0:0,paused:false,tot:0,last:0,n:0,dts:[],msg:"",geo:null,img:null};
+  function aslStop(){ ASL.active=false; if(ASL.raf){ cancelAnimationFrame(ASL.raf); ASL.raf=0; } }
+  function aslStart(){ AS.active=false; aslStop(); Object.assign(ASL,{active:true,set:[],i:0,tot:0,dts:[],last:0,n:0,msg:""}); aslNext(); }
+  function aslNext(){ const b=as2Base(); ASL.v=Math.min(1,b.std*Math.exp((ASL.i%2?1:-1)*(0.35+0.25*Math.random()))); aslPoke(); }
+  function aslPoke(){ ASL.t0=performance.now(); if(ASL.tot<180000) ASL.paused=false; draw(); }
+  function aslAdj(dir,coarse){ const b=as2Base(); ASL.v=Math.min(1,Math.max(b.std/6,ASL.v*Math.exp(dir*(coarse?0.12:0.03)))); aslPoke(); }
+  function aslSet(){ ASL.set.push(ASL.v); ASL.i++; if(ASL.i<ASL.N){ aslNext(); return; }
+    const b=as2Base(), L=ASL.set.map(v=>Math.log(v/b.std)), m=L.reduce((a,c)=>a+c,0)/L.length, sd=Math.sqrt(L.reduce((a,c)=>a+(c-m)**2,0)/(L.length-1));
+    S.asLumCal=S.asLumCal||{}; S.asLumCal[asLumKey()]={f:+Math.exp(m).toFixed(3),sd:+sd.toFixed(3),m:S.asLumM,n:L.length,when:Date.now()};
+    aslStop(); save(); draw(); beep(660,200); }
+  function aslImgs(env,ctx){ const b=as2Base(), R=Math.round(ntDegPx(env,1.25)), pw=2*R+2, ck=[ASL.v,R,S.asCol,P3,S.asLumM].join();
+    if(ASL.img&&ASL.img.ck===ck) return ASL.img;
+    const mk=mode=>{ const img=ntImg(ctx,pw,pw), D=img.data, va=Math.round(255*enc(ASL.v)), vf=255;
+      for(let y=0;y<pw;y++) for(let x=0;x<pw;x++){ const dx=x+0.5-pw/2, dy=y+0.5-pw/2, i=(y*pw+x)*4; D[i+3]=255; if(Math.hypot(dx,dy)>R) continue;
+        const adj=mode==="mdb"?Math.floor((Math.atan2(dy,dx)+Math.PI)/(Math.PI/4))%2===1:mode==="A";
+        D[i+(adj?b.adj:b.fix)]=adj?va:vf; }
+      return img; };
+    ASL.img=S.asLumM==="hfp"?{ck,pw,A:mk("A"),B:mk("B")}:{ck,pw,A:mk("mdb")}; return ASL.img; }
+  function aslLoop(){ if(ASL.raf) return; const tick=ts=>{ ASL.raf=0;
+      if(!ASL.active||S.asLumM!=="hfp"||S.mode!=="5"||document.hidden||!ASL.geo){ ASL.last=0; return; }
+      if(ASL.last){ const dt=ts-ASL.last; ASL.dts.push(dt); if(ASL.dts.length>60) ASL.dts.shift(); if(ASL.dts.length>10) ASL.tot+=Math.min(dt,100); } ASL.last=ts;
+      const g=ASL.geo, I=ASL.img; if(!I||!I.B) return;
+      if(performance.now()-ASL.t0>15000||ASL.tot>=180000){ ASL.paused=true; ASL.last=0; g.ctx.putImageData(I.B,g.x,g.y); draw(); return; }
+      if(ASL.dts.length<=10){ g.ctx.putImageData(I.B,g.x,g.y); ASL.raf=requestAnimationFrame(tick); return; }   // measuring the refresh: steady
+      const fd=ASL.dts.slice().sort((a,b)=>a-b)[ASL.dts.length>>1], fps=1000/fd, k=Math.round(fps/60);
+      if(k<1||Math.abs(fps-60*k)/fps>0.04){ ASL.msg=`Flicker refused: this screen is refreshing at ${fps.toFixed(0)} Hz, not a multiple of 60, so it can't be kept LCD-safe. Use the border method.`; ASL.paused=true; ASL.tot=180000; g.ctx.putImageData(I.B,g.x,g.y); draw(); return; }
+      const half=2*k; ASL.n+=Math.max(1,Math.round((ASL.dts[ASL.dts.length-1])/fd));     // count refreshes, including any dropped
+      ASL.cur=Math.floor(ASL.n/half)%2?"A":"B"; g.ctx.putImageData(ASL.cur==="A"?I.A:I.B,g.x,g.y); ASL.raf=requestAnimationFrame(tick); };
+    ASL.raf=requestAnimationFrame(tick); }
+  document.addEventListener("visibilitychange",()=>{ if(document.hidden&&ASL.raf){ cancelAnimationFrame(ASL.raf); ASL.raf=0; ASL.last=0; } });
+  function aslDraw(env){ const g_=ntCv(env,"#000"), ctx=g_.ctx, I=aslImgs(env,ctx), x=Math.round(g_.cxp-I.pw/2), y=Math.round(g_.cyp-I.pw/2);
+    ASL.geo={ctx,x,y}; ctx.putImageData(I.B?(ASL.raf&&ASL.cur==="A"?I.A:I.B):I.A,x,y);     // a redraw keeps the current flicker phase
+    if(S.asLumM==="hfp"&&!ASL.paused&&!ASL.raf){ ASL.last=0; ASL.dts=[]; ASL.n=0; aslLoop(); } }
   function chromPanel2(ctx,M,pw,ph,ch,lvl,Rf,soft){ const img=ntImg(ctx,pw,ph), D_=img.data, cx=pw/2, cy=ph/2;
     for(let y=0;y<ph;y++) for(let x=0;x<pw;x++){ const i=y*pw+x, r=Math.hypot(x+0.5-cx,y+0.5-cy), win=r<=Rf?1:r>=Rf+soft?0:0.5+0.5*Math.cos(Math.PI*(r-Rf)/soft), v=win*lvl*Math.max(0,1-Math.min(1,M[i]));
       D_[i*4]=0; D_[i*4+1]=0; D_[i*4+2]=0; D_[i*4+ch]=Math.round(255*enc(v)); D_[i*4+3]=255; }
@@ -3721,7 +3766,7 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
     const t=T_.t, k=T_.k, sB=Math.sqrt(Math.abs(k));
     // line spacing follows this trial's blur (screen disc or expected eye blur, whichever is larger); both panels share it
     const bl=Math.max(sB,T_.eye)*pxPerD, p=Math.max(ntDegPx(env,14/60),2.2*bl,6), w=Math.max(2,0.3*p), Rp=2.5*p, Rf=Rp+0.5*p, soft=0.6*p, pw=Math.ceil(2*(Rf+soft))+2, ph=pw;
-    const ck=[JSON.stringify(t),k,T_.left,env.W,env.H,d,S.coPupil,P3,S.asCol,Math.round(p)].join();
+    const ck=[JSON.stringify(t),k,T_.left,env.W,env.H,d,S.coPupil,P3,S.asCol,cfg.lvL,cfg.lvS,Math.round(p)].join();
     if(AS.cache&&AS.cache.ck===ck) return AS.cache;
     const lines=o=>maskFrom(pw,ph,c=>{ c.translate(pw/2,ph/2); c.rotate(-o*Math.PI/180); c.beginPath(); c.arc(0,0,Rp,0,7); c.clip(); for(let i=-3;i<=3;i++) c.fillRect(-Rp-2,i*p-w/2,2*Rp+4,w); });
     const blur=(M,on)=>on&&sB>0?discBlur(M,pw,ph,sB*pxPerD):M;
@@ -3731,16 +3776,32 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
     else { const ch=t.col==="L"?cfg.L:cfg.S, lv=t.col==="L"?cfg.lvL:cfg.lvS; A=chromPanel2(ctx,blur(lines(t.oriA),k>0),pw,ph,ch,lv,Rf,soft); B=chromPanel2(ctx,blur(lines(t.oriB),k<0),pw,ph,ch,lv,Rf,soft);
       AS.cache={ck,left:T_.left?A:B,right:T_.left?B:A,pw,ph,p,w}; }        // T2: T_.left → set A on the left
     return AS.cache; }
+  function aslDrawNT(env){ aslDraw(env); const b=as2Base(), an=AS2_CN[b.adj], fn=AS2_CN[b.fix], hfp=S.asLumM==="hfp";
+    const how=hfp?`The patch alternates between ${fn} and ${an}. Adjust the ${an} until the flicker is weakest (the colour change stays; the throbbing in brightness is what to minimise).`:`Eight sectors, ${fn} and ${an}. Look at the centre and adjust the ${an} until the edges between the sectors are least distinct: the colours still differ, but the edges look softest and the pattern stops "standing out".`;
+    const st=ASL.msg?ASL.msg:ASL.paused?(ASL.tot>=180000?"Flicker limit (3 min) reached: press Space to keep the current setting, or switch to the border method.":"Flicker paused after 15 s (screen safety). Press an arrow to continue."):"";
+    return {readout:`<span>Brightness match: setting ${ASL.i+1} of ${ASL.N} · ${how}</span>${st?`<span><b>${st}</b></span>`:""}<span>↑ / tap top: ${an} brighter · ↓ / tap bottom: ${an} dimmer (Shift: big steps) · Space / "Matched": set</span>`,
+      warns:["Use the eye you will test (the other covered), the room lighting you will test in, and no filters. Each setting starts from a different level on purpose."].concat(hfp?["Flicker is limited to a small patch, 15 s at a time, and held for whole even numbers of screen refreshes so it can't build up a charge on the LCD. Not advised if you have photosensitive epilepsy: use the border method."]:[]),
+      eq:`adjusted ${an} level a (linear), fixed ${fn} at 1; standard observer a = Y_${fn}/Y_${an} = ${b.std.toFixed(3)}
+result f = geometric mean of ${ASL.N} settings / standard; used as the ${an} level in every patch of the test`,
+      opt:`<p>The sharpness of black lines depends on their contrast, and contrast is judged by the brightness (luminance) channel, which for blue and red differs between people (macular pigment, lens yellowing, cone ratios). Matching brightness for your own eye removes a built-in bias from the colour comparisons. The orientation comparisons are within one colour and don't need it.</p>`,
+      rows:"",steps:`<li>Cover the other eye. Adjust, then press Space. ${ASL.N} settings.</li>` }; }
   NT["5"]={ name:"Astigmatism (lens-free)",
     ctl:`<label data-modes="5">Method<select data-ntk="asMeth"><option value="mix">Colour + orientation comparisons (most accurate)</option><option value="chrom">Colour comparisons only (previous)</option></select></label>
       <label data-modes="5">Colours<select data-ntk="asCol"><option value="RG">Red / green</option><option value="RB">Red / blue (experimental)</option><option value="GB">Green / blue (experimental)</option></select></label>
+      <label data-modes="5">Brightness of the two colours<select data-ntk="asLumUse"><option value="match">Your own match, if made (else standard)</option><option value="std">Standard observer</option></select></label>
+      <label data-modes="5">Brightness match<select data-ntk="asLumM"><option value="mdb">Softest border (static, no flicker)</option><option value="hfp">Weakest flicker (15 Hz, LCD-safe)</option></select></label>
+      <label data-modes="5">Match<div class="btns"><button type="button" data-nta="5:lum">Match brightness (B)</button><button type="button" data-nta="5:lumclr">Clear match</button></div></label>
       <label data-modes="5">Pupil<select data-ntk="asPup"><option value="entered">As entered (mm)</option><option value="self">Self-calibrating (needs a cylinder ≥ 0.5 D)</option></select></label>
       <label data-modes="5">Answers<select data-ntk="asTrials" data-ntt="num"><option value="40">40</option><option value="60">60</option><option value="80">80 (most precise)</option></select></label>
       <label data-modes="5">Run<div class="btns"><button type="button" data-nta="5:start" class="primary">Start (S)</button><button type="button" data-nta="5:stop">Stop</button></div></label>`,
-    stop:asStop, clear(){ S.ntRes&&(S.ntRes["5"]={}); }, act(a){ if(a==="start") asStart(); else { asStop(); draw(); } },
-    hud(){ return !AS.active?"S start":"which side's lines are sharper: ← left · → right"; },
-    key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ asStart(); return true; } if(AS.active&&(k==="ArrowLeft"||k==="ArrowRight")){ asResp(k==="ArrowLeft"); return true; } return false; },
-    draw(env){ this.env=env; const g_=ntCv(env,"#000"), ctx=g_.ctx, P_=asPanels(env,ctx), gap=ntDegPx(env,0.6), cfg=AS.cfg||as2Cfg();
+    stop(){ asStop(); aslStop(); }, clear(){ S.ntRes&&(S.ntRes["5"]={}); }, act(a){ if(a==="start") asStart(); else if(a==="lum") aslStart(); else if(a==="lumclr"){ if(S.asLumCal) delete S.asLumCal[asLumKey()]; aslStop(); save(); draw(); } else { asStop(); aslStop(); draw(); } },
+    hud(){ return ASL.active?"↑ brighter · ↓ dimmer (Shift: big steps) · Space: matched · Esc: stop":!AS.active?"S start · B brightness match":"which side's lines are sharper: ← left · → right"; },
+    key(k,e,up){ if(up) return false;
+      if(ASL.active){ if(k==="ArrowUp"||k==="ArrowDown"){ aslAdj(k==="ArrowUp"?1:-1,e&&e.shiftKey); return true; } if(k===" "||k==="Enter"){ aslSet(); return true; } if(k==="Escape"){ aslStop(); draw(); return true; } if(k==="ArrowLeft"||k==="ArrowRight"){ aslPoke(); return true; } }
+      if(k==="b"||k==="B"){ aslStart(); return true; }
+      if(k==="s"||k==="S"){ asStart(); return true; } if(AS.active&&(k==="ArrowLeft"||k==="ArrowRight")){ asResp(k==="ArrowLeft"); return true; } return false; },
+    draw(env){ this.env=env; if(ASL.active) return aslDrawNT(env);
+      const g_=ntCv(env,"#000"), ctx=g_.ctx, P_=asPanels(env,ctx), gap=ntDegPx(env,0.6), cfg=AS.cfg||as2Cfg();
       ctx.putImageData(P_.left,Math.round(g_.cxp-gap/2-P_.pw),Math.round(g_.cyp-P_.ph/2)); ctx.putImageData(P_.right,Math.round(g_.cxp+gap/2),Math.round(g_.cyp-P_.ph/2));
       const s=Math.max(2,0.06*ntPPD(env)); ctx.fillStyle="#666"; ctx.fillRect(g_.cxp-s/2,g_.cyp-s/2,s,s);
       const r=ntR("5"), eyeR=r[S.eye["5"]], dcm=S.dist["5"], mDist=100/dcm, pf=v=>(v>=0?"+":"")+v.toFixed(2);
@@ -3758,7 +3819,9 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
       const warns=["Experimental. One eye at a time, the other covered; no glasses or filters (spectacles or contact lenses give the residual astigmatism over them). Look at each patch in turn before answering; keep the head upright."];
       if(S.asPup!=="self") warns.push("The cylinder's size scales with the square of any error in the entered pupil (the axis doesn't). Measure it in this light, looking at the screen.");
       if(S.asCol!=="RG") warns.push(`Experimental colour pair: the ${AS2_CN[cfg.S]} panel is dim and seen with coarser vision, so answers may be noisier; the focus difference used is ${cfg.dD.toFixed(2)} D.`);
-      return {readout:`<span>${desc}</span>${res}`,warns,
+      const lc=(S.asLumCal||{})[asLumKey()], b_=as2Base();
+      const lumTxt=`<span>Brightness (${AS2_PAIR[S.asCol].n}, this screen): ${lc?`your match sets ${AS2_CN[b_.adj]} at ${lc.f.toFixed(2)}× the standard-observer level (± ${Math.round(100*lc.sd/Math.sqrt(lc.n))}%, ${lc.m==="hfp"?"flicker":"border"} method) · ${S.asLumUse==="std"?"<b>not used</b> (standard observer selected)":"used"}`:"standard observer (no match made: press B to match it to your eye)"}</span>`;
+      return {readout:`<span>${desc}</span>${lumTxt}${res}`,warns,
         eq:`colours: ${AS2_PAIR[S.asCol].n} (${AS2_LAMBDA[cfg.L]} / ${AS2_LAMBDA[cfg.S]} nm), equal luminance; focus difference ΔD = ${cfg.dD.toFixed(3)} D (Thibos 1992)
 D(φ) = M + A1·cos2φ + A2·sin2φ (focus error at the middle of the two colours, + = behind the screen); long colour D + ΔD/2, short D − ΔD/2
 blur across lines with normal n: Q·|F_X·n|² + s² (screen disc s drawn for the entered pupil; Q = c(P)·P²/P_entered², c = Stiles–Crawford factor ${asC().toFixed(2)} at ${S.coPupil} mm)
@@ -6882,7 +6945,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     "1":()=>({run:PF.active||PF.demo,ans:PF.phase==="answer",start:"s",v:1,z:[["ArrowUp","Moving band IN FRONT"],["ArrowDown","Moving band BEHIND"]],how:"Eyes on the dot. A dotty band slides between two still bands; when it stops, tap the TOP half if it was in front of them, the BOTTOM half if behind."}),
     "3":()=>({run:SB.active,ans:SB.active,start:"s",v:1,z:[["ArrowUp","Only TOP line (hold)"],["ArrowLeft","DOUBLE (hold)"],["ArrowDown","Only BOTTOM line (hold)"]],how:"Look at the centre dot. Hold the top while only the top line is there, the bottom while only the bottom line is there, the middle while things look double. Let go when normal."}),
     "4":()=>({run:DC.active,ans:true,start:"s",z:[["ArrowLeft","LEFT more turned"],["ArrowRight","RIGHT more turned"]],how:"Two dotted surfaces turned like doors. Tap the side whose surface is turned more (right edge further away). Guess if equal."}),
-    "5":()=>({run:AS.active,ans:true,start:"s",z:[["ArrowLeft","Left lines sharper"],["ArrowRight","Right lines sharper"]],how:"Look at each patch in turn. Tap the LEFT half if the left lines are sharper, the RIGHT half if the right lines are. Guess if they look the same."}),
+    "5":()=>ASL.active?({run:true,ans:true,start:"s",v:1,z:[["ArrowUp",`${AS2_CN[as2Base().adj]} brighter`],["ArrowDown",`${AS2_CN[as2Base().adj]} dimmer`]],x:[[" ","Matched"]],how:""}):({run:AS.active,ans:true,start:"s",z:[["ArrowLeft","Left lines sharper"],["ArrowRight","Right lines sharper"]],how:"Look at each patch in turn. Tap the LEFT half if the left lines are sharper, the RIGHT half if the right lines are. Guess if they look the same."}),
     "9":()=>({run:AN.active,ans:true,start:"s",z:[["ArrowLeft","Left panel sharper"],["ArrowRight","Right panel sharper"]],how:"Each eye sees one panel. Tap the LEFT half if the left panel's letters are sharper, the RIGHT half if the right panel's are. Guess if equal."}),
     "0":()=>({run:TL.active,ans:TL.phase==="answer",start:"s",v:1,z:[["ArrowUp","Disc IN FRONT"],["ArrowDown","Disc BEHIND"]],how:"Look at the centre dot. A dotty patch flashes with a disc floating in front or behind: tap the TOP half for in front, the BOTTOM half for behind."}),
     "8":()=>(S.ctMethod==="cam"?{run:CVT.active,ans:false,start:"s",z:[],how:"Look at the cross the whole time, head still. It jumps to five dots first, then stays in the middle."}:CVT.tr&&CVT.tr.ax==="V"?{run:CVT.active,ans:CVT.phase==="answer",start:"s",v:1,z:[["ArrowUp","Left line HIGHER"],["ArrowDown","Left line LOWER"]],how:"Look at the cross. Two lines flash. One above the other: tap LEFT or RIGHT for where the top one was. Side by side: tap TOP if the left one was higher, BOTTOM if lower."}:{run:CVT.active,ans:CVT.phase==="answer",start:"s",z:[["ArrowLeft","Top line LEFT"],["ArrowRight","Top line RIGHT"]],how:"Look at the cross. Two lines flash. One above the other: tap LEFT or RIGHT for where the top one was. Side by side: tap TOP if the left one was higher, BOTTOM if lower."}),

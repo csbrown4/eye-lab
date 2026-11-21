@@ -3712,10 +3712,10 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
     const eye=t.type===1?Math.abs(Dm(t.phi))+G.dD/2:Math.max(Math.abs(Dm(t.phiA)),Math.abs(Dm(t.phiB)))+G.dD/2;   // expected eye blur, for the line spacing
     AS.tr={t,k:Math.round(1000*k)/1000,left:Math.random()<0.5,eye,rep:0,flashed:false}; AS.show=false; draw();
     clearTimeout(AS.ft0); AS.ft0=setTimeout(()=>{ if(AS.active&&AS.tr&&AS.tr.t===t) asFlash(); },700); }
-  // The lines flash for 250 ms, shorter than the eye's accommodation latency (~0.3–0.4 s), while the participant keeps
+  // The lines flash for 450 ms, shorter than the eye's accommodation latency (~0.3–0.4 s), while the participant keeps
   // looking at a central star of fine spokes (every orientation, so it holds focus at the circle of least confusion).
   // With steady patches the eye can refocus to sharpen whichever line orientation is shown, which shrinks the cylinder.
-  function asFlash(){ if(!AS.active||!AS.tr) return; clearTimeout(AS.ft); AS.show=true; AS.tr.flashed=true; draw(); AS.ft=setTimeout(()=>{ AS.show=false; draw(); },250); }
+  function asFlash(){ if(!AS.active||!AS.tr) return; clearTimeout(AS.ft); AS.show=true; AS.tr.flashed=true; draw(); AS.ft=setTimeout(()=>{ AS.show=false; draw(); },450); }
   function asReplay(){ if(AS.active&&AS.tr&&AS.tr.flashed){ AS.tr.rep++; asFlash(); } }
   function asStar(ctx,cx,cy,r,lw){ ctx.save(); ctx.strokeStyle="#9a9a9a"; ctx.lineWidth=lw; ctx.beginPath(); for(let i=0;i<8;i++){ const a=i*Math.PI/8; ctx.moveTo(cx-r*Math.cos(a),cy-r*Math.sin(a)); ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a)); } ctx.stroke(); ctx.restore(); }
   // leftSharper: the answer. r = "the side that k > 0 blurs looked worse"
@@ -3821,7 +3821,7 @@ result f = geometric mean of ${ASL.N} settings / standard; used as the ${an} lev
       const res=`<span>${fitTxt("OD",r.OD)}</span><span>${fitTxt("OS",r.OS)}</span>`+(eyeR&&eyeR.pts?`<span>${S.eye["5"]} focus by meridian (TABO): ${eyeR.pts.map(p=>({...p,tm:p.tm!=null?p.tm:((180-p.phi)%180||180)})).sort((a,b)=>a.tm-b.tm).map(p=>`${p.tm}°: ${pf(p.D)}±${p.sd.toFixed(2)}`).join(" · ")}</span>`+asChart(eyeR):"");
       const T_=AS.tr, desc=!AS.active||!T_?"stopped":T_.t.type===1?`colour comparison: lines at ${T_.t.ori}° · blur ${Math.sqrt(Math.abs(T_.k)).toFixed(2)} D on ${T_.k>0?AS2_CN[cfg.S]:T_.k<0?AS2_CN[cfg.L]:"neither"} · answer ${AS.G.n+1} of ${+S.asTrials||40}`
         :`orientation comparison in ${AS2_CN[T_.t.col==="L"?cfg.L:cfg.S]}: ${T_.t.oriA}° vs ${T_.t.oriB}° lines · blur ${Math.sqrt(Math.abs(T_.k)).toFixed(2)} D on the ${T_.k>0?T_.t.oriA:T_.t.oriB}° set · answer ${AS.G.n+1} of ${+S.asTrials||40}`;
-      const warns=["Experimental. One eye at a time, the other covered; no glasses or filters (spectacles or contact lenses give the residual astigmatism over them). Keep looking at the central star: the patches flash for a quarter of a second so the eye can't refocus on them (refocusing makes the cylinder read low). Space repeats the flash. Keep the head upright.",
+      const warns=["Experimental. One eye at a time, the other covered; no glasses or filters (spectacles or contact lenses give the residual astigmatism over them). Keep looking at the central star: the patches flash for under half a second so the eye can't refocus on them (refocusing makes the cylinder read low). Space repeats the flash. Keep the head upright.",
         "The cylinder's size is uncalibrated: pupil, this eye's own colour focus and the screen's real colours all scale it (about ±30%, and it has tended to read low). The axis is not affected."];
       if(S.asPup!=="self") warns.push("The cylinder's size scales with the square of any error in the entered pupil (the axis doesn't). Measure it in this light, looking at the screen.");
       if(S.asCol!=="RG") warns.push(`Experimental colour pair: the ${AS2_CN[cfg.S]} panel is dim and seen with coarser vision, so answers may be noisier; the focus difference used is ${cfg.dD.toFixed(2)} D.`);

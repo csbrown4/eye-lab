@@ -72,7 +72,12 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
     <div class="row" style="justify-content:space-between">
       <h2>1 · Screen size</h2><span id="calState" class="pill warn">Not set on this device</span>
     </div>
-    <p class="note">Hold a bank card (or any ID-1 card, 85.6 mm wide) against the screen and drag the slider until the blue bar is exactly as wide as the card. Do this once per device and whenever the display zoom changes.</p>
+    <div class="grid" style="align-items:end">
+      <label for="scrPreset">Your screen<select id="scrPreset"></select></label>
+      <label for="scrInch" id="scrInchL">Diagonal (inches)<input id="scrInch" type="number" min="5" max="60" step="0.1" placeholder="e.g. 15.6"></label>
+      <div class="row"><button id="scrApply">Use this size</button></div>
+    </div>
+    <p class="note">Pick your screen, or enter its diagonal in inches (on the built-in screen, with browser zoom at 100%). For the most accurate result, then check with a bank card (85.6 mm wide): the blue bar should match it exactly; drag the slider if it doesn't.</p>
     <div class="cal-bar" id="calBar"><span>85.6 mm</span></div>
     <input type="range" id="calSlider" min="150" max="700" step="0.5" aria-label="Bar width">
     <div class="row"><button id="calSave">Save screen size</button><span class="note" id="calInfo"></span></div>
@@ -103,8 +108,8 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
     <ol class="steps">
       <li>Glasses and contact lenses off (or on, to measure the astigmatism left over them: record which in Notes). No coloured filters.</li>
       <li>Cover the eye not being tested. Keep the head upright and at <b id="howDist">50</b> cm from the screen.</li>
-      <li>Keep looking at the <span id="howStar">small grey star</span> in the centre the whole time. <span id="howPatches">A red and a green patch of lines flash</span> on either side of it for a quarter of a second. Answer which side's <b>lines</b> were sharper (ignore which colour looked brighter). Don't look across at the patches: the flash is short on purpose, so the eye can't refocus on them.</li>
-      <li>Answer with ← / → keys, or tap the left or right half of the screen. Space or "Show again" repeats the flash. If they look the same, guess.</li>
+      <li>Keep looking at the <span id="howStar">small grey star</span> in the centre the whole time. <span id="howPatches">A red and a green patch of lines flash</span> on either side of it for under half a second. Answer which side's <b>lines</b> were sharper (ignore which colour looked brighter). Don't look across at the patches: the flash is short on purpose, so the eye can't refocus on them.</li>
+      <li>Answer with ← / → keys, or tap the left or right side of the screen. If they look the same, press ↓ or tap the middle ("Same"). Space or "Show again" repeats the flash.</li>
       <li>Three practice answers come first. Press Esc or "Stop" to abandon.</li>
     </ol>
     <div class="row"><button class="primary" id="goBtn">Begin (full screen)</button><button id="backBtn">Back</button></div>
@@ -142,7 +147,7 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
 <div id="stage" hidden>
   <canvas id="cv"></canvas>
   <div id="msg"></div>
-  <div id="hud"><span id="prog"></span><button id="againBtn" type="button">Show again (Space)</button><button id="stopBtn" type="button">Stop</button></div>
+  <div id="hud"><span id="prog"></span><button id="sameBtn" type="button">Same (↓)</button><button id="againBtn" type="button">Show again (Space)</button><button id="stopBtn" type="button">Stop</button></div>
 </div>
 
 <script>
@@ -170,7 +175,7 @@ function as2New(dD,Q0){ const G={dD,Q0,M:[],A:[],S:[0.04,0.09,0.2],n:0,hist:[]};
 // r = true when the response says the side that k > 0 blurs looked WORSE (P(r) rises with k)
 function as2Update(G,t,k,r){ const nM=G.M.length,nA=G.A.length,blk=nM*nA*nA,L=G.L;
   for(let a=0;a<nM;a++) for(let b=0;b<nA;b++) for(let c=0;c<nA;c++){ const pk=as2Pred(t,G.M[a],G.A[b],G.A[c],G.Q0,G.dD), j=(a*nA+b)*nA+c;
-    for(let si=0;si<3;si++){ const p=AS2_LAM/2+(1-AS2_LAM)*as2Phi((k-pk)/G.S[si]), lp=Math.log(r?p:1-p);
+    for(let si=0;si<3;si++){ const p=AS2_LAM/2+(1-AS2_LAM)*as2Phi((k-pk)/G.S[si]), lp=r===0.5?0.5*(Math.log(p)+Math.log(1-p)):Math.log(r?p:1-p);   // r = 0.5: answered "same"
       for(let sj=0;sj<3;sj++){ const s=t.type===1?si*3+sj:sj*3+si; L[s*blk+j]+=lp; } } }
   G.n++; G.hist.push({t,k,r}); }
 function as2Weights(G){ const L=G.L; let m=-Infinity; for(let i=0;i<L.length;i++) if(L[i]>m) m=L[i]; const W=new Float64Array(L.length); let s=0; for(let i=0;i<L.length;i++){ const w=Math.exp(L[i]-m); W[i]=w; s+=w; } for(let i=0;i<L.length;i++) W[i]/=s; return W; }
@@ -181,7 +186,7 @@ function as2Mean(G){ const W=as2Weights(G), nM=G.M.length,nA=G.A.length; let m=0
   return {M:m,A1:a,A2:b,ls1:s1,ls2:s2}; }
 // ---- final estimate: MAP over continuous parameters (Nelder–Mead) + Laplace (numerical Hessian) for uncertainties
 function as2LogPost(G,x,freeQ){ const [M,A1,A2,ls1,ls2,lq]=x, Q=freeQ?Math.exp(lq):G.Q0, s1=Math.exp(ls1), s2=Math.exp(ls2); let lp=0;
-  for(const h of G.hist){ const pk=as2Pred(h.t,M,A1,A2,Q,G.dD), p=AS2_LAM/2+(1-AS2_LAM)*as2Phi((h.k-pk)/(h.t.type===1?s1:s2)); lp+=Math.log(h.r?p:1-p); }
+  for(const h of G.hist){ const pk=as2Pred(h.t,M,A1,A2,Q,G.dD), p=AS2_LAM/2+(1-AS2_LAM)*as2Phi((h.k-pk)/(h.t.type===1?s1:s2)); lp+=h.r===0.5?0.5*(Math.log(p)+Math.log(1-p)):Math.log(h.r?p:1-p); }
   lp+=-0.5*((M-0.5)/1.3)**2-0.5*(A1*A1+A2*A2)-0.5*((ls1-Math.log(0.09))/1)**2-0.5*((ls2-Math.log(0.09))/1)**2; if(freeQ) lp+=-0.5*((lq-Math.log(G.Q0))/1.0)**2; return lp; }
 function as2NM(f,x0,step,iters){ const n=x0.length; let P=[x0.slice()]; for(let i=0;i<n;i++){ const x=x0.slice(); x[i]+=step[i]; P.push(x); } let F=P.map(f);
   for(let it=0;it<iters;it++){ const o=[...P.keys()].sort((a,b)=>F[b]-F[a]); P=o.map(i=>P[i]); F=o.map(i=>F[i]);      // maximise
@@ -208,7 +213,7 @@ function as2Fit(G,freeQ){ const m=as2Mean(G), x0=[m.M,m.A1,m.A2,m.ls1,m.ls2].con
 
 (function(){
 "use strict";
-const APP_VERSION="astig-finder 1.3 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
+const APP_VERSION="astig-finder 1.4 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
 const $=id=>document.getElementById(id);
 const LS={ get(k,d){ try{ const v=localStorage.getItem("astig."+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem("astig."+k,JSON.stringify(v)); }catch(e){} } };
 
@@ -235,7 +240,7 @@ function mxSample(X){ const {W,t}=mxW(X); let r=Math.random()*t, k=0; for(;k<W.l
   const g=k%X.nG, ij=(k-g)/X.nG, j=ij%X.nA, i=(ij-j)/X.nA; return {A1:MX_A[i],A2:MX_A[j]}; }
 function mxUpdate(X,phi,uA,aWorse){ const c=Math.cos(2*phi*Math.PI/180), s_=Math.sin(2*phi*Math.PI/180);
   for(let i=0;i<X.nA;i++) for(let j=0;j<X.nA;j++){ const v=MX_A[i]*c+MX_A[j]*s_+O_MIX*uA, b=(i*X.nA+j)*X.nG;
-    for(let g=0;g<X.nG;g++){ const p=0.02+0.96*mxPhi(MX_G[g]*v); X.L[b+g]+=Math.log(aWorse?p:1-p); } }
+    for(let g=0;g<X.nG;g++){ const p=0.02+0.96*mxPhi(MX_G[g]*v); X.L[b+g]+=aWorse===0.5?0.5*(Math.log(p)+Math.log(1-p)):Math.log(aWorse?p:1-p); } }
   X.n++; }
 function mxSummary(X){ const {W,t}=mxW(X); let a1=0,a2=0; for(let i=0;i<X.nA;i++) for(let j=0;j<X.nA;j++){ let w=0; const b=(i*X.nA+j)*X.nG; for(let g=0;g<X.nG;g++) w+=W[b+g]; a1+=w*MX_A[i]; a2+=w*MX_A[j]; }
   a1/=t; a2/=t; const amp=Math.hypot(a1,a2), ang=Math.atan2(a2,a1); let vc=0,va=0;
@@ -254,6 +259,20 @@ function calShow(){ const w=+$("calSlider").value; $("calBar").style.width=w+"px
 $("calSlider").max=Math.max(300,Math.floor(Math.min(innerWidth-40,900)));
 $("calSlider").value=mmPerPx?CARD_MM/mmPerPx:Math.min(+$("calSlider").max,CARD_MM/0.2646);
 $("calSlider").addEventListener("input",calShow);
+// screen presets: diagonal in inches; physical width from the screen's own aspect ratio (CSS pixels)
+const SCREENS=[["MacBook Air 13.3\" (M1 and earlier)",13.3],["MacBook Air 13.6\" (M2/M3/M4)",13.6],["MacBook Air 15.3\"",15.3],["MacBook Pro 13.3\"",13.3],["MacBook Pro 14.2\"",14.2],["MacBook Pro 16.2\"",16.2],["iMac 24\" (23.5\" visible)",23.5],
+  ["Windows laptop 13.3\"",13.3],["Windows laptop 14\"",14],["Windows laptop 15.6\"",15.6],["Windows laptop 16\"",16],["Windows laptop 17.3\"",17.3],
+  ["Desktop monitor 21.5\"",21.5],["Desktop monitor 23.8\" (24\")",23.8],["Desktop monitor 27\"",27],["Desktop monitor 31.5\" (32\")",31.5],
+  ["iPad 10.9\" / Air 11\"",10.9],["iPad Pro 11\"",11],["iPad Pro 12.9\" / Air 13\"",12.9],["Android tablet 10.1\"",10.1],["Android tablet 11\"",11]];
+$("scrPreset").innerHTML='<option value="">Choose…</option>'+SCREENS.map((x,i)=>`<option value="${i}">${x[0]}</option>`).join("")+'<option value="custom">Other: enter inches</option>';
+function scrSync(){ const v=$("scrPreset").value; $("scrInchL").hidden=v!=="custom"; }
+$("scrPreset").addEventListener("change",scrSync); scrSync();
+$("scrApply").onclick=()=>{ const v=$("scrPreset").value, inch=v==="custom"?+$("scrInch").value:v!==""?SCREENS[+v][1]:0;
+  if(!(inch>=5&&inch<=60)){ $("calInfo").textContent="Choose a screen or enter its diagonal (5–60 inches)."; return; }
+  const W_=Math.max(screen.width,screen.height), H_=Math.min(screen.width,screen.height), wmm=inch*25.4*W_/Math.hypot(W_,H_);
+  mmPerPx=wmm/W_; LS.set("mmPerPx",mmPerPx); LS.set("scrPreset",v); $("calSlider").value=Math.min(+$("calSlider").max,CARD_MM/mmPerPx); calShow(); checkReady();
+  $("calInfo").textContent+=` · from ${inch}" diagonal; check with a card if you can`; };
+{ const pv=LS.get("scrPreset",null); if(pv!=null){ $("scrPreset").value=pv; scrSync(); } }
 $("calSave").onclick=()=>{ mmPerPx=CARD_MM/(+$("calSlider").value); LS.set("mmPerPx",mmPerPx); calShow(); checkReady(); };
 calShow();
 
@@ -323,7 +342,7 @@ function star(ctx,cx,cy,r){ ctx.save(); ctx.strokeStyle=T&&T.meth==="mix"?"#3a46
   for(let i=0;i<8;i++){ const a=i*Math.PI/8; ctx.moveTo(cx-r*Math.cos(a),cy-r*Math.sin(a)); ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a)); } ctx.stroke(); ctx.restore(); }
 // The line patches are shown for FLASH_MS only: shorter than the eye's accommodation latency (~0.3–0.4 s), so the
 // focus set by the star is the focus the lines are seen with. Space / "Show again" repeats the flash.
-const FLASH_MS=250;
+const FLASH_MS=450;
 function flash(){ if(!T||!T.tr) return; clearTimeout(T.ft); T.show=true; render(); T.shownAt=T.shownAt||performance.now(); T.ready=true;
   T.ft=setTimeout(()=>{ if(!T) return; T.show=false; render(); },FLASH_MS); }
 function nextTrial(){ const G=T.G;
@@ -340,7 +359,7 @@ function nextTrial(){ const G=T.G;
         phi=Math.round(((al+45+(Math.random()<0.5?1:-1)*dl+Math.random()*4-2)%180+180)%180); }
       const Js=sm.A1*Math.cos(2*phi*Math.PI/180)+sm.A2*Math.sin(2*phi*Math.PI/180);
       let g=0; for(let i=0;i<12;i++) g+=Math.random(); g-=6;
-      const uA=Math.max(-1,Math.min(1,-Js/O_MIX+0.15*g));
+      const uA=Math.max(-1,Math.min(1,-Js/O_MIX+(Math.random()<0.5?-1:1)*0.3+0.05*g));   // a visible step either side of the predicted balance point
       T.tr={mix:true,phi,uA:Math.round(1000*uA)/1000,aLeft:Math.random()<0.5}; }
     T.tr.replays=0; T.shownAt=0; T.show=false; T.blank=false; render(); updHud();
     setTimeout(()=>{ if(!T) return; flash(); if(!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; },700); return; }
@@ -349,33 +368,34 @@ function nextTrial(){ const G=T.G;
   else { if(G.n>=T.N){ finish(); return; }
     if(!T.order.length) T.order=ORIS.slice().sort(()=>Math.random()-0.5);
     const ori=T.order.pop(), t={type:1,phi:(ori+90)%180}, sm=as2Sample(G,as2Weights(G),Math.random);
-    const k=Math.max(-4,Math.min(4,as2Pred(t,sm.M,sm.A1,sm.A2,G.Q0,G.dD)));
+    const k=Math.max(-4,Math.min(4,as2Pred(t,sm.M,sm.A1,sm.A2,G.Q0,G.dD)+(Math.random()<0.5?-1:1)*0.1));   // a visible step either side of the predicted balance point
     const Dm=sm.M+sm.A1*Math.cos(2*t.phi*Math.PI/180)+sm.A2*Math.sin(2*t.phi*Math.PI/180);
     T.tr={type:1,phi:t.phi,ori,k:Math.round(1000*k)/1000,left:Math.random()<0.5,eye:Math.abs(Dm)+G.dD/2}; }
   T.tr.replays=0; T.shownAt=0; T.show=false; T.blank=false; render(); updHud();
   setTimeout(()=>{ if(!T) return; flash();
     if(!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; }, 700); }
 function updHud(){ const pr=T.practice<3; $("prog").textContent=pr?`Practice ${T.practice+1} of 3`:`${(T.meth==="mix"?T.X.n:T.G.n)+1} of ${T.N}`;
-  if(!$("msg").dataset.hold) $("msg").textContent=pr?"Keep looking at the star. Which side's LINES were sharper?  ← left · right →  (Space: show again)":""; }
+  if(!$("msg").dataset.hold) $("msg").textContent=pr?"Keep looking at the star. Which side's LINES were sharper?  ← left · right →  · ↓ same · Space: show again":""; }
 function answer(leftSharper){ if(!T||!T.ready) return; T.ready=false; const tr=T.tr, rt=Math.round(performance.now()-T.shownAt);
-  if(tr.mix){ const aWorse=(leftSharper!==tr.aLeft); clearTimeout(T.ft); T.show=false;
-    if(tr.practice){ const correct=aWorse; T.practice++; if(!correct) T.pracWrong++;
+  const same=leftSharper===null;
+  if(tr.mix){ const aWorse=same?0.5:(leftSharper!==tr.aLeft); clearTimeout(T.ft); T.show=false;
+    if(tr.practice){ const correct=aWorse===true; T.practice++; if(!correct) T.pracWrong++;
       $("msg").dataset.hold=1; $("msg").textContent=correct?"✓":"Look again: one side was clearly blurred. Compare the lines, not the colours.";
       setTimeout(()=>{ delete $("msg").dataset.hold; nextTrial(); }, correct?350:1600); return; }
-    T.log.push([tr.phi,tr.uA,tr.aLeft?"A":"B",leftSharper?"L":"R",aWorse?1:0,rt,tr.replays]);
+    T.log.push([tr.phi,tr.uA,tr.aLeft?"A":"B",same?"S":leftSharper?"L":"R",aWorse===0.5?0.5:aWorse?1:0,rt,tr.replays]);
     mxUpdate(T.X,tr.phi,tr.uA,aWorse); setTimeout(nextTrial,0); return; }
-  const r=(leftSharper===tr.left);           // r = green (blurred when k > 0) looked worse = red sharper
-  if(tr.practice){ clearTimeout(T.ft); T.show=false; const correct=(tr.k>0)===r; T.practice++; if(!correct) T.pracWrong++;
+  const r=same?0.5:(leftSharper===tr.left);           // r = green (blurred when k > 0) looked worse = red sharper; 0.5 = same
+  if(tr.practice){ clearTimeout(T.ft); T.show=false; const correct=!same&&(tr.k>0)===r; T.practice++; if(!correct) T.pracWrong++;
     $("msg").dataset.hold=1; $("msg").textContent=correct?"✓":"Look again: one side was clearly blurred. Compare the lines, not the colours.";
     setTimeout(()=>{ delete $("msg").dataset.hold; nextTrial(); }, correct?350:1600); return; }
   clearTimeout(T.ft); T.show=false;
-  T.log.push([tr.ori,tr.k,tr.left?"R":"G",leftSharper?"L":"R",r?1:0,rt,tr.replays]);
+  T.log.push([tr.ori,tr.k,tr.left?"R":"G",same?"S":leftSharper?"L":"R",r===0.5?0.5:r?1:0,rt,tr.replays]);
   as2Update(T.G,{type:1,phi:tr.phi},tr.k,r); setTimeout(nextTrial,0); }
-function onKey(e){ if(!T) return; if(e.key==="ArrowLeft"){ e.preventDefault(); answer(true); } else if(e.key==="ArrowRight"){ e.preventDefault(); answer(false); } else if(e.key===" "){ e.preventDefault(); replay(); } else if(e.key==="Escape"){ stopTest(); } }
+function onKey(e){ if(!T) return; if(e.key==="ArrowLeft"){ e.preventDefault(); answer(true); } else if(e.key==="ArrowRight"){ e.preventDefault(); answer(false); } else if(e.key==="ArrowDown"){ e.preventDefault(); answer(null); } else if(e.key===" "){ e.preventDefault(); replay(); } else if(e.key==="Escape"){ stopTest(); } }
 function replay(){ if(!T||!T.tr||!T.ready) return; T.tr.replays++; flash(); }
 let lastTap=0;
-$("stage").addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return; e.preventDefault(); const now=performance.now(); if(now-lastTap<300) return; lastTap=now; answer(e.clientX<innerWidth/2); });
-$("stopBtn").onclick=()=>stopTest(); $("againBtn").onclick=()=>replay();
+$("stage").addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return; e.preventDefault(); const now=performance.now(); if(now-lastTap<300) return; lastTap=now; const x=e.clientX/innerWidth; answer(x>0.4&&x<0.6?null:x<0.5); });
+$("stopBtn").onclick=()=>stopTest(); $("againBtn").onclick=()=>replay(); $("sameBtn").onclick=()=>answer(null);
 let wake=null;
 async function enterStage(){ $("stage").hidden=false; try{ if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); }catch(e){} try{ wake=await navigator.wakeLock.request("screen"); }catch(e){} }
 function leaveStage(){ $("stage").hidden=true; $("msg").textContent=""; try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} try{ wake&&wake.release(); }catch(e){} wake=null; }

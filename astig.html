@@ -213,7 +213,7 @@ function as2Fit(G,freeQ){ const m=as2Mean(G), x0=[m.M,m.A1,m.A2,m.ls1,m.ls2].con
 
 (function(){
 "use strict";
-const APP_VERSION="astig-finder 1.6 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
+const APP_VERSION="astig-finder 1.7 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
 const $=id=>document.getElementById(id);
 const LS={ get(k,d){ try{ const v=localStorage.getItem("astig."+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem("astig."+k,JSON.stringify(v)); }catch(e){} } };
 
@@ -315,33 +315,43 @@ function panel(ctx,M,pw,ph,ch,lvl,Rf,soft){ const img=imgData(ctx,pw,ph), D_=img
   for(let y=0;y<ph;y++) for(let x=0;x<pw;x++){ const i=y*pw+x, r=Math.hypot(x+0.5-cx,y+0.5-cy), win=r<=Rf?1:r>=Rf+soft?0:0.5+0.5*Math.cos(Math.PI*(r-Rf)/soft), v=win*lvl*Math.max(0,1-Math.min(1,M[i]));
     D_[i*4]=0; D_[i*4+1]=0; D_[i*4+2]=0; D_[i*4+ch]=Math.round(255*enc(v)); D_[i*4+3]=255; }
   return img; }
+// Patch images are built at a reduced pixel grid (device pixels ÷ n, n = whole part of the pixel ratio) and drawn
+// enlarged n× with no smoothing, so each built pixel is an exact block of screen pixels. Any softening from the coarser
+// grid is the same for both patches, and equal extra blur cancels exactly from the comparison (second moments add).
+function grid(){ const dpr=window.devicePixelRatio||1, n=Math.max(1,Math.floor(dpr+0.01)); return {dpr,n,dev:mmPerPx*n/dpr}; }
+function toCanvas(img,pw){ const c=document.createElement("canvas"); c.width=pw; c.height=pw; c.getContext("2d",P3?{colorSpace:"display-p3"}:undefined).putImageData(img,0,0); return c; }
+function buildImgs(tr){ const g=grid(), dev=g.dev, dpx=deg=>T.d*Math.tan(deg*Math.PI/180)/dev, ctx=$("cv").getContext("2d",P3?{colorSpace:"display-p3"}:undefined);
+  const geo=(pupilMM,eyeD)=>{ const pxPerD=(pupilMM/1000)*T.d/dev, p=Math.max(dpx(14/60),2.2*eyeD*pxPerD,4), w=Math.max(1.5,0.3*p), Rp=2.5*p, Rf=Rp+0.5*p, soft=0.6*p; return {pxPerD,p,w,Rp,Rf,soft,pw:Math.ceil(2*(Rf+soft))+2}; };
+  const lines=(G_,o)=>maskFrom(G_.pw,G_.pw,c=>{ c.translate(G_.pw/2,G_.pw/2); c.rotate(-o*Math.PI/180); c.beginPath(); c.arc(0,0,G_.Rp,0,7); c.clip(); for(let i=-3;i<=3;i++) c.fillRect(-G_.Rp-2,i*G_.p-G_.w/2,2*G_.Rp+4,G_.w); });
+  let A,B,G_;
+  if(T.meth==="mix"){ G_=geo(4.5,1.6); const pw=G_.pw;
+    const vmap=o=>{ const key=o+"|"+pw; T.vcache=T.vcache||{}; if(T.vcache[key]) return T.vcache[key];          // cached per orientation: window × lines, 10-bit
+      const M=lines(G_,o), V=new Uint16Array(pw*pw), cx=pw/2; for(let y=0;y<pw;y++) for(let x=0;x<pw;x++){ const i=y*pw+x, r=Math.hypot(x+0.5-cx,y+0.5-cx), win=r<=G_.Rf?1:r>=G_.Rf+G_.soft?0:0.5+0.5*Math.cos(Math.PI*(r-G_.Rf)/G_.soft); V[i]=Math.round(1023*win*Math.max(0,1-Math.min(1,M[i]))); }
+      return T.vcache[key]=V; };
+    const paint=(V,u)=>{ const w=(1+u)/2, lr=MIX_LT*w/YRG[0], lb=MIX_LT*(1-w)/Y_B, LR=new Uint8Array(1024), LB=new Uint8Array(1024);
+      for(let k=0;k<1024;k++){ LR[k]=Math.round(255*enc(k/1023*lr)); LB[k]=Math.round(255*enc(k/1023*lb)); }
+      const img=imgData(ctx,pw,pw), D_=img.data; for(let i=0;i<V.length;i++){ D_[i*4]=LR[V[i]]; D_[i*4+2]=LB[V[i]]; D_[i*4+3]=255; } return img; };
+    if(tr.practice){ const M=lines(G_,tr.ori), Mb=discBlur(M,pw,pw,Math.sqrt(3.2)*G_.pxPerD);
+      A=panelMix(ctx,Mb,pw,pw,0,G_.Rf,G_.soft); B=paint(vmap(tr.ori),0); }                                           // A blurred
+    else { A=paint(vmap((tr.phi+90)%180),tr.uA); B=paint(vmap(tr.phi),-tr.uA); }                                   // A: lines with normal φ; B: normal φ+90
+    return {L:toCanvas(tr.aLeft?A:B,pw),R:toCanvas(tr.aLeft?B:A,pw),pw,gap:dpx(0.6),n:g.n}; }
+  const k=tr.k, sB=Math.sqrt(Math.abs(k)); G_=geo(T.pupil,Math.max(sB,tr.eye)); const pw=G_.pw, M=lines(G_,tr.ori);
+  const blur=on=>on&&sB>0?discBlur(M,pw,pw,sB*G_.pxPerD):M;
+  const Gp=panel(ctx,blur(k>0),pw,pw,1,LV_G,G_.Rf,G_.soft), Rd=panel(ctx,blur(k<0),pw,pw,0,LV_R,G_.Rf,G_.soft);   // k > 0 blurs green (short), k < 0 red (long)
+  return {L:toCanvas(tr.left?Rd:Gp,pw),R:toCanvas(tr.left?Gp:Rd,pw),pw,gap:dpx(0.6),n:g.n}; }
 function render(){ const cv=$("cv"), dpr=window.devicePixelRatio||1, W=Math.round(innerWidth*dpr), H=Math.round(innerHeight*dpr);
   if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; }
   T.dev=mmPerPx/dpr; const ctx=cv.getContext("2d",P3?{colorSpace:"display-p3"}:undefined); ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
-  const gap0=degPx(0.6), cx0=W/2, cy0=H/2; star(ctx,cx0,cy0,degPx(0.22));
+  const cx=W/2, cy=H/2; star(ctx,cx,cy,0);
   const tr=T.tr; if(!tr||T.blank||!T.show) return;
-  if(T.meth==="mix") return renderMix(ctx,W,H,tr);
-  const pxPerD=(T.pupil/1000)*T.d/T.dev, k=tr.k, sB=Math.sqrt(Math.abs(k));
-  const bl=Math.max(sB,tr.eye)*pxPerD, p=Math.max(degPx(14/60),2.2*bl,6), w=Math.max(2,0.3*p), Rp=2.5*p, Rf=Rp+0.5*p, soft=0.6*p, pw=Math.ceil(2*(Rf+soft))+2, ph=pw;
-  const M=maskFrom(pw,ph,c=>{ c.translate(pw/2,ph/2); c.rotate(-tr.ori*Math.PI/180); c.beginPath(); c.arc(0,0,Rp,0,7); c.clip(); for(let i=-3;i<=3;i++) c.fillRect(-Rp-2,i*p-w/2,2*Rp+4,w); });
-  const blur=on=>on&&sB>0?discBlur(M,pw,ph,sB*pxPerD):M;
-  const G=panel(ctx,blur(k>0),pw,ph,1,LV_G,Rf,soft), Rd=panel(ctx,blur(k<0),pw,ph,0,LV_R,Rf,soft);   // k > 0 blurs green (short), k < 0 red (long)
-  const gap=degPx(0.6), cx=W/2, cy=H/2, L=tr.left?Rd:G, Rr=tr.left?G:Rd;
-  ctx.putImageData(L,Math.round(cx-gap/2-pw),Math.round(cy-ph/2)); ctx.putImageData(Rr,Math.round(cx+gap/2),Math.round(cy-ph/2));
-  star(ctx,cx,cy,degPx(0.22));
-  T.fits=(2*pw+gap)<W*0.98&&ph<H*0.9; }
+  if(!T.imgs||T.imgs.tr!==tr) T.imgs={tr,...buildImgs(tr)};
+  const I=T.imgs, n=I.n, pwD=I.pw*n, gapD=I.gap*n; ctx.imageSmoothingEnabled=false;
+  ctx.drawImage(I.L,Math.round(cx-gapD/2-pwD),Math.round(cy-pwD/2),pwD,pwD); ctx.drawImage(I.R,Math.round(cx+gapD/2),Math.round(cy-pwD/2),pwD,pwD);
+  star(ctx,cx,cy,0); T.fits=(2*pwD+gapD)<W*0.98&&pwD<H*0.9; }
 function panelMix(ctx,M,pw,ph,u,Rf,soft){ const img=imgData(ctx,pw,ph), D_=img.data, cx=pw/2, cy=ph/2, w=(1+u)/2, lr=MIX_LT*w/YRG[0], lb=MIX_LT*(1-w)/Y_B;
   for(let y=0;y<ph;y++) for(let x=0;x<pw;x++){ const i=y*pw+x, r=Math.hypot(x+0.5-cx,y+0.5-cy), win=r<=Rf?1:r>=Rf+soft?0:0.5+0.5*Math.cos(Math.PI*(r-Rf)/soft), v=win*Math.max(0,1-Math.min(1,M[i]));
     D_[i*4]=Math.round(255*enc(v*lr)); D_[i*4+1]=0; D_[i*4+2]=Math.round(255*enc(v*lb)); D_[i*4+3]=255; }
   return img; }
-function renderMix(ctx,W,H,tr){ const pxPerD=(4.5/1000)*T.d/T.dev, p=Math.max(degPx(14/60),2.2*1.6*pxPerD,6), w=Math.max(2,0.3*p), Rp=2.5*p, Rf=Rp+0.5*p, soft=0.6*p, pw=Math.ceil(2*(Rf+soft))+2, ph=pw;
-  const lines=o=>maskFrom(pw,ph,c=>{ c.translate(pw/2,ph/2); c.rotate(-o*Math.PI/180); c.beginPath(); c.arc(0,0,Rp,0,7); c.clip(); for(let i=-3;i<=3;i++) c.fillRect(-Rp-2,i*p-w/2,2*Rp+4,w); });
-  let A,B;
-  if(tr.practice){ const M=lines(tr.ori), Mb=discBlur(M,pw,ph,Math.sqrt(3.2)*pxPerD); A=panelMix(ctx,Mb,pw,ph,0,Rf,soft); B=panelMix(ctx,M,pw,ph,0,Rf,soft); }   // A blurred
-  else { A=panelMix(ctx,lines((tr.phi+90)%180),pw,ph,tr.uA,Rf,soft); B=panelMix(ctx,lines(tr.phi),pw,ph,-tr.uA,Rf,soft); }   // A: lines with normal φ; B: normal φ+90
-  const gap=degPx(0.6), cx=W/2, cy=H/2, L=tr.aLeft?A:B, R_=tr.aLeft?B:A;
-  ctx.putImageData(L,Math.round(cx-gap/2-pw),Math.round(cy-ph/2)); ctx.putImageData(R_,Math.round(cx+gap/2),Math.round(cy-ph/2));
-  star(ctx,cx,cy,degPx(0.22)); T.fits=(2*pw+gap)<W*0.98&&ph<H*0.9; }
 // Focus target: fine spokes at every orientation, always on. It holds accommodation at the circle of least confusion,
 // so focus can't drift to sharpen whichever line orientation is being tested (that drift shrinks the measured cylinder).
 function star(ctx,cx,cy,r){ const s_=Math.max(2,degPx(0.06)); ctx.fillStyle="#666"; ctx.fillRect(cx-s_/2,cy-s_/2,s_,s_); }   // small centre mark
@@ -365,8 +375,8 @@ function nextTrial(){ const G=T.G;
       let g=0; for(let i=0;i<12;i++) g+=Math.random(); g-=6;
       const uA=Math.max(-1,Math.min(1,-Js/O_MIX+(Math.random()<0.5?-1:1)*0.3+0.05*g));   // a visible step either side of the predicted balance point
       T.tr={mix:true,phi,uA:Math.round(1000*uA)/1000,aLeft:Math.random()<0.5}; }
-    T.tr.replays=0; T.shownAt=0; T.show=false; T.blank=false; render(); updHud();
-    setTimeout(()=>{ if(!T) return; flash(); if(!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; },120); return; }
+    T.tr.replays=0; T.shownAt=0; T.imgs={tr:T.tr,...buildImgs(T.tr)}; T.show=false; T.blank=false; render(); updHud();     // images ready before the blink
+    setTimeout(()=>{ if(!T) return; flash(); if(!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; },80); return; }
   if(T.practice<3){ const ori=ORIS[Math.floor(Math.random()*6)], k=(Math.random()<0.5?1:-1)*3.2;
     T.tr={type:1,phi:(ori+90)%180,ori,k,left:Math.random()<0.5,eye:1,practice:true}; }
   else { if(G.n>=T.N){ finish(); return; }
@@ -375,9 +385,9 @@ function nextTrial(){ const G=T.G;
     const k=Math.max(-4,Math.min(4,as2Pred(t,sm.M,sm.A1,sm.A2,G.Q0,G.dD)+(Math.random()<0.5?-1:1)*0.1));   // a visible step either side of the predicted balance point
     const Dm=sm.M+sm.A1*Math.cos(2*t.phi*Math.PI/180)+sm.A2*Math.sin(2*t.phi*Math.PI/180);
     T.tr={type:1,phi:t.phi,ori,k:Math.round(1000*k)/1000,left:Math.random()<0.5,eye:Math.abs(Dm)+G.dD/2}; }
-  T.tr.replays=0; T.shownAt=0; T.show=false; T.blank=false; render(); updHud();
+  T.tr.replays=0; T.shownAt=0; T.imgs={tr:T.tr,...buildImgs(T.tr)}; T.show=false; T.blank=false; render(); updHud();
   setTimeout(()=>{ if(!T) return; flash();
-    if(!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; }, 120); }
+    if(!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; }, 80); }
 function updHud(){ const pr=T.practice<3; $("prog").textContent=pr?`Practice ${T.practice+1} of 3`:`${(T.meth==="mix"?T.X.n:T.G.n)+1} of ${T.N}`;
   if(!$("msg").dataset.hold) $("msg").textContent=pr?"Which side's LINES look sharper?  ← left · right →  · ↓ same":""; }
 function answer(leftSharper){ if(!T||!T.ready) return; T.ready=false; const tr=T.tr, rt=Math.round(performance.now()-T.shownAt);
@@ -402,7 +412,7 @@ $("stopBtn").onclick=()=>stopTest(); $("sameBtn").onclick=()=>answer(null);
 let wake=null;
 async function enterStage(){ $("stage").hidden=false; try{ if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); }catch(e){} try{ wake=await navigator.wakeLock.request("screen"); }catch(e){} }
 function leaveStage(){ $("stage").hidden=true; $("msg").textContent=""; try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} try{ wake&&wake.release(); }catch(e){} wake=null; }
-addEventListener("resize",()=>{ if(T) render(); });
+addEventListener("resize",()=>{ if(T){ T.imgs=null; T.vcache=null; render(); } });
 $("goBtn").onclick=async()=>{ const meth=$("meth").value, pupil=meth==="mix"?4.5:+$("pupil").value;
   T={ meth, X:meth==="mix"?mxNew():null, pid:$("pid").value.trim(), eye, tester:$("tester").value.trim(), notes:$("notes").value.trim(), distCm:+$("dist").value, d:+$("dist").value*10, pupil, N:+$("nAns").value,
       G:as2New(DD,sce(pupil)), order:[], log:[], practice:0, pracWrong:0, started:new Date() };

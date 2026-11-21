@@ -97,6 +97,10 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
       <label for="nAns">Answers<select id="nAns"><option value="40">40 (about 3 min)</option><option value="80">80 (more precise)</option></select></label>
       <label for="meth">Method<select id="meth"><option value="mix">Colour-mix (recommended, no pupil)</option><option value="rg">Red–green (uses pupil; size can read low)</option></select></label>
     </div>
+    <div class="row" style="justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:10px 12px">
+      <span><b>Colour brightness</b> · <span id="lumState" class="note">not matched (standard observer)</span></span>
+      <button id="lumBtn" type="button">Match brightness for this person</button>
+    </div>
     <label for="notes">Notes (optional)<input id="notes" autocomplete="off" placeholder="Lighting, current Rx worn, anything unusual"></label>
     <p class="note">Use a participant code, not a name. Red–green: measure the pupil in the test lighting; the cylinder's size scales with the square of any pupil error. Colour-mix: no pupil needed; screen at 25–35 cm (30 cm best). The axis never depends on the pupil.</p>
     <div class="row"><button class="primary" id="startBtn">Start test</button><span class="note" id="startWarn"></span></div>
@@ -213,7 +217,7 @@ function as2Fit(G,freeQ){ const m=as2Mean(G), x0=[m.M,m.A1,m.A2,m.ls1,m.ls2].con
 
 (function(){
 "use strict";
-const APP_VERSION="astig-finder 1.9 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
+const APP_VERSION="astig-finder 2.0 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
 const $=id=>document.getElementById(id);
 const LS={ get(k,d){ try{ const v=localStorage.getItem("astig."+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem("astig."+k,JSON.stringify(v)); }catch(e){} } };
 
@@ -222,7 +226,8 @@ let P3=false; try{ P3=matchMedia("(color-gamut: p3)").matches&&!!(window.CSS&&CS
 const LAM=P3?[615,544]:[611,549], YRG=P3?[0.2290,0.6917]:[0.2126,0.7152];
 const thibos=l=>1.68524-633.46/(l-214.102);                 // chromatic difference of refraction, Thibos et al. 1992
 const DD=thibos(LAM[0])-thibos(LAM[1]);                      // red is focused this much further back than green
-const LV_R=1, LV_G=YRG[0]/YRG[1];
+const LV_R=1; let LV_G=YRG[0]/YRG[1];               // green level for equal brightness with red (standard observer, or this person's match)
+let MIX_RF=1;                                        // this person's red brightness relative to the standard observer, against blue (1 = standard)
 // ---- colour-mix balance (pupil-free) ----
 // Patch A: lines with normal φ drawn in a red/blue mixture with luminance fraction (1+u)/2 of red; patch B: lines with
 // normal φ+90 in the opposite mixture (−u). No screen blur. With half the red–blue focus difference o, each patch's blur
@@ -335,7 +340,7 @@ function buildImgs(tr){ const g=grid(), dev=g.dev, dpx=deg=>T.d*Math.tan(deg*Mat
     const vmap=o=>{ const key=o+"|"+pw; T.vcache=T.vcache||{}; if(T.vcache[key]) return T.vcache[key];          // cached per orientation: window × lines, 10-bit
       const M=lines(G_,o), V=new Uint16Array(pw*pw), cx=pw/2; for(let y=0;y<pw;y++) for(let x=0;x<pw;x++){ const i=y*pw+x, r=Math.hypot(x+0.5-cx,y+0.5-cx), win=r<=G_.Rf?1:r>=G_.Rf+G_.soft?0:0.5+0.5*Math.cos(Math.PI*(r-G_.Rf)/G_.soft); V[i]=Math.round(1023*win*Math.max(0,1-Math.min(1,M[i]))); }
       return T.vcache[key]=V; };
-    const paint=(V,u)=>{ const w=(1+u)/2, lr=MIX_LT*w/YRG[0], lb=MIX_LT*(1-w)/Y_B, LR=new Uint8Array(1024), LB=new Uint8Array(1024);
+    const paint=(V,u)=>{ const w=(1+u)/2, lr=MIX_LT*w/(YRG[0]*MIX_RF), lb=MIX_LT*(1-w)/Y_B, LR=new Uint8Array(1024), LB=new Uint8Array(1024);
       for(let k=0;k<1024;k++){ LR[k]=Math.round(255*enc(k/1023*lr)); LB[k]=Math.round(255*enc(k/1023*lb)); }
       const img=imgData(ctx,pw,pw), D_=img.data; for(let i=0;i<V.length;i++){ D_[i*4]=LR[V[i]]; D_[i*4+2]=LB[V[i]]; D_[i*4+3]=255; } return img; };
     if(tr.practice){ const M=lines(G_,tr.ori), Mb=discBlur(M,pw,pw,Math.sqrt(3.2)*G_.pxPerD);
@@ -356,7 +361,7 @@ function render(){ const cv=$("cv"), dpr=window.devicePixelRatio||1, W=Math.roun
   const I=T.imgs, n=I.n, pwD=I.pw*n, gapD=I.gap*n; ctx.imageSmoothingEnabled=false;
   ctx.drawImage(I.L,Math.round(cx-gapD/2-pwD),Math.round(cy-pwD/2),pwD,pwD); ctx.drawImage(I.R,Math.round(cx+gapD/2),Math.round(cy-pwD/2),pwD,pwD);
   star(ctx,cx,cy,0); T.fits=(2*pwD+gapD)<W*0.98&&pwD<H*0.9; }
-function panelMix(ctx,M,pw,ph,u,Rf,soft){ const img=imgData(ctx,pw,ph), D_=img.data, cx=pw/2, cy=ph/2, w=(1+u)/2, lr=MIX_LT*w/YRG[0], lb=MIX_LT*(1-w)/Y_B;
+function panelMix(ctx,M,pw,ph,u,Rf,soft){ const img=imgData(ctx,pw,ph), D_=img.data, cx=pw/2, cy=ph/2, w=(1+u)/2, lr=MIX_LT*w/(YRG[0]*MIX_RF), lb=MIX_LT*(1-w)/Y_B;
   for(let y=0;y<ph;y++) for(let x=0;x<pw;x++){ const i=y*pw+x, r=Math.hypot(x+0.5-cx,y+0.5-cy), win=r<=Rf?1:r>=Rf+soft?0:0.5+0.5*Math.cos(Math.PI*(r-Rf)/soft), v=win*Math.max(0,1-Math.min(1,M[i]));
     D_[i*4]=Math.round(255*enc(v*lr)); D_[i*4+1]=0; D_[i*4+2]=Math.round(255*enc(v*lb)); D_[i*4+3]=255; }
   return img; }
@@ -421,15 +426,48 @@ function answer(leftSharper){ if(!T||!T.ready) return; T.ready=false; const tr=T
   as2Update(T.G,{type:1,phi:tr.phi},tr.k,r); setTimeout(nextTrial,0); }
 function onKey(e){ if(!T) return; if(e.key==="ArrowLeft"){ e.preventDefault(); answer(true); } else if(e.key==="ArrowRight"){ e.preventDefault(); answer(false); } else if(e.key==="ArrowDown"){ e.preventDefault(); answer(null); } else if(e.key==="Escape"){ stopTest(); } }
 let lastTap=0;
-$("stage").addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return; e.preventDefault(); const now=performance.now(); if(now-lastTap<300) return; lastTap=now; const x=e.clientX/innerWidth; answer(x>0.4&&x<0.6?null:x<0.5); });
-$("stopBtn").onclick=()=>stopTest(); $("sameBtn").onclick=()=>answer(null);
+$("stage").addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return; e.preventDefault(); const now=performance.now(); if(now-lastTap<300) return; lastTap=now;
+  if(LM){ const y=e.clientY/innerHeight; if(y<0.4) lumAdj(1,false); else if(y>0.6) lumAdj(-1,false); return; }
+  const x=e.clientX/innerWidth; answer(x>0.4&&x<0.6?null:x<0.5); });
+$("stopBtn").onclick=()=>{ if(LM) lumEnd(); else stopTest(); }; $("sameBtn").onclick=()=>{ if(LM) lumSet(); else answer(null); };
+// ---------- brightness match (static: minimally distinct border, no flicker) ----------
+// Eight sectors alternate the fixed colour (blue for colour-mix, red for red–green) and the adjustable one. The edges
+// between sectors look softest when the two are equally bright to this eye. Four settings from different starting levels.
+let LM=null, LUM=LS.get("lum",null);                 // LUM: {pid, pair, f, sd, n, level}
+const lumPair=()=>$("meth").value==="mix"?"RB":"RG";
+function lumValid(){ return LUM&&LUM.pid===$("pid").value.trim()&&LUM.pair===lumPair(); }
+function lumShow(){ const ok=lumValid(); $("lumState").textContent=ok?`matched for ${LUM.pid}: ${LUM.pair==="RB"?"red vs blue":"green vs red"} ×${LUM.f.toFixed(2)} of standard (±${Math.round(100*LUM.sd)}% between settings)`:`not matched (standard observer)`; $("lumState").className=ok?"":"note"; }
+["pid","meth"].forEach(k=>$(k).addEventListener("input",lumShow)); $("meth").addEventListener("change",lumShow); lumShow();
+function lumStd(pair){ return pair==="RB"?MIX_LT/YRG[0]:YRG[0]/YRG[1]; }        // adjustable colour's linear level at standard equal brightness
+$("lumBtn").onclick=async()=>{ if(!mmPerPx){ $("startWarn").textContent="Set the screen size first."; return; } if(!$("pid").value.trim()){ $("startWarn").textContent="Enter a participant code first."; return; }
+  const pair=lumPair(); LM={pair,set:[],i:0,N:4,v:0,d:+$("dist").value*10}; lumNext(); await enterStage(); $("sameBtn").textContent="Matched (Space)"; addEventListener("keydown",lumKey); lumDraw(); };
+function lumNext(){ const st=lumStd(LM.pair), sgn=LM.i%2?1:-1; LM.v=Math.min(1,st*Math.exp(sgn*(0.35+0.25*Math.random()))); }
+function lumAdj(dir,big){ const st=lumStd(LM.pair); LM.v=Math.min(1,Math.max(st/6,LM.v*Math.exp(dir*(big?0.12:0.03)))); lumDraw(); }
+function lumSet(){ LM.set.push(LM.v); LM.i++; if(LM.i<LM.N){ lumNext(); lumDraw(); return; }
+  const st=lumStd(LM.pair), L=LM.set.map(v=>Math.log(v/st)), m=L.reduce((a,c)=>a+c,0)/L.length, sd=Math.sqrt(L.reduce((a,c)=>a+(c-m)**2,0)/(L.length-1));
+  // RB: more red needed ⇒ red looks dimmer than standard ⇒ factor < 1. RG: matched green level ÷ standard.
+  LUM={pid:$("pid").value.trim(),pair:LM.pair,f:+(LM.pair==="RB"?Math.exp(-m):Math.exp(m)).toFixed(3),sd:+(sd/Math.sqrt(L.length)).toFixed(3),n:L.length,level:+Math.exp(m).toFixed(3)};
+  LS.set("lum",LUM); lumEnd(); }
+function lumEnd(){ removeEventListener("keydown",lumKey); LM=null; $("sameBtn").textContent="Same (↓)"; leaveStage(); lumShow(); }
+function lumKey(e){ if(!LM) return; if(e.key==="ArrowUp"||e.key==="ArrowDown"){ e.preventDefault(); lumAdj(e.key==="ArrowUp"?1:-1,e.shiftKey); } else if(e.key===" "||e.key==="Enter"){ e.preventDefault(); lumSet(); } else if(e.key==="Escape"){ lumEnd(); } }
+function lumDraw(){ const cv=$("cv"), dpr=window.devicePixelRatio||1, W=Math.round(innerWidth*dpr), H=Math.round(innerHeight*dpr); if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; }
+  const ctx=cv.getContext("2d",P3?{colorSpace:"display-p3"}:undefined); ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
+  const R=Math.round(LM.d*Math.tan(1.25*Math.PI/180)/(mmPerPx/dpr)), pw=2*R+2, img=imgData(ctx,pw,pw), D_=img.data;
+  const adjCh=LM.pair==="RB"?0:1, fixCh=LM.pair==="RB"?2:0, fixV=LM.pair==="RB"?Math.round(255*enc(MIX_LT/Y_B)):255, adjV=Math.round(255*enc(LM.v));
+  for(let y=0;y<pw;y++) for(let x=0;x<pw;x++){ const dx=x+0.5-pw/2, dy=y+0.5-pw/2, i=(y*pw+x)*4; D_[i+3]=255; if(Math.hypot(dx,dy)>R) continue;
+    const adj=Math.floor((Math.atan2(dy,dx)+Math.PI)/(Math.PI/4))%2===1; D_[i+(adj?adjCh:fixCh)]=adj?adjV:fixV; }
+  ctx.putImageData(img,Math.round(W/2-pw/2),Math.round(H/2-pw/2));
+  const an=LM.pair==="RB"?"red":"green";
+  $("prog").textContent=`Brightness match ${LM.i+1} of ${LM.N}`;
+  $("msg").textContent=`Look at the centre. Make the ${an} brighter (↑ / tap top) or dimmer (↓ / tap bottom) until the edges between the sectors look softest and the pattern stops standing out. Then press Space or "Matched".`; }
 let wake=null;
 async function enterStage(){ $("stage").hidden=false; try{ if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); }catch(e){} try{ wake=await navigator.wakeLock.request("screen"); }catch(e){} }
 function leaveStage(){ $("stage").hidden=true; $("msg").textContent=""; try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} try{ wake&&wake.release(); }catch(e){} wake=null; }
 addEventListener("resize",()=>{ if(T){ T.imgs=null; T.vcache=null; render(); } });
-$("goBtn").onclick=async()=>{ const meth=$("meth").value, pupil=meth==="mix"?4.5:+$("pupil").value;
+$("goBtn").onclick=async()=>{ const meth=$("meth").value, pupil=meth==="mix"?4.5:+$("pupil").value, lm=lumValid()?LUM:null;
+  MIX_RF=lm&&lm.pair==="RB"?lm.f:1; LV_G=Math.min(1,lm&&lm.pair==="RG"?lm.level*YRG[0]/YRG[1]:YRG[0]/YRG[1]);
   T={ meth, X:meth==="mix"?mxNew():null, pid:$("pid").value.trim(), eye, tester:$("tester").value.trim(), notes:$("notes").value.trim(), distCm:+$("dist").value, d:+$("dist").value*10, pupil, N:+$("nAns").value,
-      G:as2New(DD,sce(pupil)), order:[], log:[], practice:0, pracWrong:0, started:new Date() };
+      G:as2New(DD,sce(pupil)), order:[], log:[], practice:0, pracWrong:0, started:new Date(), lum:lm };
   $("howCard").hidden=true; await enterStage(); addEventListener("keydown",onKey); nextTrial(); };
 function stopTest(){ removeEventListener("keydown",onKey); T=null; leaveStage(); $("setupCard").hidden=false; $("calCard").hidden=false; }
 
@@ -440,7 +478,7 @@ function finishMix(){ const X=T.X, sg=mxSign(), unstable=isNaN(sg), f=mxSummary(
   const mer=ORIS.map(o=>{ const phi=(o+90)%180, tm=((180-phi)%180)||180; return {tabo:tm,D:+(SC.f*(f.A1*Math.cos(2*phi*Math.PI/180)+f.A2*Math.sin(2*phi*Math.PI/180))).toFixed(2),sd:+(SC.f*f.seC/2).toFixed(2)}; }).sort((a,b)=>a.tabo-b.tabo);
   const sat=T.log.filter(r=>Math.abs(r[1])>=0.999).length;
   return { created:new Date().toISOString(), method:"colour-mix", participant:T.pid, eye:T.eye, tester:T.tester, notes:T.notes, distance_cm:T.distCm, pupil_mm:null, answers:X.n,
-    cyl_D:+cyl.toFixed(2), axis_tabo:f.tabo, cyl_se_D:+(f.seC*SC.f).toFixed(2), axis_se_deg:Math.round(f.seAx), status, mean_focus_D:null, focus_flip_share:+f.neg.toFixed(2), focus_checks:(T.probes||[]).map(v=>v===null?"same":v?"red":"blue").join(" "),
+    cyl_D:+cyl.toFixed(2), axis_tabo:f.tabo, cyl_se_D:+(f.seC*SC.f).toFixed(2), axis_se_deg:Math.round(f.seAx), status, mean_focus_D:null, focus_flip_share:+f.neg.toFixed(2), brightness_match:T.lum?`red ×${T.lum.f} (±${Math.round(100*T.lum.sd)}%)`:"standard observer", focus_checks:(T.probes||[]).map(v=>v===null?"same":v?"red":"blue").join(" "),
     J0:+(-(cyl/2)*Math.cos(2*f.tabo*Math.PI/180)).toFixed(3), J45:+(-(cyl/2)*Math.sin(2*f.tabo*Math.PI/180)).toFixed(3), meridians:mer, distance_sph_if_myopic:null,
     cyl_raw_D:+cylRaw.toFixed(2), cyl_se_raw_D:+f.seC.toFixed(2), scale_factor:SC.f, scale_source:SC.src, cyl_scale_se_D:+(Math.abs(cyl)*(SC.src==="none"?0.15:SC.rel)).toFixed(2),
     range_limited_answers:sat, practice_errors:T.pracWrong, duration_s:Math.round((Date.now()-T.started.getTime())/1000), screen_mm_per_px:+mmPerPx.toFixed(5), colour:P3?"P3":"sRGB", lca_D:+(2*O_MIX).toFixed(3),
@@ -453,7 +491,7 @@ function finish(){ removeEventListener("keydown",onKey);
   const SC=scale("red-green"), cylRaw=-2*f.amp, cyl=cylRaw*SC.f, zC=2*f.amp/Math.max(0.05,f.seC), status=2*f.amp<0.25?"under 0.25 D":zC<1.5?"not significant":zC<2.5?"borderline":"significant";
   const mer=ORIS.map(o=>{ const phi=(o+90)%180, m=f.meri(phi), tm=((180-phi)%180)||180; return {tabo:tm,D:+(f.A0+(m.D-f.A0)*SC.f).toFixed(2),sd:+(1.5*m.sd*SC.f).toFixed(2)}; }).sort((a,b)=>a.tabo-b.tabo);
   const sph=f.Dmax<-0.25?+(f.Dmax-100/T.distCm).toFixed(2):null;
-  const rec={ created:new Date().toISOString(), method:"red-green", participant:T.pid, eye:T.eye, tester:T.tester, notes:T.notes, distance_cm:T.distCm, pupil_mm:T.pupil, answers:G.n,
+  const rec={ created:new Date().toISOString(), method:"red-green", brightness_match:T.lum?`green ×${T.lum.f} (±${Math.round(100*T.lum.sd)}%)`:"standard observer", participant:T.pid, eye:T.eye, tester:T.tester, notes:T.notes, distance_cm:T.distCm, pupil_mm:T.pupil, answers:G.n,
     cyl_D:+cyl.toFixed(2), axis_tabo:f.tabo, cyl_se_D:+(f.seC*SC.f).toFixed(2), cyl_scale_se_D:+(Math.abs(cyl)*SC.rel).toFixed(2),
     cyl_raw_D:+cylRaw.toFixed(2), cyl_se_raw_D:+f.seC.toFixed(2), scale_factor:SC.f, scale_source:SC.src, axis_se_deg:Math.round(f.seAx), status, mean_focus_D:+f.A0.toFixed(2),
     J0:+(-(cyl/2)*Math.cos(2*f.tabo*Math.PI/180)).toFixed(3), J45:+(-(cyl/2)*Math.sin(2*f.tabo*Math.PI/180)).toFixed(3), meridians:mer, distance_sph_if_myopic:sph, practice_errors:T.pracWrong,
@@ -483,7 +521,7 @@ function showResult(r){ $("resCard").hidden=false; $("setupCard").hidden=true; $
   const [cls,txt]=verdict(r); $("resVerdict").innerHTML=`<span class="pill ${cls}">${r.status}</span> ${txt}`;
   const kv=[["Uncertainty",`± ${r.cyl_se_D.toFixed(2)} D from the answers, axis ± ${r.axis_se_deg}°`],
     ["Magnitude scale",r.method==="colour-mix"?(r.scale_source==="none"?"Uncalibrated. No pupil is involved, but a built-in tendency for redder lines to look sharper, and people's own colour focus, can scale the size by about ±15% (axis unaffected). Calibrate against refractions below.":`× ${r.scale_factor.toFixed(2)} (${esc(r.scale_source)}); scale uncertainty ± ${r.cyl_scale_se_D.toFixed(2)} D`):r.scale_source==="none"?`<b>Uncalibrated.</b> The size can be off by about ±30% and has tended to read low (pupil, the eye's own colour focus, the screen's colours). The axis is not affected. Calibrate against refractions below.`:`× ${r.scale_factor.toFixed(2)} (${esc(r.scale_source)}); scale uncertainty ± ${r.cyl_scale_se_D.toFixed(2)} D`],["Mean focus",r.mean_focus_D==null?"not measured by this method":`${pf(r.mean_focus_D)} D (${r.mean_focus_D>=0?"behind":"in front of"} the screen)`],["Power vector",`J0 ${pf(r.J0)} · J45 ${pf(r.J45)}`],
-    ["By meridian",r.meridians.map(m=>`${m.tabo}°: ${pf(m.D)}`).join("  ")],["Setup",`${r.method==="colour-mix"?"colour-mix balance":"red–green"} · ${r.distance_cm} cm · ${r.pupil_mm==null?"no pupil needed":"pupil "+r.pupil_mm+" mm"} · ${r.answers} answers · ${r.colour}`]];
+    ["By meridian",r.meridians.map(m=>`${m.tabo}°: ${pf(m.D)}`).join("  ")],["Brightness",r.brightness_match||"standard observer"],["Setup",`${r.method==="colour-mix"?"colour-mix balance":"red–green"} · ${r.distance_cm} cm · ${r.pupil_mm==null?"no pupil needed":"pupil "+r.pupil_mm+" mm"} · ${r.answers} answers · ${r.colour}`]];
   if(r.distance_sph_if_myopic!=null) kv.push(["Distance Rx (myopic)",`≈ ${pf(r.distance_sph_if_myopic)} / ${pf(r.cyl_D)} × ${r.axis_tabo} (all meridians in front of the screen)`]);
   if(r.practice_errors>=2) kv.push(["Caution",`${r.practice_errors} of 3 practice answers wrong: check the participant understood the task.`]);
   $("refCyl").value=r.ref_cyl_D!=null?r.ref_cyl_D:""; $("refAx").value=r.ref_axis_tabo!=null?r.ref_axis_tabo:""; $("refSave").onclick=()=>saveRef(r);
@@ -538,7 +576,7 @@ $("logBody").addEventListener("click",async e=>{ const b=e.target.closest("butto
   if(b.dataset.ask){ pendingDel=b.dataset.ask; renderLog(); return; } if(b.dataset.cancel){ pendingDel=null; renderLog(); return; }
   if(b.dataset.del){ const id=b.dataset.del; pendingDel=null; local=local.filter(r=>r.id!==id); LS.set("results",local); if(DB&&shared.some(r=>r.id===id)){ try{ await DB.collection("results").doc(id).delete(); }catch(e){} } renderLog(); } });
 $("filter").addEventListener("input",renderLog);
-const COLS=["created","method","participant","eye","tester","cyl_D","axis_tabo","cyl_se_D","cyl_scale_se_D","cyl_raw_D","scale_factor","scale_source","ref_cyl_D","ref_axis_tabo","axis_se_deg","status","mean_focus_D","J0","J45","distance_cm","pupil_mm","answers","distance_sph_if_myopic","practice_errors","range_limited_answers","focus_checks","focus_flip_share","duration_s","colour","lca_D","screen_mm_per_px","notes","meridians","app","device","trials"];
+const COLS=["created","method","participant","eye","tester","cyl_D","axis_tabo","cyl_se_D","cyl_scale_se_D","cyl_raw_D","scale_factor","scale_source","ref_cyl_D","ref_axis_tabo","axis_se_deg","status","mean_focus_D","J0","J45","distance_cm","pupil_mm","answers","distance_sph_if_myopic","practice_errors","range_limited_answers","brightness_match","focus_checks","focus_flip_share","duration_s","colour","lca_D","screen_mm_per_px","notes","meridians","app","device","trials"];
 function csv(){ const q=v=>{ const s=v==null?"":typeof v==="object"?JSON.stringify(v):String(v); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; };
   return [COLS.join(",")].concat(allRecs().map(r=>COLS.map(c=>q(r[c])).join(","))).join("\n"); }
 $("csvBtn").onclick=async()=>{ const text=csv(), name=`astig-results-${new Date().toISOString().slice(0,10)}.csv`; let done=false;

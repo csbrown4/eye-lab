@@ -95,10 +95,10 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
       <label for="dist">Eye to screen (cm)<input id="dist" type="number" min="25" max="200" step="1" value="50"></label>
       <label for="pupil">Pupil diameter (mm)<input id="pupil" type="number" min="2" max="9" step="0.1" value="4"></label>
       <label for="nAns">Answers<select id="nAns"><option value="40">40 (about 3 min)</option><option value="80">80 (more precise)</option></select></label>
-      <label for="meth">Method<select id="meth"><option value="rg">Red–green (uses pupil)</option><option value="mix">Colour-mix (no pupil, experimental)</option></select></label>
+      <label for="meth">Method<select id="meth"><option value="mix">Colour-mix (recommended, no pupil)</option><option value="rg">Red–green (uses pupil; size can read low)</option></select></label>
     </div>
     <label for="notes">Notes (optional)<input id="notes" autocomplete="off" placeholder="Lighting, current Rx worn, anything unusual"></label>
-    <p class="note">Use a participant code, not a name. Red–green: measure the pupil in the test lighting; the cylinder's size scales with the square of any pupil error. Colour-mix: no pupil needed (experimental). The axis never depends on the pupil.</p>
+    <p class="note">Use a participant code, not a name. Red–green: measure the pupil in the test lighting; the cylinder's size scales with the square of any pupil error. Colour-mix: no pupil needed; works best at 35–45 cm. The axis never depends on the pupil.</p>
     <div class="row"><button class="primary" id="startBtn">Start test</button><span class="note" id="startWarn"></span></div>
   </section>
 
@@ -107,9 +107,9 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
     <h2>Before you start</h2>
     <ol class="steps">
       <li>Glasses and contact lenses off (or on, to measure the astigmatism left over them: record which in Notes). No coloured filters.</li>
-      <li>Cover the eye not being tested. Keep the head upright and at <b id="howDist">50</b> cm from the screen.</li>
-      <li>Keep looking at the <span id="howStar">small grey star</span> in the centre the whole time. <span id="howPatches">A red and a green patch of lines flash</span> on either side of it for under half a second. Answer which side's <b>lines</b> were sharper (ignore which colour looked brighter). Don't look across at the patches: the flash is short on purpose, so the eye can't refocus on them.</li>
-      <li>Answer with ← / → keys, or tap the left or right side of the screen. If they look the same, press ↓ or tap the middle ("Same"). Space or "Show again" repeats the flash.</li>
+      <li>Cover the eye not being tested. Keep the head upright and at <b id="howDist">50</b> cm from the screen (colour-mix works best at 35–45 cm).</li>
+      <li><span id="howPatches">Two patches of lines appear</span>. Look at each in turn, as long as you like, and answer which side's <b>lines</b> look sharper (ignore which colour looks brighter).</li>
+      <li>Answer with ← / → keys, or tap the left or right side of the screen. If they look the same, press ↓ or tap the middle ("Same").</li>
       <li>Three practice answers come first. Press Esc or "Stop" to abandon.</li>
     </ol>
     <div class="row"><button class="primary" id="goBtn">Begin (full screen)</button><button id="backBtn">Back</button></div>
@@ -147,7 +147,7 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
 <div id="stage" hidden>
   <canvas id="cv"></canvas>
   <div id="msg"></div>
-  <div id="hud"><span id="prog"></span><button id="sameBtn" type="button">Same (↓)</button><button id="againBtn" type="button">Show again (Space)</button><button id="stopBtn" type="button">Stop</button></div>
+  <div id="hud"><span id="prog"></span><button id="sameBtn" type="button">Same (↓)</button><button id="stopBtn" type="button">Stop</button></div>
 </div>
 
 <script>
@@ -213,7 +213,7 @@ function as2Fit(G,freeQ){ const m=as2Mean(G), x0=[m.M,m.A1,m.A2,m.ls1,m.ls2].con
 
 (function(){
 "use strict";
-const APP_VERSION="astig-finder 1.4 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
+const APP_VERSION="astig-finder 1.5 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
 const $=id=>document.getElementById(id);
 const LS={ get(k,d){ try{ const v=localStorage.getItem("astig."+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem("astig."+k,JSON.stringify(v)); }catch(e){} } };
 
@@ -280,6 +280,7 @@ calShow();
 let eye="OD";
 function setEye(e){ eye=e; $("eyeOD").setAttribute("aria-pressed",e==="OD"); $("eyeOS").setAttribute("aria-pressed",e==="OS"); }
 $("eyeOD").onclick=()=>setEye("OD"); $("eyeOS").onclick=()=>setEye("OS");
+if(LS.get("methV",0)<2){ try{ localStorage.removeItem("astig.f.meth"); }catch(e){} LS.set("methV",2); }
 const keep=["tester","dist","pupil","nAns","meth"]; keep.forEach(k=>{ const v=LS.get("f."+k,null); if(v!=null) $(k).value=v; $(k).addEventListener("change",()=>LS.set("f."+k,$(k).value)); });
 function checkReady(){ const w=[]; if(!mmPerPx) w.push("Set the screen size first.");
   if(!$("pid").value.trim()) w.push("Enter a participant code.");
@@ -288,8 +289,8 @@ function checkReady(){ const w=[]; if(!mmPerPx) w.push("Set the screen size firs
   $("startWarn").textContent=w.join(" "); $("startBtn").disabled=w.length>0; return !w.length; }
 ["pid","dist","pupil","meth"].forEach(k=>$(k).addEventListener("input",checkReady)); checkReady();
 $("startBtn").onclick=()=>{ if(!checkReady()) return; $("howDist").textContent=$("dist").value;
-  const mix=$("meth").value==="mix"; $("howStar").textContent=mix?"small blue star":"small grey star";
-  $("howPatches").textContent=mix?"Two purple-ish patches of lines (one more reddish, one more bluish) flash":"A red and a green patch of lines flash"; $("setupCard").hidden=true; $("calCard").hidden=true; $("resCard").hidden=true; $("howCard").hidden=false; $("howCard").scrollIntoView({block:"start"}); };
+  const mix=$("meth").value==="mix";
+  $("howPatches").textContent=mix?"Two purple-ish patches of lines appear, one more reddish and one more bluish":"A red and a green patch of lines appear"; $("setupCard").hidden=true; $("calCard").hidden=true; $("resCard").hidden=true; $("howCard").hidden=false; $("howCard").scrollIntoView({block:"start"}); };
 $("backBtn").onclick=()=>{ $("howCard").hidden=true; $("setupCard").hidden=false; $("calCard").hidden=false; };
 
 // ---------- test ----------
@@ -338,13 +339,11 @@ function renderMix(ctx,W,H,tr){ const pxPerD=(4.5/1000)*T.d/T.dev, p=Math.max(de
   star(ctx,cx,cy,degPx(0.22)); T.fits=(2*pw+gap)<W*0.98&&ph<H*0.9; }
 // Focus target: fine spokes at every orientation, always on. It holds accommodation at the circle of least confusion,
 // so focus can't drift to sharpen whichever line orientation is being tested (that drift shrinks the measured cylinder).
-function star(ctx,cx,cy,r){ ctx.save(); ctx.strokeStyle=T&&T.meth==="mix"?"#3a46ff":"#9a9a9a"; ctx.lineWidth=Math.max(1,degPx(1.2/60)); ctx.beginPath();
-  for(let i=0;i<8;i++){ const a=i*Math.PI/8; ctx.moveTo(cx-r*Math.cos(a),cy-r*Math.sin(a)); ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a)); } ctx.stroke(); ctx.restore(); }
-// The line patches are shown for FLASH_MS only: shorter than the eye's accommodation latency (~0.3–0.4 s), so the
-// focus set by the star is the focus the lines are seen with. Space / "Show again" repeats the flash.
-const FLASH_MS=450;
-function flash(){ if(!T||!T.tr) return; clearTimeout(T.ft); T.show=true; render(); T.shownAt=T.shownAt||performance.now(); T.ready=true;
-  T.ft=setTimeout(()=>{ if(!T) return; T.show=false; render(); },FLASH_MS); }
+function star(ctx,cx,cy,r){ const s_=Math.max(2,degPx(0.06)); ctx.fillStyle="#666"; ctx.fillRect(cx-s_/2,cy-s_/2,s_,s_); }   // small centre mark
+// Patches are steady (no flash). Colour-mix doesn't depend on where the eye focuses, only that it isn't exactly midway
+// between the two colours; the eye's normal lag of focus at near (~0.3–0.7 D) provides that. Red–green does depend on
+// focus, so its size can read low if the eye refocuses to sharpen each line direction.
+function flash(){ if(!T||!T.tr) return; T.show=true; render(); T.shownAt=T.shownAt||performance.now(); T.ready=true; }   // patches stay on until answered
 function nextTrial(){ const G=T.G;
   if(T.meth==="mix"){ const X=T.X;
     if(T.practice<3) T.tr={mix:true,practice:true,ori:ORIS[Math.floor(Math.random()*6)],aLeft:Math.random()<0.5};
@@ -375,7 +374,7 @@ function nextTrial(){ const G=T.G;
   setTimeout(()=>{ if(!T) return; flash();
     if(!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; }, 700); }
 function updHud(){ const pr=T.practice<3; $("prog").textContent=pr?`Practice ${T.practice+1} of 3`:`${(T.meth==="mix"?T.X.n:T.G.n)+1} of ${T.N}`;
-  if(!$("msg").dataset.hold) $("msg").textContent=pr?"Keep looking at the star. Which side's LINES were sharper?  ← left · right →  · ↓ same · Space: show again":""; }
+  if(!$("msg").dataset.hold) $("msg").textContent=pr?"Which side's LINES look sharper?  ← left · right →  · ↓ same":""; }
 function answer(leftSharper){ if(!T||!T.ready) return; T.ready=false; const tr=T.tr, rt=Math.round(performance.now()-T.shownAt);
   const same=leftSharper===null;
   if(tr.mix){ const aWorse=same?0.5:(leftSharper!==tr.aLeft); clearTimeout(T.ft); T.show=false;
@@ -391,11 +390,10 @@ function answer(leftSharper){ if(!T||!T.ready) return; T.ready=false; const tr=T
   clearTimeout(T.ft); T.show=false;
   T.log.push([tr.ori,tr.k,tr.left?"R":"G",same?"S":leftSharper?"L":"R",r===0.5?0.5:r?1:0,rt,tr.replays]);
   as2Update(T.G,{type:1,phi:tr.phi},tr.k,r); setTimeout(nextTrial,0); }
-function onKey(e){ if(!T) return; if(e.key==="ArrowLeft"){ e.preventDefault(); answer(true); } else if(e.key==="ArrowRight"){ e.preventDefault(); answer(false); } else if(e.key==="ArrowDown"){ e.preventDefault(); answer(null); } else if(e.key===" "){ e.preventDefault(); replay(); } else if(e.key==="Escape"){ stopTest(); } }
-function replay(){ if(!T||!T.tr||!T.ready) return; T.tr.replays++; flash(); }
+function onKey(e){ if(!T) return; if(e.key==="ArrowLeft"){ e.preventDefault(); answer(true); } else if(e.key==="ArrowRight"){ e.preventDefault(); answer(false); } else if(e.key==="ArrowDown"){ e.preventDefault(); answer(null); } else if(e.key==="Escape"){ stopTest(); } }
 let lastTap=0;
 $("stage").addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return; e.preventDefault(); const now=performance.now(); if(now-lastTap<300) return; lastTap=now; const x=e.clientX/innerWidth; answer(x>0.4&&x<0.6?null:x<0.5); });
-$("stopBtn").onclick=()=>stopTest(); $("againBtn").onclick=()=>replay(); $("sameBtn").onclick=()=>answer(null);
+$("stopBtn").onclick=()=>stopTest(); $("sameBtn").onclick=()=>answer(null);
 let wake=null;
 async function enterStage(){ $("stage").hidden=false; try{ if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); }catch(e){} try{ wake=await navigator.wakeLock.request("screen"); }catch(e){} }
 function leaveStage(){ $("stage").hidden=true; $("msg").textContent=""; try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} try{ wake&&wake.release(); }catch(e){} wake=null; }

@@ -62,7 +62,7 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
   <header>
     <div>
       <h1>Astig Finder</h1>
-      <p class="sub">Lens-free astigmatism test from the eye's own red–green focus difference</p>
+      <p class="sub">Lens-free astigmatism test from the eye's own colour focus differences</p>
     </div>
     <span id="store" class="pill mute">Connecting to the study log…</span>
   </header>
@@ -90,9 +90,10 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
       <label for="dist">Eye to screen (cm)<input id="dist" type="number" min="25" max="200" step="1" value="50"></label>
       <label for="pupil">Pupil diameter (mm)<input id="pupil" type="number" min="2" max="9" step="0.1" value="4"></label>
       <label for="nAns">Answers<select id="nAns"><option value="40">40 (about 3 min)</option><option value="80">80 (more precise)</option></select></label>
+      <label for="meth">Method<select id="meth"><option value="rg">Red–green (uses pupil)</option><option value="mix">Colour-mix (no pupil, experimental)</option></select></label>
     </div>
     <label for="notes">Notes (optional)<input id="notes" autocomplete="off" placeholder="Lighting, current Rx worn, anything unusual"></label>
-    <p class="note">Use a participant code, not a name. Measure the pupil in the test lighting while the participant looks at the screen. The cylinder's size scales with the square of any pupil error; the axis does not depend on it.</p>
+    <p class="note">Use a participant code, not a name. Red–green: measure the pupil in the test lighting; the cylinder's size scales with the square of any pupil error. Colour-mix: no pupil needed (experimental; best below about 1 D of cylinder). The axis never depends on the pupil.</p>
     <div class="row"><button class="primary" id="startBtn">Start test</button><span class="note" id="startWarn"></span></div>
   </section>
 
@@ -102,7 +103,7 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
     <ol class="steps">
       <li>Glasses and contact lenses off (or on, to measure the astigmatism left over them: record which in Notes). No coloured filters.</li>
       <li>Cover the eye not being tested. Keep the head upright and at <b id="howDist">50</b> cm from the screen.</li>
-      <li>Keep looking at the small grey star in the centre the whole time. A red and a green patch of lines flash on either side of it for a quarter of a second. Answer which side's <b>lines</b> were sharper (ignore which colour looked brighter). Don't look across at the patches: the flash is short on purpose, so the eye can't refocus on them.</li>
+      <li>Keep looking at the <span id="howStar">small grey star</span> in the centre the whole time. <span id="howPatches">A red and a green patch of lines flash</span> on either side of it for a quarter of a second. Answer which side's <b>lines</b> were sharper (ignore which colour looked brighter). Don't look across at the patches: the flash is short on purpose, so the eye can't refocus on them.</li>
       <li>Answer with ← / → keys, or tap the left or right half of the screen. Space or "Show again" repeats the flash. If they look the same, guess.</li>
       <li>Three practice answers come first. Press Esc or "Stop" to abandon.</li>
     </ol>
@@ -207,7 +208,7 @@ function as2Fit(G,freeQ){ const m=as2Mean(G), x0=[m.M,m.A1,m.A2,m.ls1,m.ls2].con
 
 (function(){
 "use strict";
-const APP_VERSION="astig-finder 1.1 (engine v2, colour comparisons, 250 ms flash with focus star)";
+const APP_VERSION="astig-finder 1.2 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
 const $=id=>document.getElementById(id);
 const LS={ get(k,d){ try{ const v=localStorage.getItem("astig."+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem("astig."+k,JSON.stringify(v)); }catch(e){} } };
 
@@ -216,7 +217,32 @@ let P3=false; try{ P3=matchMedia("(color-gamut: p3)").matches&&!!(window.CSS&&CS
 const LAM=P3?[615,544]:[611,549], YRG=P3?[0.2290,0.6917]:[0.2126,0.7152];
 const thibos=l=>1.68524-633.46/(l-214.102);                 // chromatic difference of refraction, Thibos et al. 1992
 const DD=thibos(LAM[0])-thibos(LAM[1]);                      // red is focused this much further back than green
-const LV_R=1, LV_G=YRG[0]/YRG[1];                            // equal luminance (standard observer): green dimmed to red
+const LV_R=1, LV_G=YRG[0]/YRG[1];
+// ---- colour-mix balance (pupil-free) ----
+// Patch A: lines with normal φ drawn in a red/blue mixture with luminance fraction (1+u)/2 of red; patch B: lines with
+// normal φ+90 in the opposite mixture (−u). No screen blur. With half the red–blue focus difference o, each patch's blur
+// second moment is Q[D² + 2u·o·D + o²] (+ the shear term, identical for both), so A − B = 4·Q·M·(J(φ) + o·u):
+// the two look equally sharp at u = −J(φ)/o, whatever the pupil (Q) and the focus state (M, as long as M ≠ 0).
+// A blue focus star holds M well away from 0 (blue focused, so the red–blue midpoint sits ~0.5 D + lag behind).
+const Y_B=P3?0.0793:0.0722, LAM_B=P3?465:464, O_MIX=(thibos(LAM[0])-thibos(LAM_B))/2, MIX_LT=0.95*Y_B;
+const MX_A=[]; for(let v=-1.25;v<=1.2501;v+=0.025) MX_A.push(+v.toFixed(3)); const MX_G=[-8,-4,-2,1.5,3,5,8,12];
+const mxPhi=x=>{ const t=1/(1+0.3275911*Math.abs(x)/Math.SQRT2), y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x/2); return 0.5*(1+(x>=0?y:-y)); };
+function mxNew(){ const nA=MX_A.length, nG=MX_G.length, L=new Float64Array(nA*nA*nG);
+  for(let i=0;i<nA;i++) for(let j=0;j<nA;j++) for(let g=0;g<nG;g++) L[(i*nA+j)*nG+g]=-(MX_A[i]**2+MX_A[j]**2)-(MX_G[g]<0?1.5:0);   // prior: J ~ N(0,0.7²); M > 0 more likely (blue star)
+  return {L,nA,nG,n:0}; }
+function mxW(X){ let mx=-1e300; for(const v of X.L) if(v>mx) mx=v; const W=new Float64Array(X.L.length); let t=0; for(let i=0;i<W.length;i++){ W[i]=Math.exp(X.L[i]-mx); t+=W[i]; } return {W,t}; }
+function mxSample(X){ const {W,t}=mxW(X); let r=Math.random()*t, k=0; for(;k<W.length-1;k++){ r-=W[k]; if(r<=0) break; }
+  const g=k%X.nG, ij=(k-g)/X.nG, j=ij%X.nA, i=(ij-j)/X.nA; return {A1:MX_A[i],A2:MX_A[j]}; }
+function mxUpdate(X,phi,uA,aWorse){ const c=Math.cos(2*phi*Math.PI/180), s_=Math.sin(2*phi*Math.PI/180);
+  for(let i=0;i<X.nA;i++) for(let j=0;j<X.nA;j++){ const v=MX_A[i]*c+MX_A[j]*s_+O_MIX*uA, b=(i*X.nA+j)*X.nG;
+    for(let g=0;g<X.nG;g++){ const p=0.02+0.96*mxPhi(MX_G[g]*v); X.L[b+g]+=Math.log(aWorse?p:1-p); } }
+  X.n++; }
+function mxSummary(X){ const {W,t}=mxW(X); let a1=0,a2=0; for(let i=0;i<X.nA;i++) for(let j=0;j<X.nA;j++){ let w=0; const b=(i*X.nA+j)*X.nG; for(let g=0;g<X.nG;g++) w+=W[b+g]; a1+=w*MX_A[i]; a2+=w*MX_A[j]; }
+  a1/=t; a2/=t; const amp=Math.hypot(a1,a2), ang=Math.atan2(a2,a1); let vc=0,va=0;
+  for(let i=0;i<X.nA;i++) for(let j=0;j<X.nA;j++){ let w=0; const b=(i*X.nA+j)*X.nG; for(let g=0;g<X.nG;g++) w+=W[b+g]; w/=t; if(w<1e-12) continue;
+    const am=Math.hypot(MX_A[i],MX_A[j]); vc+=w*(2*am-2*amp)**2; let d=Math.atan2(MX_A[j],MX_A[i])-ang; d=Math.atan2(Math.sin(d),Math.cos(d)); va+=w*(d*90/Math.PI)**2*(am>0.02?1:0); }
+  const axP=((ang*90/Math.PI)%180+180)%180; let tabo=Math.round(180-axP)%180; if(tabo<=0) tabo+=180;
+  return {A1:a1,A2:a2,amp,axP,tabo,seC:Math.sqrt(vc),seAx:Math.min(90,Math.sqrt(va))}; }                            // equal luminance (standard observer): green dimmed to red
 const enc=v=>v<=0.0031308?12.92*v:1.055*Math.pow(v,1/2.4)-0.055;
 function sce(p){ const a=p/2,b=0.05*Math.LN10; let n=0,d=0; for(let i=0;i<400;i++){ const r=(i+0.5)/400*a, w=Math.exp(-b*r*r)*r; n+=w*r*r; d+=w; } return (n/d)/(a*a/2); }
 
@@ -235,13 +261,16 @@ calShow();
 let eye="OD";
 function setEye(e){ eye=e; $("eyeOD").setAttribute("aria-pressed",e==="OD"); $("eyeOS").setAttribute("aria-pressed",e==="OS"); }
 $("eyeOD").onclick=()=>setEye("OD"); $("eyeOS").onclick=()=>setEye("OS");
-const keep=["tester","dist","pupil","nAns"]; keep.forEach(k=>{ const v=LS.get("f."+k,null); if(v!=null) $(k).value=v; $(k).addEventListener("change",()=>LS.set("f."+k,$(k).value)); });
+const keep=["tester","dist","pupil","nAns","meth"]; keep.forEach(k=>{ const v=LS.get("f."+k,null); if(v!=null) $(k).value=v; $(k).addEventListener("change",()=>LS.set("f."+k,$(k).value)); });
 function checkReady(){ const w=[]; if(!mmPerPx) w.push("Set the screen size first.");
   if(!$("pid").value.trim()) w.push("Enter a participant code.");
-  const d=+$("dist").value, p=+$("pupil").value; if(!(d>=25&&d<=200)) w.push("Distance must be 25–200 cm."); if(!(p>=2&&p<=9)) w.push("Pupil must be 2–9 mm.");
+  const mix=$("meth").value==="mix"; $("pupil").disabled=mix; $("pupil").closest("label").style.opacity=mix?0.45:1;
+  const d=+$("dist").value, p=+$("pupil").value; if(!(d>=25&&d<=200)) w.push("Distance must be 25–200 cm."); if(!mix&&!(p>=2&&p<=9)) w.push("Pupil must be 2–9 mm.");
   $("startWarn").textContent=w.join(" "); $("startBtn").disabled=w.length>0; return !w.length; }
-["pid","dist","pupil"].forEach(k=>$(k).addEventListener("input",checkReady)); checkReady();
-$("startBtn").onclick=()=>{ if(!checkReady()) return; $("howDist").textContent=$("dist").value; $("setupCard").hidden=true; $("calCard").hidden=true; $("resCard").hidden=true; $("howCard").hidden=false; $("howCard").scrollIntoView({block:"start"}); };
+["pid","dist","pupil","meth"].forEach(k=>$(k).addEventListener("input",checkReady)); checkReady();
+$("startBtn").onclick=()=>{ if(!checkReady()) return; $("howDist").textContent=$("dist").value;
+  const mix=$("meth").value==="mix"; $("howStar").textContent=mix?"small blue star":"small grey star";
+  $("howPatches").textContent=mix?"Two purple-ish patches of lines (one more reddish, one more bluish) flash":"A red and a green patch of lines flash"; $("setupCard").hidden=true; $("calCard").hidden=true; $("resCard").hidden=true; $("howCard").hidden=false; $("howCard").scrollIntoView({block:"start"}); };
 $("backBtn").onclick=()=>{ $("howCard").hidden=true; $("setupCard").hidden=false; $("calCard").hidden=false; };
 
 // ---------- test ----------
@@ -266,6 +295,7 @@ function render(){ const cv=$("cv"), dpr=window.devicePixelRatio||1, W=Math.roun
   T.dev=mmPerPx/dpr; const ctx=cv.getContext("2d",P3?{colorSpace:"display-p3"}:undefined); ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
   const gap0=degPx(0.6), cx0=W/2, cy0=H/2; star(ctx,cx0,cy0,degPx(0.22));
   const tr=T.tr; if(!tr||T.blank||!T.show) return;
+  if(T.meth==="mix") return renderMix(ctx,W,H,tr);
   const pxPerD=(T.pupil/1000)*T.d/T.dev, k=tr.k, sB=Math.sqrt(Math.abs(k));
   const bl=Math.max(sB,tr.eye)*pxPerD, p=Math.max(degPx(14/60),2.2*bl,6), w=Math.max(2,0.3*p), Rp=2.5*p, Rf=Rp+0.5*p, soft=0.6*p, pw=Math.ceil(2*(Rf+soft))+2, ph=pw;
   const M=maskFrom(pw,ph,c=>{ c.translate(pw/2,ph/2); c.rotate(-tr.ori*Math.PI/180); c.beginPath(); c.arc(0,0,Rp,0,7); c.clip(); for(let i=-3;i<=3;i++) c.fillRect(-Rp-2,i*p-w/2,2*Rp+4,w); });
@@ -275,9 +305,21 @@ function render(){ const cv=$("cv"), dpr=window.devicePixelRatio||1, W=Math.roun
   ctx.putImageData(L,Math.round(cx-gap/2-pw),Math.round(cy-ph/2)); ctx.putImageData(Rr,Math.round(cx+gap/2),Math.round(cy-ph/2));
   star(ctx,cx,cy,degPx(0.22));
   T.fits=(2*pw+gap)<W*0.98&&ph<H*0.9; }
+function panelMix(ctx,M,pw,ph,u,Rf,soft){ const img=imgData(ctx,pw,ph), D_=img.data, cx=pw/2, cy=ph/2, w=(1+u)/2, lr=MIX_LT*w/YRG[0], lb=MIX_LT*(1-w)/Y_B;
+  for(let y=0;y<ph;y++) for(let x=0;x<pw;x++){ const i=y*pw+x, r=Math.hypot(x+0.5-cx,y+0.5-cy), win=r<=Rf?1:r>=Rf+soft?0:0.5+0.5*Math.cos(Math.PI*(r-Rf)/soft), v=win*Math.max(0,1-Math.min(1,M[i]));
+    D_[i*4]=Math.round(255*enc(v*lr)); D_[i*4+1]=0; D_[i*4+2]=Math.round(255*enc(v*lb)); D_[i*4+3]=255; }
+  return img; }
+function renderMix(ctx,W,H,tr){ const pxPerD=(4.5/1000)*T.d/T.dev, p=Math.max(degPx(14/60),2.2*1.6*pxPerD,6), w=Math.max(2,0.3*p), Rp=2.5*p, Rf=Rp+0.5*p, soft=0.6*p, pw=Math.ceil(2*(Rf+soft))+2, ph=pw;
+  const lines=o=>maskFrom(pw,ph,c=>{ c.translate(pw/2,ph/2); c.rotate(-o*Math.PI/180); c.beginPath(); c.arc(0,0,Rp,0,7); c.clip(); for(let i=-3;i<=3;i++) c.fillRect(-Rp-2,i*p-w/2,2*Rp+4,w); });
+  let A,B;
+  if(tr.practice){ const M=lines(tr.ori), Mb=discBlur(M,pw,ph,Math.sqrt(3.2)*pxPerD); A=panelMix(ctx,Mb,pw,ph,0,Rf,soft); B=panelMix(ctx,M,pw,ph,0,Rf,soft); }   // A blurred
+  else { A=panelMix(ctx,lines((tr.phi+90)%180),pw,ph,tr.uA,Rf,soft); B=panelMix(ctx,lines(tr.phi),pw,ph,-tr.uA,Rf,soft); }   // A: lines with normal φ; B: normal φ+90
+  const gap=degPx(0.6), cx=W/2, cy=H/2, L=tr.aLeft?A:B, R_=tr.aLeft?B:A;
+  ctx.putImageData(L,Math.round(cx-gap/2-pw),Math.round(cy-ph/2)); ctx.putImageData(R_,Math.round(cx+gap/2),Math.round(cy-ph/2));
+  star(ctx,cx,cy,degPx(0.22)); T.fits=(2*pw+gap)<W*0.98&&ph<H*0.9; }
 // Focus target: fine spokes at every orientation, always on. It holds accommodation at the circle of least confusion,
 // so focus can't drift to sharpen whichever line orientation is being tested (that drift shrinks the measured cylinder).
-function star(ctx,cx,cy,r){ ctx.save(); ctx.strokeStyle="#9a9a9a"; ctx.lineWidth=Math.max(1,degPx(1.2/60)); ctx.beginPath();
+function star(ctx,cx,cy,r){ ctx.save(); ctx.strokeStyle=T&&T.meth==="mix"?"#3a46ff":"#9a9a9a"; ctx.lineWidth=Math.max(1,degPx(1.2/60)); ctx.beginPath();
   for(let i=0;i<8;i++){ const a=i*Math.PI/8; ctx.moveTo(cx-r*Math.cos(a),cy-r*Math.sin(a)); ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a)); } ctx.stroke(); ctx.restore(); }
 // The line patches are shown for FLASH_MS only: shorter than the eye's accommodation latency (~0.3–0.4 s), so the
 // focus set by the star is the focus the lines are seen with. Space / "Show again" repeats the flash.
@@ -285,6 +327,16 @@ const FLASH_MS=250;
 function flash(){ if(!T||!T.tr) return; clearTimeout(T.ft); T.show=true; render(); T.shownAt=T.shownAt||performance.now(); T.ready=true;
   T.ft=setTimeout(()=>{ if(!T) return; T.show=false; render(); },FLASH_MS); }
 function nextTrial(){ const G=T.G;
+  if(T.meth==="mix"){ const X=T.X;
+    if(T.practice<3) T.tr={mix:true,practice:true,ori:ORIS[Math.floor(Math.random()*6)],aLeft:Math.random()<0.5};
+    else { if(X.n>=T.N){ finish(); return; }
+      if(!T.order.length) T.order=ORIS.slice().sort(()=>Math.random()-0.5);
+      const phi=T.order.pop(), sm=mxSample(X), Js=sm.A1*Math.cos(2*phi*Math.PI/180)+sm.A2*Math.sin(2*phi*Math.PI/180);
+      let g=0; for(let i=0;i<12;i++) g+=Math.random(); g-=6;
+      const uA=Math.max(-1,Math.min(1,-Js/O_MIX+0.15*g));
+      T.tr={mix:true,phi,uA:Math.round(1000*uA)/1000,aLeft:Math.random()<0.5}; }
+    T.tr.replays=0; T.shownAt=0; T.show=false; T.blank=false; render(); updHud();
+    setTimeout(()=>{ if(!T) return; flash(); if(!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; },700); return; }
   if(T.practice<3){ const ori=ORIS[Math.floor(Math.random()*6)], k=(Math.random()<0.5?1:-1)*3.2;
     T.tr={type:1,phi:(ori+90)%180,ori,k,left:Math.random()<0.5,eye:1,practice:true}; }
   else { if(G.n>=T.N){ finish(); return; }
@@ -296,9 +348,15 @@ function nextTrial(){ const G=T.G;
   T.tr.replays=0; T.shownAt=0; T.show=false; T.blank=false; render(); updHud();
   setTimeout(()=>{ if(!T) return; flash();
     if(!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; }, 700); }
-function updHud(){ const pr=T.practice<3; $("prog").textContent=pr?`Practice ${T.practice+1} of 3`:`${T.G.n+1} of ${T.N}`;
+function updHud(){ const pr=T.practice<3; $("prog").textContent=pr?`Practice ${T.practice+1} of 3`:`${(T.meth==="mix"?T.X.n:T.G.n)+1} of ${T.N}`;
   if(!$("msg").dataset.hold) $("msg").textContent=pr?"Keep looking at the star. Which side's LINES were sharper?  ← left · right →  (Space: show again)":""; }
 function answer(leftSharper){ if(!T||!T.ready) return; T.ready=false; const tr=T.tr, rt=Math.round(performance.now()-T.shownAt);
+  if(tr.mix){ const aWorse=(leftSharper!==tr.aLeft); clearTimeout(T.ft); T.show=false;
+    if(tr.practice){ const correct=aWorse; T.practice++; if(!correct) T.pracWrong++;
+      $("msg").dataset.hold=1; $("msg").textContent=correct?"✓":"Look again: one side was clearly blurred. Compare the lines, not the colours.";
+      setTimeout(()=>{ delete $("msg").dataset.hold; nextTrial(); }, correct?350:1600); return; }
+    T.log.push([tr.phi,tr.uA,tr.aLeft?"A":"B",leftSharper?"L":"R",aWorse?1:0,rt,tr.replays]);
+    mxUpdate(T.X,tr.phi,tr.uA,aWorse); setTimeout(nextTrial,0); return; }
   const r=(leftSharper===tr.left);           // r = green (blurred when k > 0) looked worse = red sharper
   if(tr.practice){ clearTimeout(T.ft); T.show=false; const correct=(tr.k>0)===r; T.practice++; if(!correct) T.pracWrong++;
     $("msg").dataset.hold=1; $("msg").textContent=correct?"✓":"Look again: one side was clearly blurred. Compare the lines, not the colours.";
@@ -315,20 +373,32 @@ let wake=null;
 async function enterStage(){ $("stage").hidden=false; try{ if(document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen(); }catch(e){} try{ wake=await navigator.wakeLock.request("screen"); }catch(e){} }
 function leaveStage(){ $("stage").hidden=true; $("msg").textContent=""; try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} try{ wake&&wake.release(); }catch(e){} wake=null; }
 addEventListener("resize",()=>{ if(T) render(); });
-$("goBtn").onclick=async()=>{ const pupil=+$("pupil").value;
-  T={ pid:$("pid").value.trim(), eye, tester:$("tester").value.trim(), notes:$("notes").value.trim(), distCm:+$("dist").value, d:+$("dist").value*10, pupil, N:+$("nAns").value,
+$("goBtn").onclick=async()=>{ const meth=$("meth").value, pupil=meth==="mix"?4.5:+$("pupil").value;
+  T={ meth, X:meth==="mix"?mxNew():null, pid:$("pid").value.trim(), eye, tester:$("tester").value.trim(), notes:$("notes").value.trim(), distCm:+$("dist").value, d:+$("dist").value*10, pupil, N:+$("nAns").value,
       G:as2New(DD,sce(pupil)), order:[], log:[], practice:0, pracWrong:0, started:new Date() };
   $("howCard").hidden=true; await enterStage(); addEventListener("keydown",onKey); nextTrial(); };
 function stopTest(){ removeEventListener("keydown",onKey); T=null; leaveStage(); $("setupCard").hidden=false; $("calCard").hidden=false; }
 
 // ---------- result ----------
 const pf=v=>(v>=0?"+":"")+v.toFixed(2);
-function finish(){ removeEventListener("keydown",onKey); const G=T.G, f=as2Fit(G,false);
+function finishMix(){ const X=T.X, f=mxSummary(X), cyl=-2*f.amp, z=2*f.amp/Math.max(0.03,f.seC), status=2*f.amp<0.25?"under 0.25 D":z<1.5?"not significant":z<2.5?"borderline":"significant";
+  const mer=ORIS.map(o=>{ const phi=(o+90)%180, tm=((180-phi)%180)||180; return {tabo:tm,D:+(f.A1*Math.cos(2*phi*Math.PI/180)+f.A2*Math.sin(2*phi*Math.PI/180)).toFixed(2),sd:+(f.seC/2).toFixed(2)}; }).sort((a,b)=>a.tabo-b.tabo);
+  const sat=T.log.filter(r=>Math.abs(r[1])>=0.999).length;
+  return { created:new Date().toISOString(), method:"colour-mix", participant:T.pid, eye:T.eye, tester:T.tester, notes:T.notes, distance_cm:T.distCm, pupil_mm:null, answers:X.n,
+    cyl_D:+cyl.toFixed(2), axis_tabo:f.tabo, cyl_se_D:+f.seC.toFixed(2), axis_se_deg:Math.round(f.seAx), status, mean_focus_D:null,
+    J0:+(-(cyl/2)*Math.cos(2*f.tabo*Math.PI/180)).toFixed(3), J45:+(-(cyl/2)*Math.sin(2*f.tabo*Math.PI/180)).toFixed(3), meridians:mer, distance_sph_if_myopic:null,
+    cyl_raw_D:+cyl.toFixed(2), cyl_se_raw_D:+f.seC.toFixed(2), scale_factor:1, scale_source:"not needed (pupil-free method)", cyl_scale_se_D:+(Math.abs(cyl)*0.1).toFixed(2),
+    range_limited_answers:sat, practice_errors:T.pracWrong, duration_s:Math.round((Date.now()-T.started.getTime())/1000), screen_mm_per_px:+mmPerPx.toFixed(5), colour:P3?"P3":"sRGB", lca_D:+(2*O_MIX).toFixed(3),
+    device:navigator.userAgent.slice(0,160), app:APP_VERSION,
+    trials:JSON.stringify({cols:["normal_phi_deg","uA_red_minus_blue","left_patch","answer","A_worse","rt_ms","replays"],rows:T.log}) }; }
+function finish(){ removeEventListener("keydown",onKey);
+  if(T.meth==="mix"){ const rec=finishMix(); T=null; leaveStage(); showResult(rec); save(rec); return; }
+  const G=T.G, f=as2Fit(G,false);
   f.seAx=Math.min(90,f.seAx*1.7); f.seC*=1.5;                          // calibrated by simulation (Laplace understates both)
   const SC=scale(), cylRaw=-2*f.amp, cyl=cylRaw*SC.f, zC=2*f.amp/Math.max(0.05,f.seC), status=2*f.amp<0.25?"under 0.25 D":zC<1.5?"not significant":zC<2.5?"borderline":"significant";
   const mer=ORIS.map(o=>{ const phi=(o+90)%180, m=f.meri(phi), tm=((180-phi)%180)||180; return {tabo:tm,D:+(f.A0+(m.D-f.A0)*SC.f).toFixed(2),sd:+(1.5*m.sd*SC.f).toFixed(2)}; }).sort((a,b)=>a.tabo-b.tabo);
   const sph=f.Dmax<-0.25?+(f.Dmax-100/T.distCm).toFixed(2):null;
-  const rec={ created:new Date().toISOString(), participant:T.pid, eye:T.eye, tester:T.tester, notes:T.notes, distance_cm:T.distCm, pupil_mm:T.pupil, answers:G.n,
+  const rec={ created:new Date().toISOString(), method:"red-green", participant:T.pid, eye:T.eye, tester:T.tester, notes:T.notes, distance_cm:T.distCm, pupil_mm:T.pupil, answers:G.n,
     cyl_D:+cyl.toFixed(2), axis_tabo:f.tabo, cyl_se_D:+(f.seC*SC.f).toFixed(2), cyl_scale_se_D:+(Math.abs(cyl)*SC.rel).toFixed(2),
     cyl_raw_D:+cylRaw.toFixed(2), cyl_se_raw_D:+f.seC.toFixed(2), scale_factor:SC.f, scale_source:SC.src, axis_se_deg:Math.round(f.seAx), status, mean_focus_D:+f.A0.toFixed(2),
     J0:+(-(cyl/2)*Math.cos(2*f.tabo*Math.PI/180)).toFixed(3), J45:+(-(cyl/2)*Math.sin(2*f.tabo*Math.PI/180)).toFixed(3), meridians:mer, distance_sph_if_myopic:sph, practice_errors:T.pracWrong,
@@ -347,16 +417,18 @@ function chart(r){ const W_=360,H_=140,pl=38,pb=22,pt=10,pr=10, Ds=r.meridians.f
   [0,45,90,135,180].forEach(a=>{ s+=`<line x1="${X(a)}" y1="${pt}" x2="${X(a)}" y2="${H_-pb}" stroke="var(--line)"/><text x="${X(a)}" y="${H_-6}" text-anchor="middle">${a}°</text>`; });
   for(let v=Math.ceil(lo*4)/4; v<=hi; v+=0.25) s+=`<line x1="${pl}" y1="${Y(v)}" x2="${W_-pr}" y2="${Y(v)}" stroke="var(--line)"/><text x="${pl-5}" y="${Y(v)+3}" text-anchor="end">${v.toFixed(2)}</text>`;
   const amp=Math.abs(r.cyl_D)/2, ax=r.axis_tabo; let d="";
-  for(let a=0;a<=180;a+=3){ const v=r.mean_focus_D+amp*Math.cos(2*(a-ax)*Math.PI/180); d+=(a?"L":"M")+X(a).toFixed(1)+" "+Y(v).toFixed(1); }
+  const m0=r.mean_focus_D==null?0:r.mean_focus_D;
+  for(let a=0;a<=180;a+=3){ const v=m0+amp*Math.cos(2*(a-ax)*Math.PI/180); d+=(a?"L":"M")+X(a).toFixed(1)+" "+Y(v).toFixed(1); }
   s+=`<path d="${d}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
   r.meridians.forEach(m=>{ s+=`<line x1="${X(m.tabo)}" y1="${Y(m.D-m.sd)}" x2="${X(m.tabo)}" y2="${Y(m.D+m.sd)}" stroke="var(--ink)"/><circle cx="${X(m.tabo)}" cy="${Y(m.D)}" r="3" fill="var(--ink)"/>`; });
-  return s+`</svg><p class="note">Focus error (D, + = behind the screen) by TABO meridian. The most-plus meridian is the minus-cylinder axis.</p>`; }
+  return s+`</svg><p class="note">${r.mean_focus_D==null?"Focus by TABO meridian relative to the mean (D)":"Focus error (D, + = behind the screen) by TABO meridian"}. The most-plus meridian is the minus-cylinder axis.</p>`; }
 function showResult(r){ $("resCard").hidden=false; $("setupCard").hidden=true; $("calCard").hidden=true;
   $("resTitle").textContent=`${r.participant} · ${r.eye}`; $("resMain").textContent=`${pf(r.cyl_D)} × ${r.axis_tabo}`;
   const [cls,txt]=verdict(r); $("resVerdict").innerHTML=`<span class="pill ${cls}">${r.status}</span> ${txt}`;
   const kv=[["Uncertainty",`± ${r.cyl_se_D.toFixed(2)} D from the answers, axis ± ${r.axis_se_deg}°`],
-    ["Magnitude scale",r.scale_source==="none"?`<b>Uncalibrated.</b> The size can be off by about ±30% and has tended to read low (pupil, the eye's own colour focus, the screen's colours). The axis is not affected. Calibrate against refractions below.`:`× ${r.scale_factor.toFixed(2)} (${esc(r.scale_source)}); scale uncertainty ± ${r.cyl_scale_se_D.toFixed(2)} D`],["Mean focus",`${pf(r.mean_focus_D)} D (${r.mean_focus_D>=0?"behind":"in front of"} the screen)`],["Power vector",`J0 ${pf(r.J0)} · J45 ${pf(r.J45)}`],
-    ["By meridian",r.meridians.map(m=>`${m.tabo}°: ${pf(m.D)}`).join("  ")],["Setup",`${r.distance_cm} cm · pupil ${r.pupil_mm} mm · ${r.answers} answers · ${r.colour}`]];
+    ["Magnitude scale",r.method==="colour-mix"?"Not needed: this method measures the cylinder against the eye's own red–blue focus difference, without the pupil. Remaining scale uncertainty about ±10% (people's colour focus differs).":r.scale_source==="none"?`<b>Uncalibrated.</b> The size can be off by about ±30% and has tended to read low (pupil, the eye's own colour focus, the screen's colours). The axis is not affected. Calibrate against refractions below.`:`× ${r.scale_factor.toFixed(2)} (${esc(r.scale_source)}); scale uncertainty ± ${r.cyl_scale_se_D.toFixed(2)} D`],["Mean focus",r.mean_focus_D==null?"not measured by this method":`${pf(r.mean_focus_D)} D (${r.mean_focus_D>=0?"behind":"in front of"} the screen)`],["Power vector",`J0 ${pf(r.J0)} · J45 ${pf(r.J45)}`],
+    ["By meridian",r.meridians.map(m=>`${m.tabo}°: ${pf(m.D)}`).join("  ")],["Setup",`${r.method==="colour-mix"?"colour-mix balance":"red–green"} · ${r.distance_cm} cm · ${r.pupil_mm==null?"no pupil needed":"pupil "+r.pupil_mm+" mm"} · ${r.answers} answers · ${r.colour}`]];
+  if(r.range_limited_answers>=8) kv.push(["Range",`${r.range_limited_answers} answers hit the end of the colour range: the cylinder may be larger than this method measures well (above about 1 D).`]);
   if(r.distance_sph_if_myopic!=null) kv.push(["Distance Rx (myopic)",`≈ ${pf(r.distance_sph_if_myopic)} / ${pf(r.cyl_D)} × ${r.axis_tabo} (all meridians in front of the screen)`]);
   if(r.practice_errors>=2) kv.push(["Caution",`${r.practice_errors} of 3 practice answers wrong: check the participant understood the task.`]);
   $("refCyl").value=r.ref_cyl_D!=null?r.ref_cyl_D:""; $("refAx").value=r.ref_axis_tabo!=null?r.ref_axis_tabo:""; $("refSave").onclick=()=>saveRef(r);
@@ -379,7 +451,7 @@ function allRecs(){ const m=new Map(); local.forEach(r=>m.set(r.id,{...r,_where:
 // empirical: regress the reference refraction's power vector on the test's raw power vector (through the origin).
 function scale(){ const s=LS.get("scale",null); return s&&s.f>0?{f:s.f,rel:s.rel,src:s.src}:{f:1,rel:0.3,src:"none"}; }
 function pv(c,a){ return [-(c/2)*Math.cos(2*a*Math.PI/180),-(c/2)*Math.sin(2*a*Math.PI/180)]; }
-function suggest(){ const P=allRecs().filter(r=>r.ref_cyl_D!=null&&r.ref_axis_tabo!=null&&Math.abs(r.ref_cyl_D)>=0.5&&r.cyl_raw_D!=null);
+function suggest(){ const P=allRecs().filter(r=>r.method!=="colour-mix"&&r.ref_cyl_D!=null&&r.ref_axis_tabo!=null&&Math.abs(r.ref_cyl_D)>=0.5&&r.cyl_raw_D!=null);
   if(P.length<2) return {n:P.length};
   let st=0,sr=0; const pairs=P.map(r=>[pv(r.cyl_raw_D,r.axis_tabo),pv(r.ref_cyl_D,r.ref_axis_tabo)]);
   pairs.forEach(([t,f])=>{ st+=t[0]*t[0]+t[1]*t[1]; sr+=t[0]*f[0]+t[1]*f[1]; }); if(st<1e-6) return {n:P.length};
@@ -403,12 +475,12 @@ let pendingDel=null;
 function renderLog(){ renderScale(); const f=$("filter").value.trim().toLowerCase(), rows=allRecs().filter(r=>!f||String(r.participant).toLowerCase().includes(f));
   if(!rows.length){ $("logBody").innerHTML=`<tr><td colspan="11"><div class="empty">${f?"No results for that participant.":"No results yet. Finished tests appear here, newest first."}</div></td></tr>`; return; }
   const cls={"significant":"bad","borderline":"warn","not significant":"mute","under 0.25 D":"ok"};
-  $("logBody").innerHTML=rows.map(r=>`<tr><td class="num">${esc(r.created.slice(0,16).replace("T"," "))}</td><td>${esc(r.participant)}</td><td>${esc(r.eye)}</td><td class="num">${pf(r.cyl_D)} × ${r.axis_tabo}</td><td class="num">${r.cyl_se_D.toFixed(2)} / ${r.axis_se_deg}°</td><td><span class="pill ${cls[r.status]||"mute"}">${esc(r.status)}</span></td><td class="num">${pf(r.mean_focus_D)}</td><td class="num">${r.distance_cm}</td><td class="num">${r.pupil_mm}</td><td>${esc(r.tester)}${r._where==="device"?' <span class="pill warn" title="Only on this device">device</span>':""}</td><td>${pendingDel===r.id?`<span class="confirm">Delete? <button class="danger" data-del="${r.id}">Delete</button><button data-cancel="1">Keep</button></span>`:`<button data-ask="${r.id}" aria-label="Delete this result">✕</button>`}</td></tr>`).join(""); }
+  $("logBody").innerHTML=rows.map(r=>`<tr><td class="num">${esc(r.created.slice(0,16).replace("T"," "))}</td><td>${esc(r.participant)}</td><td>${esc(r.eye)}</td><td class="num">${pf(r.cyl_D)} × ${r.axis_tabo}</td><td class="num">${r.cyl_se_D.toFixed(2)} / ${r.axis_se_deg}°</td><td><span class="pill ${cls[r.status]||"mute"}">${esc(r.status)}</span></td><td class="num">${r.mean_focus_D==null?"–":pf(r.mean_focus_D)}</td><td class="num">${r.distance_cm}</td><td class="num">${r.pupil_mm==null?"mix":r.pupil_mm}</td><td>${esc(r.tester)}${r._where==="device"?' <span class="pill warn" title="Only on this device">device</span>':""}</td><td>${pendingDel===r.id?`<span class="confirm">Delete? <button class="danger" data-del="${r.id}">Delete</button><button data-cancel="1">Keep</button></span>`:`<button data-ask="${r.id}" aria-label="Delete this result">✕</button>`}</td></tr>`).join(""); }
 $("logBody").addEventListener("click",async e=>{ const b=e.target.closest("button"); if(!b) return;
   if(b.dataset.ask){ pendingDel=b.dataset.ask; renderLog(); return; } if(b.dataset.cancel){ pendingDel=null; renderLog(); return; }
   if(b.dataset.del){ const id=b.dataset.del; pendingDel=null; local=local.filter(r=>r.id!==id); LS.set("results",local); if(DB&&shared.some(r=>r.id===id)){ try{ await DB.collection("results").doc(id).delete(); }catch(e){} } renderLog(); } });
 $("filter").addEventListener("input",renderLog);
-const COLS=["created","participant","eye","tester","cyl_D","axis_tabo","cyl_se_D","cyl_scale_se_D","cyl_raw_D","scale_factor","scale_source","ref_cyl_D","ref_axis_tabo","axis_se_deg","status","mean_focus_D","J0","J45","distance_cm","pupil_mm","answers","distance_sph_if_myopic","practice_errors","duration_s","colour","lca_D","screen_mm_per_px","notes","meridians","app","device","trials"];
+const COLS=["created","method","participant","eye","tester","cyl_D","axis_tabo","cyl_se_D","cyl_scale_se_D","cyl_raw_D","scale_factor","scale_source","ref_cyl_D","ref_axis_tabo","axis_se_deg","status","mean_focus_D","J0","J45","distance_cm","pupil_mm","answers","distance_sph_if_myopic","practice_errors","range_limited_answers","duration_s","colour","lca_D","screen_mm_per_px","notes","meridians","app","device","trials"];
 function csv(){ const q=v=>{ const s=v==null?"":typeof v==="object"?JSON.stringify(v):String(v); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; };
   return [COLS.join(",")].concat(allRecs().map(r=>COLS.map(c=>q(r[c])).join(","))).join("\n"); }
 $("csvBtn").onclick=async()=>{ const text=csv(), name=`astig-results-${new Date().toISOString().slice(0,10)}.csv`; let done=false;
@@ -417,7 +489,7 @@ $("csvBtn").onclick=async()=>{ const text=csv(), name=`astig-results-${new Date(
   $("exportText").value=text; $("exportBox").hidden=done; };
 $("copyBtn").onclick=async()=>{ try{ await navigator.clipboard.writeText($("exportText").value); $("copyBtn").textContent="Copied"; }catch(e){ $("exportText").select(); } };
 renderLog();
-window.__astigTest={ tr:()=>T&&T.tr, G:()=>T&&T.G, ready:()=>!!(T&&T.ready), answer };
+window.__astigTest={ tr:()=>T&&T.tr, G:()=>T&&T.G, X:()=>T&&T.X, ready:()=>!!(T&&T.ready), answer, O:()=>O_MIX };
 (async()=>{ if(!window.claude||!window.claude.use){ setStore("Saved on this device only","warn"); return; }
   const timer=setTimeout(()=>{ if(!DB) setStore("Study log unavailable: saving on this device","warn"); },10000);
   try{ const db=await window.claude.use("db"); if(!db){ clearTimeout(timer); setStore("Study log unavailable: saving on this device","warn"); return; }

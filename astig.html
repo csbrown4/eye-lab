@@ -213,7 +213,7 @@ function as2Fit(G,freeQ){ const m=as2Mean(G), x0=[m.M,m.A1,m.A2,m.ls1,m.ls2].con
 
 (function(){
 "use strict";
-const APP_VERSION="astig-finder 1.5 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
+const APP_VERSION="astig-finder 1.6 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
 const $=id=>document.getElementById(id);
 const LS={ get(k,d){ try{ const v=localStorage.getItem("astig."+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem("astig."+k,JSON.stringify(v)); }catch(e){} } };
 
@@ -238,9 +238,12 @@ function mxNew(){ const nA=MX_A.length, nG=MX_G.length, L=new Float64Array(nA*nA
 function mxW(X){ let mx=-1e300; for(const v of X.L) if(v>mx) mx=v; const W=new Float64Array(X.L.length); let t=0; for(let i=0;i<W.length;i++){ W[i]=Math.exp(X.L[i]-mx); t+=W[i]; } return {W,t}; }
 function mxSample(X){ const {W,t}=mxW(X); let r=Math.random()*t, k=0; for(;k<W.length-1;k++){ r-=W[k]; if(r<=0) break; }
   const g=k%X.nG, ij=(k-g)/X.nG, j=ij%X.nA, i=(ij-j)/X.nA; return {A1:MX_A[i],A2:MX_A[j]}; }
-function mxUpdate(X,phi,uA,aWorse){ const c=Math.cos(2*phi*Math.PI/180), s_=Math.sin(2*phi*Math.PI/180);
-  for(let i=0;i<X.nA;i++) for(let j=0;j<X.nA;j++){ const v=MX_A[i]*c+MX_A[j]*s_+O_MIX*uA, b=(i*X.nA+j)*X.nG;
-    for(let g=0;g<X.nG;g++){ const p=0.02+0.96*mxPhi(MX_G[g]*v); X.L[b+g]+=aWorse===0.5?0.5*(Math.log(p)+Math.log(1-p)):Math.log(aWorse?p:1-p); } }
+const MXT_N=4001, MXT_R=10, MXT_LP=new Float64Array(MXT_N), MXT_LQ=new Float64Array(MXT_N);       // log p, log(1−p) for z in ±10, step 0.005
+for(let i=0;i<MXT_N;i++){ const p=0.02+0.96*mxPhi(-MXT_R+2*MXT_R*i/(MXT_N-1)); MXT_LP[i]=Math.log(p); MXT_LQ[i]=Math.log(1-p); }
+function mxUpdate(X,phi,uA,aWorse){ const c=Math.cos(2*phi*Math.PI/180), s_=Math.sin(2*phi*Math.PI/180), sc=(MXT_N-1)/(2*MXT_R);
+  const wP=aWorse===0.5?0.5:aWorse?1:0, wQ=1-wP, L=X.L, nG=X.nG;
+  for(let i=0;i<X.nA;i++){ const ai=MX_A[i]*c+O_MIX*uA; for(let j=0;j<X.nA;j++){ const v=ai+MX_A[j]*s_, b=(i*X.nA+j)*nG;
+    for(let g=0;g<nG;g++){ let z=MX_G[g]*v; z=z<-MXT_R?-MXT_R:z>MXT_R?MXT_R:z; const k=Math.round((z+MXT_R)*sc); L[b+g]+=wP*MXT_LP[k]+wQ*MXT_LQ[k]; } } }
   X.n++; }
 function mxSummary(X){ const {W,t}=mxW(X); let a1=0,a2=0; for(let i=0;i<X.nA;i++) for(let j=0;j<X.nA;j++){ let w=0; const b=(i*X.nA+j)*X.nG; for(let g=0;g<X.nG;g++) w+=W[b+g]; a1+=w*MX_A[i]; a2+=w*MX_A[j]; }
   a1/=t; a2/=t; const amp=Math.hypot(a1,a2), ang=Math.atan2(a2,a1); let vc=0,va=0;
@@ -248,7 +251,9 @@ function mxSummary(X){ const {W,t}=mxW(X); let a1=0,a2=0; for(let i=0;i<X.nA;i++
     const am=Math.hypot(MX_A[i],MX_A[j]); vc+=w*(2*am-2*amp)**2; let d=Math.atan2(MX_A[j],MX_A[i])-ang; d=Math.atan2(Math.sin(d),Math.cos(d)); va+=w*(d*90/Math.PI)**2*(am>0.02?1:0); }
   const axP=((ang*90/Math.PI)%180+180)%180; let tabo=Math.round(180-axP)%180; if(tabo<=0) tabo+=180;
   return {A1:a1,A2:a2,amp,axP,tabo,seC:Math.sqrt(vc),seAx:Math.min(90,Math.sqrt(va))}; }                            // equal luminance (standard observer): green dimmed to red
-const enc=v=>v<=0.0031308?12.92*v:1.055*Math.pow(v,1/2.4)-0.055;
+const encX=v=>v<=0.0031308?12.92*v:1.055*Math.pow(v,1/2.4)-0.055;
+const ENC_LUT=new Float32Array(4097); for(let i=0;i<=4096;i++) ENC_LUT[i]=encX(i/4096);
+const enc=v=>ENC_LUT[v<=0?0:v>=1?4096:Math.round(v*4096)];          // 12-bit table: far finer than the 8-bit output
 function sce(p){ const a=p/2,b=0.05*Math.LN10; let n=0,d=0; for(let i=0;i<400;i++){ const r=(i+0.5)/400*a, w=Math.exp(-b*r*r)*r; n+=w*r*r; d+=w; } return (n/d)/(a*a/2); }
 
 // ---------- screen calibration ----------
@@ -361,7 +366,7 @@ function nextTrial(){ const G=T.G;
       const uA=Math.max(-1,Math.min(1,-Js/O_MIX+(Math.random()<0.5?-1:1)*0.3+0.05*g));   // a visible step either side of the predicted balance point
       T.tr={mix:true,phi,uA:Math.round(1000*uA)/1000,aLeft:Math.random()<0.5}; }
     T.tr.replays=0; T.shownAt=0; T.show=false; T.blank=false; render(); updHud();
-    setTimeout(()=>{ if(!T) return; flash(); if(!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; },700); return; }
+    setTimeout(()=>{ if(!T) return; flash(); if(!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; },120); return; }
   if(T.practice<3){ const ori=ORIS[Math.floor(Math.random()*6)], k=(Math.random()<0.5?1:-1)*3.2;
     T.tr={type:1,phi:(ori+90)%180,ori,k,left:Math.random()<0.5,eye:1,practice:true}; }
   else { if(G.n>=T.N){ finish(); return; }
@@ -372,7 +377,7 @@ function nextTrial(){ const G=T.G;
     T.tr={type:1,phi:t.phi,ori,k:Math.round(1000*k)/1000,left:Math.random()<0.5,eye:Math.abs(Dm)+G.dD/2}; }
   T.tr.replays=0; T.shownAt=0; T.show=false; T.blank=false; render(); updHud();
   setTimeout(()=>{ if(!T) return; flash();
-    if(!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; }, 700); }
+    if(!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; }, 120); }
 function updHud(){ const pr=T.practice<3; $("prog").textContent=pr?`Practice ${T.practice+1} of 3`:`${(T.meth==="mix"?T.X.n:T.G.n)+1} of ${T.N}`;
   if(!$("msg").dataset.hold) $("msg").textContent=pr?"Which side's LINES look sharper?  ← left · right →  · ↓ same":""; }
 function answer(leftSharper){ if(!T||!T.ready) return; T.ready=false; const tr=T.tr, rt=Math.round(performance.now()-T.shownAt);

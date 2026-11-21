@@ -3711,7 +3711,7 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
     const Dm=ph=>sm.M+sm.A1*Math.cos(2*ph*Math.PI/180)+sm.A2*Math.sin(2*ph*Math.PI/180);
     const eye=t.type===1?Math.abs(Dm(t.phi))+G.dD/2:Math.max(Math.abs(Dm(t.phiA)),Math.abs(Dm(t.phiB)))+G.dD/2;   // expected eye blur, for the line spacing
     AS.tr={t,k:Math.round(1000*k)/1000,left:Math.random()<0.5,eye,rep:0,flashed:false}; AS.show=false; draw();
-    clearTimeout(AS.ft0); AS.ft0=setTimeout(()=>{ if(AS.active&&AS.tr&&AS.tr.t===t) asFlash(); },300); }
+    clearTimeout(AS.ft0); AS.ft0=setTimeout(()=>{ if(AS.active&&AS.tr&&AS.tr.t===t) asFlash(); },120); }
   function asFlash(){ if(!AS.active||!AS.tr) return; AS.show=true; AS.tr.flashed=true; draw(); }   // steady until answered (flash removed)
   function asReplay(){ if(AS.active&&AS.tr&&AS.tr.flashed){ AS.tr.rep++; asFlash(); } }
   function asStar(ctx,cx,cy,r,lw){ ctx.save(); ctx.strokeStyle="#9a9a9a"; ctx.lineWidth=lw; ctx.beginPath(); for(let i=0;i<8;i++){ const a=i*Math.PI/8; ctx.moveTo(cx-r*Math.cos(a),cy-r*Math.sin(a)); ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a)); } ctx.stroke(); ctx.restore(); }

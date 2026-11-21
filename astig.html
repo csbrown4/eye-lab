@@ -93,7 +93,7 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
       <label for="meth">Method<select id="meth"><option value="rg">Red–green (uses pupil)</option><option value="mix">Colour-mix (no pupil, experimental)</option></select></label>
     </div>
     <label for="notes">Notes (optional)<input id="notes" autocomplete="off" placeholder="Lighting, current Rx worn, anything unusual"></label>
-    <p class="note">Use a participant code, not a name. Red–green: measure the pupil in the test lighting; the cylinder's size scales with the square of any pupil error. Colour-mix: no pupil needed (experimental; best below about 1 D of cylinder). The axis never depends on the pupil.</p>
+    <p class="note">Use a participant code, not a name. Red–green: measure the pupil in the test lighting; the cylinder's size scales with the square of any pupil error. Colour-mix: no pupil needed (experimental). The axis never depends on the pupil.</p>
     <div class="row"><button class="primary" id="startBtn">Start test</button><span class="note" id="startWarn"></span></div>
   </section>
 
@@ -208,7 +208,7 @@ function as2Fit(G,freeQ){ const m=as2Mean(G), x0=[m.M,m.A1,m.A2,m.ls1,m.ls2].con
 
 (function(){
 "use strict";
-const APP_VERSION="astig-finder 1.2 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
+const APP_VERSION="astig-finder 1.3 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
 const $=id=>document.getElementById(id);
 const LS={ get(k,d){ try{ const v=localStorage.getItem("astig."+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem("astig."+k,JSON.stringify(v)); }catch(e){} } };
 
@@ -225,10 +225,10 @@ const LV_R=1, LV_G=YRG[0]/YRG[1];
 // the two look equally sharp at u = −J(φ)/o, whatever the pupil (Q) and the focus state (M, as long as M ≠ 0).
 // A blue focus star holds M well away from 0 (blue focused, so the red–blue midpoint sits ~0.5 D + lag behind).
 const Y_B=P3?0.0793:0.0722, LAM_B=P3?465:464, O_MIX=(thibos(LAM[0])-thibos(LAM_B))/2, MIX_LT=0.95*Y_B;
-const MX_A=[]; for(let v=-1.25;v<=1.2501;v+=0.025) MX_A.push(+v.toFixed(3)); const MX_G=[-8,-4,-2,1.5,3,5,8,12];
+const MX_A=[]; for(let v=-2;v<=2.0001;v+=0.03) MX_A.push(+v.toFixed(3)); const MX_G=[-8,-4,-2,1.5,3,5,8,12];   // J components to ±2 D (cylinder up to 4 D); slope values const MX_G=[-8,-4,-2,1.5,3,5,8,12];
 const mxPhi=x=>{ const t=1/(1+0.3275911*Math.abs(x)/Math.SQRT2), y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x/2); return 0.5*(1+(x>=0?y:-y)); };
 function mxNew(){ const nA=MX_A.length, nG=MX_G.length, L=new Float64Array(nA*nA*nG);
-  for(let i=0;i<nA;i++) for(let j=0;j<nA;j++) for(let g=0;g<nG;g++) L[(i*nA+j)*nG+g]=-(MX_A[i]**2+MX_A[j]**2)-(MX_G[g]<0?1.5:0);   // prior: J ~ N(0,0.7²); M > 0 more likely (blue star)
+  for(let i=0;i<nA;i++) for(let j=0;j<nA;j++) for(let g=0;g<nG;g++) L[(i*nA+j)*nG+g]=-0.5*(MX_A[i]**2+MX_A[j]**2)-(MX_G[g]<0?1.5:0);   // prior: J components ~ N(0,1); M > 0 more likely (blue star)
   return {L,nA,nG,n:0}; }
 function mxW(X){ let mx=-1e300; for(const v of X.L) if(v>mx) mx=v; const W=new Float64Array(X.L.length); let t=0; for(let i=0;i<W.length;i++){ W[i]=Math.exp(X.L[i]-mx); t+=W[i]; } return {W,t}; }
 function mxSample(X){ const {W,t}=mxW(X); let r=Math.random()*t, k=0; for(;k<W.length-1;k++){ r-=W[k]; if(r<=0) break; }
@@ -331,7 +331,14 @@ function nextTrial(){ const G=T.G;
     if(T.practice<3) T.tr={mix:true,practice:true,ori:ORIS[Math.floor(Math.random()*6)],aLeft:Math.random()<0.5};
     else { if(X.n>=T.N){ finish(); return; }
       if(!T.order.length) T.order=ORIS.slice().sort(()=>Math.random()-0.5);
-      const phi=T.order.pop(), sm=mxSample(X), Js=sm.A1*Math.cos(2*phi*Math.PI/180)+sm.A2*Math.sin(2*phi*Math.PI/180);
+      // First 12 answers: 6 fixed directions (finds the axis, even for large cylinders). Then each comparison is aimed at
+      // the axis ± 45° ± δ, where the astigmatism along the lines is only about half the balanceable range (0.55·o),
+      // so any cylinder stays measurable; the slope across the zero crossing gives the full size.
+      const sm=mxSample(X); let phi;
+      if(X.n<12) phi=T.order.pop();
+      else { const am=Math.hypot(sm.A1,sm.A2), al=Math.atan2(sm.A2,sm.A1)*90/Math.PI, dl=am<=0.55*O_MIX?45:0.5*Math.asin(Math.min(1,0.55*O_MIX/am))*180/Math.PI;
+        phi=Math.round(((al+45+(Math.random()<0.5?1:-1)*dl+Math.random()*4-2)%180+180)%180); }
+      const Js=sm.A1*Math.cos(2*phi*Math.PI/180)+sm.A2*Math.sin(2*phi*Math.PI/180);
       let g=0; for(let i=0;i<12;i++) g+=Math.random(); g-=6;
       const uA=Math.max(-1,Math.min(1,-Js/O_MIX+0.15*g));
       T.tr={mix:true,phi,uA:Math.round(1000*uA)/1000,aLeft:Math.random()<0.5}; }
@@ -428,7 +435,6 @@ function showResult(r){ $("resCard").hidden=false; $("setupCard").hidden=true; $
   const kv=[["Uncertainty",`± ${r.cyl_se_D.toFixed(2)} D from the answers, axis ± ${r.axis_se_deg}°`],
     ["Magnitude scale",r.method==="colour-mix"?"Not needed: this method measures the cylinder against the eye's own red–blue focus difference, without the pupil. Remaining scale uncertainty about ±10% (people's colour focus differs).":r.scale_source==="none"?`<b>Uncalibrated.</b> The size can be off by about ±30% and has tended to read low (pupil, the eye's own colour focus, the screen's colours). The axis is not affected. Calibrate against refractions below.`:`× ${r.scale_factor.toFixed(2)} (${esc(r.scale_source)}); scale uncertainty ± ${r.cyl_scale_se_D.toFixed(2)} D`],["Mean focus",r.mean_focus_D==null?"not measured by this method":`${pf(r.mean_focus_D)} D (${r.mean_focus_D>=0?"behind":"in front of"} the screen)`],["Power vector",`J0 ${pf(r.J0)} · J45 ${pf(r.J45)}`],
     ["By meridian",r.meridians.map(m=>`${m.tabo}°: ${pf(m.D)}`).join("  ")],["Setup",`${r.method==="colour-mix"?"colour-mix balance":"red–green"} · ${r.distance_cm} cm · ${r.pupil_mm==null?"no pupil needed":"pupil "+r.pupil_mm+" mm"} · ${r.answers} answers · ${r.colour}`]];
-  if(r.range_limited_answers>=8) kv.push(["Range",`${r.range_limited_answers} answers hit the end of the colour range: the cylinder may be larger than this method measures well (above about 1 D).`]);
   if(r.distance_sph_if_myopic!=null) kv.push(["Distance Rx (myopic)",`≈ ${pf(r.distance_sph_if_myopic)} / ${pf(r.cyl_D)} × ${r.axis_tabo} (all meridians in front of the screen)`]);
   if(r.practice_errors>=2) kv.push(["Caution",`${r.practice_errors} of 3 practice answers wrong: check the participant understood the task.`]);
   $("refCyl").value=r.ref_cyl_D!=null?r.ref_cyl_D:""; $("refAx").value=r.ref_axis_tabo!=null?r.ref_axis_tabo:""; $("refSave").onclick=()=>saveRef(r);

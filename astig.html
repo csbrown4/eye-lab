@@ -62,7 +62,7 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
   <header>
     <div>
       <h1>Astig Finder</h1>
-      <p class="sub">Lens-free astigmatism test from the eye's own colour focus differences</p>
+      <p class="sub">Lens-free astigmatism test from the eye's own red–green focus difference</p>
     </div>
     <span id="store" class="pill mute">Connecting to the study log…</span>
   </header>
@@ -95,14 +95,14 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
       <label for="dist">Eye to screen (cm)<input id="dist" type="number" min="25" max="200" step="1" value="50"></label>
       <label for="pupil">Pupil diameter (mm)<input id="pupil" type="number" min="2" max="9" step="0.1" value="4"></label>
       <label for="nAns">Answers<select id="nAns"><option value="40">40 (about 3 min)</option><option value="80">80 (more precise)</option></select></label>
-      <label for="meth">Method<select id="meth"><option value="mix">Colour-mix (recommended, no pupil)</option><option value="rg">Red–green (uses pupil; size can read low)</option></select></label>
+      <label for="meth" hidden>Method<select id="meth"><option value="rg">Red–green</option></select></label>
     </div>
     <div class="row" style="justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:10px 12px">
       <span><b>Colour brightness</b> · <span id="lumState" class="note">not matched (standard observer)</span></span>
       <button id="lumBtn" type="button">Match brightness for this person</button>
     </div>
     <label for="notes">Notes (optional)<input id="notes" autocomplete="off" placeholder="Lighting, current Rx worn, anything unusual"></label>
-    <p class="note">Use a participant code, not a name. Red–green: measure the pupil in the test lighting; the cylinder's size scales with the square of any pupil error. Colour-mix: no pupil needed; screen at 25–35 cm (30 cm best). The axis never depends on the pupil.</p>
+    <p class="note">Use a participant code, not a name. Measure the pupil in the test lighting: the cylinder's size scales with the square of any pupil error (the axis doesn't). Calibrate the size against refractions in the log below.</p>
     <div class="row"><button class="primary" id="startBtn">Start test</button><span class="note" id="startWarn"></span></div>
   </section>
 
@@ -111,8 +111,8 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
     <h2>Before you start</h2>
     <ol class="steps">
       <li>Glasses and contact lenses off (or on, to measure the astigmatism left over them: record which in Notes). No coloured filters.</li>
-      <li>Cover the eye not being tested. Keep the head upright and at <b id="howDist">50</b> cm from the screen (colour-mix needs 25–35 cm).</li>
-      <li><span id="howPatches">Two patches of lines appear</span>. Look at each in turn, as long as you like, and answer which side's <b>lines</b> look sharper (ignore which colour looks brighter).</li>
+      <li>Cover the eye not being tested. Keep the head upright and at <b id="howDist">50</b> cm from the screen.</li>
+      <li><span id="howPatches">A red and a green patch of lines appear</span>. <b>Look straight at each patch in turn</b>, as long as you like (judging from the middle is biased: colours look different just off the centre of vision). Answer which side's <b>lines</b> look sharper, ignoring which colour looks brighter.</li>
       <li>Answer with ← / → keys, or tap the left or right side of the screen. If they look the same, press ↓ or tap the middle ("Same").</li>
       <li>Three practice answers come first. Press Esc or "Stop" to abandon.</li>
     </ol>
@@ -217,7 +217,7 @@ function as2Fit(G,freeQ){ const m=as2Mean(G), x0=[m.M,m.A1,m.A2,m.ls1,m.ls2].con
 
 (function(){
 "use strict";
-const APP_VERSION="astig-finder 2.0 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
+const APP_VERSION="astig-finder 2.1 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
 const $=id=>document.getElementById(id);
 const LS={ get(k,d){ try{ const v=localStorage.getItem("astig."+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem("astig."+k,JSON.stringify(v)); }catch(e){} } };
 
@@ -296,7 +296,7 @@ calShow();
 let eye="OD";
 function setEye(e){ eye=e; $("eyeOD").setAttribute("aria-pressed",e==="OD"); $("eyeOS").setAttribute("aria-pressed",e==="OS"); }
 $("eyeOD").onclick=()=>setEye("OD"); $("eyeOS").onclick=()=>setEye("OS");
-if(LS.get("methV",0)<2){ try{ localStorage.removeItem("astig.f.meth"); }catch(e){} LS.set("methV",2); }
+if(LS.get("methV",0)<3){ try{ localStorage.removeItem("astig.f.meth"); }catch(e){} LS.set("methV",3); }   // colour-mix retired (v2.1): perception goes by the sharper colour, not the mix
 const keep=["tester","dist","pupil","nAns","meth"]; keep.forEach(k=>{ const v=LS.get("f."+k,null); if(v!=null) $(k).value=v; $(k).addEventListener("change",()=>LS.set("f."+k,$(k).value)); });
 function checkReady(){ const w=[]; if(!mmPerPx) w.push("Set the screen size first.");
   if(!$("pid").value.trim()) w.push("Enter a participant code.");
@@ -351,7 +351,7 @@ function buildImgs(tr){ const g=grid(), dev=g.dev, dpx=deg=>T.d*Math.tan(deg*Mat
   const k=tr.k, sB=Math.sqrt(Math.abs(k)); G_=geo(T.pupil,Math.max(sB,tr.eye)); const pw=G_.pw, M=lines(G_,tr.ori);
   const blur=on=>on&&sB>0?discBlur(M,pw,pw,sB*G_.pxPerD):M;
   const Gp=panel(ctx,blur(k>0),pw,pw,1,LV_G,G_.Rf,G_.soft), Rd=panel(ctx,blur(k<0),pw,pw,0,LV_R,G_.Rf,G_.soft);   // k > 0 blurs green (short), k < 0 red (long)
-  return {L:toCanvas(tr.left?Rd:Gp,pw),R:toCanvas(tr.left?Gp:Rd,pw),pw,gap:dpx(0.6),n:g.n}; }
+  return {L:toCanvas(tr.left?Rd:Gp,pw),R:toCanvas(tr.left?Gp:Rd,pw),pw,gap:dpx(3),n:g.n}; }   // 3° apart: each patch is looked at directly
 function render(){ const cv=$("cv"), dpr=window.devicePixelRatio||1, W=Math.round(innerWidth*dpr), H=Math.round(innerHeight*dpr);
   if(cv.width!==W||cv.height!==H){ cv.width=W; cv.height=H; }
   T.dev=mmPerPx/dpr; const ctx=cv.getContext("2d",P3?{colorSpace:"display-p3"}:undefined); ctx.fillStyle="#000"; ctx.fillRect(0,0,W,H);
@@ -367,7 +367,7 @@ function panelMix(ctx,M,pw,ph,u,Rf,soft){ const img=imgData(ctx,pw,ph), D_=img.d
   return img; }
 // Focus target: fine spokes at every orientation, always on. It holds accommodation at the circle of least confusion,
 // so focus can't drift to sharpen whichever line orientation is being tested (that drift shrinks the measured cylinder).
-function star(ctx,cx,cy,r){ const s_=Math.max(2,degPx(0.06)); ctx.fillStyle="#666"; ctx.fillRect(cx-s_/2,cy-s_/2,s_,s_); }   // small centre mark
+function star(){}   // no centre mark: each patch is looked at directly
 // Patches are steady (no flash). Colour-mix doesn't depend on where the eye focuses, only that it isn't exactly midway
 // between the two colours; the eye's normal lag of focus at near (~0.3–0.7 D) provides that. Red–green does depend on
 // focus, so its size can read low if the eye refocuses to sharpen each line direction.
@@ -488,7 +488,7 @@ function finish(){ removeEventListener("keydown",onKey);
   if(T.meth==="mix"){ const rec=finishMix(); T=null; leaveStage(); showResult(rec); save(rec); return; }
   const G=T.G, f=as2Fit(G,false);
   f.seAx=Math.min(90,f.seAx*1.7); f.seC*=1.5;                          // calibrated by simulation (Laplace understates both)
-  const SC=scale("red-green"), cylRaw=-2*f.amp, cyl=cylRaw*SC.f, zC=2*f.amp/Math.max(0.05,f.seC), status=2*f.amp<0.25?"under 0.25 D":zC<1.5?"not significant":zC<2.5?"borderline":"significant";
+  const SC=scale("red-green"), cylRaw=-2*f.amp, cyl=cylRaw*SC.f, zC=2*f.amp/Math.max(0.05,f.seC), status=2*f.amp<0.25?"under 0.25 D":zC<1.5?"not significant":f.seC*SC.f>0.3?"too uncertain":zC<2.5?"borderline":"significant";
   const mer=ORIS.map(o=>{ const phi=(o+90)%180, m=f.meri(phi), tm=((180-phi)%180)||180; return {tabo:tm,D:+(f.A0+(m.D-f.A0)*SC.f).toFixed(2),sd:+(1.5*m.sd*SC.f).toFixed(2)}; }).sort((a,b)=>a.tabo-b.tabo);
   const sph=f.Dmax<-0.25?+(f.Dmax-100/T.distCm).toFixed(2):null;
   const rec={ created:new Date().toISOString(), method:"red-green", brightness_match:T.lum?`green ×${T.lum.f} (±${Math.round(100*T.lum.sd)}%)`:"standard observer", participant:T.pid, eye:T.eye, tester:T.tester, notes:T.notes, distance_cm:T.distCm, pupil_mm:T.pupil, answers:G.n,
@@ -500,6 +500,7 @@ function finish(){ removeEventListener("keydown",onKey);
     trials:JSON.stringify({cols:["line_ori_deg","k_D2","left_colour","answer","red_sharper","rt_ms","replays"],rows:T.log}) };
   T=null; leaveStage(); showResult(rec); save(rec); }
 function verdict(r){ const c=Math.abs(r.cyl_D);
+  if(r.status==="too uncertain") return ["warn",`Too uncertain to use: ${pf(r.cyl_D)} × ${r.axis_tabo} ± ${r.cyl_se_D.toFixed(2)} D. The answers were inconsistent; repeat (80 answers helps).`];
   if(r.status==="unreliable") return ["bad",`Unreliable run: the colour checks (${esc(r.focus_checks||"")}) disagreed or looked the same, so the eye's focus wasn't held to one side. Repeat with the screen at 30 cm (closer if needed).`];
   if(r.status==="under 0.25 D") return ["ok",`No clinically significant astigmatism (${pf(r.cyl_D)} D is under 0.25 D).`];
   if(r.status==="not significant") return ["mute",`No clear astigmatism: ${pf(r.cyl_D)} × ${r.axis_tabo} is within its own uncertainty.`];
@@ -570,7 +571,7 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 let pendingDel=null;
 function renderLog(){ renderScale(); const f=$("filter").value.trim().toLowerCase(), rows=allRecs().filter(r=>!f||String(r.participant).toLowerCase().includes(f));
   if(!rows.length){ $("logBody").innerHTML=`<tr><td colspan="11"><div class="empty">${f?"No results for that participant.":"No results yet. Finished tests appear here, newest first."}</div></td></tr>`; return; }
-  const cls={"significant":"bad","borderline":"warn","not significant":"mute","under 0.25 D":"ok","unreliable":"bad"};
+  const cls={"significant":"bad","borderline":"warn","not significant":"mute","under 0.25 D":"ok","unreliable":"bad","too uncertain":"warn"};
   $("logBody").innerHTML=rows.map(r=>`<tr><td class="num">${esc(r.created.slice(0,16).replace("T"," "))}</td><td>${esc(r.participant)}</td><td>${esc(r.eye)}</td><td class="num">${pf(r.cyl_D)} × ${r.axis_tabo}</td><td class="num">${r.cyl_se_D.toFixed(2)} / ${r.axis_se_deg}°</td><td><span class="pill ${cls[r.status]||"mute"}">${esc(r.status)}</span></td><td class="num">${r.mean_focus_D==null?"–":pf(r.mean_focus_D)}</td><td class="num">${r.distance_cm}</td><td class="num">${r.pupil_mm==null?"mix":r.pupil_mm}</td><td>${esc(r.tester)}${r._where==="device"?' <span class="pill warn" title="Only on this device">device</span>':""}</td><td>${pendingDel===r.id?`<span class="confirm">Delete? <button class="danger" data-del="${r.id}">Delete</button><button data-cancel="1">Keep</button></span>`:`<button data-ask="${r.id}" aria-label="Delete this result">✕</button>`}</td></tr>`).join(""); }
 $("logBody").addEventListener("click",async e=>{ const b=e.target.closest("button"); if(!b) return;
   if(b.dataset.ask){ pendingDel=b.dataset.ask; renderLog(); return; } if(b.dataset.cancel){ pendingDel=null; renderLog(); return; }

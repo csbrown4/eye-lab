@@ -3800,9 +3800,9 @@ result f = geometric mean of ${ASL.N} settings / standard; used as the ${an} lev
       if(k==="b"||k==="B"){ aslStart(); return true; }
       if(k==="s"||k==="S"){ asStart(); return true; } if(AS.active&&(k==="ArrowLeft"||k==="ArrowRight")){ asResp(k==="ArrowLeft"); return true; } return false; },
     draw(env){ this.env=env; if(ASL.active) return aslDrawNT(env);
-      const g_=ntCv(env,"#000"), ctx=g_.ctx, P_=asPanels(env,ctx), gap=ntDegPx(env,0.6), cfg=AS.cfg||as2Cfg();
+      const g_=ntCv(env,"#000"), ctx=g_.ctx, P_=asPanels(env,ctx), gap=ntDegPx(env,3), cfg=AS.cfg||as2Cfg();
       if(!AS.active||AS.show){ ctx.putImageData(P_.left,Math.round(g_.cxp-gap/2-P_.pw),Math.round(g_.cyp-P_.ph/2)); ctx.putImageData(P_.right,Math.round(g_.cxp+gap/2),Math.round(g_.cyp-P_.ph/2)); }
-      { const s=Math.max(2,0.06*ntPPD(env)); ctx.fillStyle="#666"; ctx.fillRect(g_.cxp-s/2,g_.cyp-s/2,s,s); }
+      // no centre mark, patches 3° apart: each is looked at directly (colours look different just off the centre of vision)
       const r=ntR("5"), eyeR=r[S.eye["5"]], dcm=S.dist["5"], mDist=100/dcm, pf=v=>(v>=0?"+":"")+v.toFixed(2);
       const fitTxt=(e,o_)=>{ if(!o_||!o_.fit) return `${e}: –`; const F=o_.fit, cylM=2*F.amp, zC=cylM/Math.max(0.05,F.seC), small=cylM<0.25||zC<1.5, weak=!small&&zC<2.5;
         let t=`${e}: <b>${small?(cylM>=0.25?`no clear astigmatism (${pf(F.cyl)} × ${F.tabo} is within its own noise)`:`${pf(F.cyl)} × ${F.tabo}: under 0.25 D, not clinically significant`):`${pf(F.cyl)} × ${F.tabo}`}</b> (± ${F.seC.toFixed(2)} D${small?"":`, axis ± ${Math.round(F.seAx)}°`})${weak?" · <b>borderline</b>: repeat, or run 80 answers":""} · mean focus ${F.A0>=0?"behind":"in front of"} the screen by ${Math.abs(F.A0).toFixed(2)} D`;
@@ -3817,7 +3817,7 @@ result f = geometric mean of ${ASL.N} settings / standard; used as the ${an} lev
       const res=`<span>${fitTxt("OD",r.OD)}</span><span>${fitTxt("OS",r.OS)}</span>`+(eyeR&&eyeR.pts?`<span>${S.eye["5"]} focus by meridian (TABO): ${eyeR.pts.map(p=>({...p,tm:p.tm!=null?p.tm:((180-p.phi)%180||180)})).sort((a,b)=>a.tm-b.tm).map(p=>`${p.tm}°: ${pf(p.D)}±${p.sd.toFixed(2)}`).join(" · ")}</span>`+asChart(eyeR):"");
       const T_=AS.tr, desc=!AS.active||!T_?"stopped":T_.t.type===1?`colour comparison: lines at ${T_.t.ori}° · blur ${Math.sqrt(Math.abs(T_.k)).toFixed(2)} D on ${T_.k>0?AS2_CN[cfg.S]:T_.k<0?AS2_CN[cfg.L]:"neither"} · answer ${AS.G.n+1} of ${+S.asTrials||40}`
         :`orientation comparison in ${AS2_CN[T_.t.col==="L"?cfg.L:cfg.S]}: ${T_.t.oriA}° vs ${T_.t.oriB}° lines · blur ${Math.sqrt(Math.abs(T_.k)).toFixed(2)} D on the ${T_.k>0?T_.t.oriA:T_.t.oriB}° set · answer ${AS.G.n+1} of ${+S.asTrials||40}`;
-      const warns=["Experimental. One eye at a time, the other covered; no glasses or filters (spectacles or contact lenses give the residual astigmatism over them). Look at each patch in turn before answering; keep the head upright.",
+      const warns=["Experimental. One eye at a time, the other covered; no glasses or filters (spectacles or contact lenses give the residual astigmatism over them). Look straight at each patch in turn before answering (judging from the middle is biased: colours look different just off the centre of vision); keep the head upright.",
         "The cylinder's size is uncalibrated: pupil, this eye's own colour focus and the screen's real colours all scale it (about ±30%, and it has tended to read low). The axis is not affected."];
       if(S.asPup!=="self") warns.push("The cylinder's size scales with the square of any error in the entered pupil (the axis doesn't). Measure it in this light, looking at the screen.");
       if(S.asCol!=="RG") warns.push(`Experimental colour pair: the ${AS2_CN[cfg.S]} panel is dim and seen with coarser vision, so answers may be noisier; the focus difference used is ${cfg.dD.toFixed(2)} D.`);

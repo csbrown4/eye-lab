@@ -99,7 +99,7 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
       <label for="pupil" id="pupilL">Measured pupil (mm)<input id="pupil" type="number" min="2" max="9" step="0.1" value="4"></label>
       <label for="expo">Viewing time<select id="expo"><option value="400">0.4 s per look (controls focus, recommended)</option><option value="700">0.7 s per look</option><option value="0">Until answered (focus not controlled)</option></select></label>
       <label for="nAns">Answers<select id="nAns"><option value="40">40 (about 3 min)</option><option value="80">80 (more precise)</option></select></label>
-      <label for="meth" hidden>Method<select id="meth"><option value="rg">Red–green</option></select></label>
+      <label for="meth">Method<select id="meth"><option value="rg">Red–green (validated, within ±1.25 D of focus)</option><option value="ct">Research: full range (size not yet validated)</option></select></label>
     </div>
     <div class="row" style="justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:10px 12px">
       <span><b>Colour brightness</b> · <span id="lumState" class="note">not matched (standard observer)</span></span>
@@ -219,9 +219,76 @@ function as2Fit(G,freeQ){ const m=as2Mean(G), x0=[m.M,m.A1,m.A2,m.ls1,m.ls2].con
   const meri=phi=>{ const c=Math.cos(2*phi*Math.PI/180), s=Math.sin(2*phi*Math.PI/180), g=[1,c,s]; let v=0; for(let i=0;i<3;i++) for(let j=0;j<3;j++) v+=g[i]*g[j]*V[i][j]; return {D:M+A1*c+A2*s,sd:Math.sqrt(Math.max(0,v))}; };
   return {A0:M,A0sd:Math.sqrt(Math.max(0,V[0][0])),A1,A2,amp,cyl:-2*amp,axP,tabo,Dmax:M+amp,Dmin:M-amp,seC,seAx,Q,qRelSE:freeQ?Math.sqrt(Math.max(0,V[5][5])):null,s1:Math.exp(x[3]),s2:Math.exp(x[4]),meri,freeQ}; }
 
+// ===== ctm2: contrast-model astigmatism engine with a "same" category and information-optimal trial design =====
+// Optics (geometric): lines with normal φ are blurred only by the focus error along φ,
+//   D_X(φ) = M + A1·cos2φ + A2·sin2φ + o_X      (D, + = behind the retina; o_X = colour offset)
+// Defocus PSF = uniform disc, angular diameter P·|D| (P = effective pupil, m). Line-spread MTF = 2J1(x)/x, x = π·P·|D|·f.
+// Screen disc blur of diameter s multiplies by 2J1(πsf)/(πsf). Judged quantity: fundamental contrast C = |MTF_eye|·|MTF_scr|.
+// Response (ordered, 3 categories): d = ln C_L − ln C_R + b·χ (χ = +1 red-left vs green-right, −1 reverse, 0 same colour)
+//   P(left) = λ/3 + (1−λ)·Φ((d − τ)/σ),  P(right) = λ/3 + (1−λ)·Φ((−d − τ)/σ),  P(same) = rest.
+// Unknowns θ = [M, A1, A2, ln P(mm), b, ln σ, ln τ]. Posterior by sequential Monte Carlo with Metropolis moves.
+const CT={};
+(function(){
+  const J1s=x=>{ if(x<8){ let s=0,t=x/2; for(let k=0;k<80;k++){ s+=t; t*=-(x*x/4)/((k+1)*(k+2)); if(Math.abs(t)<1e-16) break; } return s; }
+    const z=8/x, y=z*z, xx=x-2.356194491, p1=1+y*(0.183105e-2+y*(-0.3516396496e-4+y*(0.2457520174e-5+y*(-0.240337019e-6)))), p2=0.04687499995+y*(-0.2002690873e-3+y*(0.8449199096e-5+y*(-0.88228987e-6+y*0.105787412e-6))); return Math.sqrt(0.636619772/x)*(Math.cos(xx)*p1-z*Math.sin(xx)*p2); };
+  const NX=80000, XM=80, MT=new Float64Array(NX+1); for(let i=0;i<=NX;i++){ const x=i*XM/NX; MT[i]=x<1e-9?1:2*J1s(x)/x; }
+  const mtf=x=>{ x=Math.abs(x); if(x>=XM) return 0.0015; const u=x/XM*NX, i=Math.floor(u), f=u-i; return MT[i]+(MT[i+1]-MT[i])*f; };
+  const FLOOR=0.02;   // contrast below ~2% = lines not seen
+  const lnC=(D,P,s,f)=>Math.log(Math.max(FLOOR,Math.abs(mtf(Math.PI*P*Math.abs(D)*f))))+Math.log(Math.max(FLOOR,Math.abs(mtf(Math.PI*s*f))));
+  const Phi=x=>{ const t=1/(1+0.3275911*Math.abs(x)/Math.SQRT2), y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-x*x/2); return 0.5*(1+(x>=0?y:-y)); };
+  const LAM=0.04, NP=7;
+  const gauss=r=>{ let u=0; for(let i=0;i<12;i++) u+=r(); return u-6; };
+  const Dm=(th,ph,o)=>th[0]+th[1]*Math.cos(2*ph*Math.PI/180)+th[2]*Math.sin(2*ph*Math.PI/180)+o;
+  CT.mtf=mtf; CT.lnC=lnC; CT.Phi=Phi; CT.Dm=Dm;
+  // trial t: {phiL,oL,sL, phiR,oR,sR, f, chi}; returns [pLeft, pRight, pSame]
+  CT.probs=(th,t)=>{ const P=Math.exp(th[3])/1000, d=lnC(Dm(th,t.phiL,t.oL),P,t.sL,t.f)-lnC(Dm(th,t.phiR,t.oR),P,t.sR,t.f)+th[4]*t.chi, sg=Math.exp(th[5]), tau=Math.exp(th[6]);
+    const pl=LAM/3+(1-LAM)*Phi((d-tau)/sg), pr=LAM/3+(1-LAM)*Phi((-d-tau)/sg); return [pl,pr,Math.max(1e-9,1-pl-pr)]; };
+  const ai=a=>a===true?0:a===false?1:2;
+  CT.prior=o=>({mM:o.mM??1,sM:o.sM??2.5,sA:1,lP0:Math.log(o.P0),slP:o.slP??0.22,sb:0.1,ls0:Math.log(0.12),sls:0.5,lt0:Math.log(0.06),slt:0.6});
+  CT.logPrior=(pr,th)=>-0.5*((th[0]-pr.mM)/pr.sM)**2-0.5*(th[1]**2+th[2]**2)/pr.sA**2-0.5*((th[3]-pr.lP0)/pr.slP)**2-0.5*(th[4]/pr.sb)**2-0.5*((th[5]-pr.ls0)/pr.sls)**2-0.5*((th[6]-pr.lt0)/pr.slt)**2;
+  CT.new=o=>{ const pr=CT.prior(o), N=o.N||3000, r=o.rand||Math.random, P=[];
+    for(let i=0;i<N;i++) P.push([pr.mM+pr.sM*gauss(r),pr.sA*gauss(r),pr.sA*gauss(r),pr.lP0+pr.slP*gauss(r),pr.sb*gauss(r),pr.ls0+pr.sls*gauss(r),pr.lt0+pr.slt*gauss(r)]);
+    return {pr,P,W:new Float64Array(N).fill(1/N),hist:[],rand:r,n:0}; };
+  CT.logLik=(S,th)=>{ let l=0; for(const h of S.hist){ l+=Math.log(CT.probs(th,h.t)[ai(h.ans)]); } return l; };
+  CT.update=(S,t,ans)=>{ S.hist.push({t,ans}); S.n++; let tot=0; const k=ai(ans);
+    for(let i=0;i<S.P.length;i++){ S.W[i]*=CT.probs(S.P[i],t)[k]; tot+=S.W[i]; } for(let i=0;i<S.W.length;i++) S.W[i]/=tot;
+    let ess=0; for(const w of S.W) ess+=w*w; if(1/ess<S.P.length/2) CT.resampleMove(S); };
+  CT.stats=S=>{ const m=new Array(NP).fill(0), v=new Array(NP).fill(0); for(let i=0;i<S.P.length;i++) for(let j=0;j<NP;j++) m[j]+=S.W[i]*S.P[i][j];
+    for(let i=0;i<S.P.length;i++) for(let j=0;j<NP;j++) v[j]+=S.W[i]*(S.P[i][j]-m[j])**2; return {m,sd:v.map(Math.sqrt)}; };
+  CT.resampleMove=S=>{ const N=S.P.length, r=S.rand, cdf=new Float64Array(N); let c=0; for(let i=0;i<N;i++){ c+=S.W[i]; cdf[i]=c; }
+    const st=CT.stats(S), sd=st.sd.map((v,j)=>Math.max(v,[0.01,0.01,0.01,0.005,0.003,0.01,0.01][j]));
+    const NPart=[]; let k=0; const u0=r()/N; for(let i=0;i<N;i++){ const v=u0+i/N; while(k<N-1&&cdf[k]<v) k++; NPart.push(S.P[k].slice()); }
+    const lpost=th=>CT.logPrior(S.pr,th)+CT.logLik(S,th);
+    for(let i=0;i<N;i++){ let th=NPart[i], lp=lpost(th); for(let m=0;m<3;m++){ const sc=m===0?0.6:0.25, pr_=th.map((v,j)=>v+sc*sd[j]*gauss(r)), lq=lpost(pr_); if(Math.log(r())<lq-lp){ th=pr_; lp=lq; } } NPart[i]=th; }
+    S.P=NPart; S.W=new Float64Array(N).fill(1/N); };
+  CT.sub=(S,K)=>{ const N=S.P.length, cdf=new Float64Array(N); let c=0; for(let i=0;i<N;i++){ c+=S.W[i]; cdf[i]=c; } const out=[]; let k=0; const u0=S.rand()/K; for(let i=0;i<K;i++){ const v=u0+i/K; while(k<N-1&&cdf[k]<v) k++; out.push(S.P[k]); } return out; };
+  // Information-optimal design for a given patch content. cond: {type:1,phi} | {type:2,phiA,phiB,col}
+  // o: {oR,oG,fMin,fMax}. Candidates: 8 spacings × (no blur | blur on A or B at 5 log-contrast steps).
+  CT.design=(S,cond,o)=>{ const K=160, sub=CT.sub(S,K);
+    let pa,pb; if(cond.type===1){ pa={phi:cond.phi,o:o.oR,col:"R"}; pb={phi:cond.phi,o:o.oG,col:"G"}; } else { const off=cond.col==="L"?o.oR:o.oG, cc=cond.col==="L"?"R":"G"; pa={phi:cond.phiA,o:off,col:cc}; pb={phi:cond.phiB,o:off,col:cc}; }
+    // reversal margin: per candidate spacing, share of particles whose blur would put either patch past bf = 1.0
+    const fs=[]; for(let i=0;i<8;i++) fs.push(o.fMin*Math.pow(o.fMax/o.fMin,i/7));
+    const steps=[0.12,0.25,0.45,0.8,1.3];
+    const ent=p=>-p.reduce((a,v)=>a+(v>1e-12?v*Math.log(v):0),0);
+    let best=null;
+    for(const f of fs){ let bad=0; for(const th of sub){ const P=Math.exp(th[3])/1000; if(P*Math.max(Math.abs(Dm(th,pa.phi,pa.o)),Math.abs(Dm(th,pb.phi,pb.o)))*f>1.0) bad++; } if(bad>0.1*K) continue;
+      const opts=[[0,0]]; for(const t of steps){ let lo=0,hi=3.8; for(let i=0;i<30;i++){ const m=(lo+hi)/2; if(-Math.log(mtf(m))<t) lo=m; else hi=m; } const s=(lo+hi)/2/(Math.PI*f); opts.push([s,0]); opts.push([0,s]); }
+      for(const [sa,sb] of opts){ for(const aLeft of [true]){ // side is randomised later; information is symmetric
+          const t={phiL:pa.phi,oL:pa.o,sL:sa,phiR:pb.phi,oR:pb.o,sR:sb,f,chi:cond.type===1?1:0};
+          const mg=[0,0,0]; let ce=0; for(const th of sub){ const p=CT.probs(th,t); mg[0]+=p[0]/K; mg[1]+=p[1]/K; mg[2]+=p[2]/K; ce+=ent(p)/K; }
+          const info=ent(mg)-ce; if(!best||info>best.info) best={info,f,sa,sb}; } } }
+    if(!best){ best={info:0,f:o.fMin,sa:0,sb:0}; }                         // everything risky: use the coarsest spacing, no blur
+    const aLeft=S.rand()<0.5, A={phi:pa.phi,o:pa.o,s:best.sa,col:pa.col}, B={phi:pb.phi,o:pb.o,s:best.sb,col:pb.col}, L=aLeft?A:B, R=aLeft?B:A;
+    return {cond,phiL:L.phi,oL:L.o,sL:L.s,colL:L.col,phiR:R.phi,oR:R.o,sR:R.s,colR:R.col,f:best.f,chi:cond.type===1?(L.col==="R"?1:-1):0,info:best.info}; };
+  CT.summary=S=>{ const st=CT.stats(S), m=st.m, amp=Math.hypot(m[1],m[2]), ang=Math.atan2(m[2],m[1]); let vc=0,va=0;
+    for(let i=0;i<S.P.length;i++){ const w=S.W[i], th=S.P[i], am=Math.hypot(th[1],th[2]); vc+=w*(2*am-2*amp)**2; let d=Math.atan2(th[2],th[1])-ang; d=Math.atan2(Math.sin(d),Math.cos(d)); va+=w*(d*90/Math.PI)**2; }
+    const axP=((ang*90/Math.PI)%180+180)%180; let tabo=Math.round(180-axP)%180; if(tabo<=0) tabo+=180;
+    return {M:m[0],seM:st.sd[0],A1:m[1],A2:m[2],amp,cyl:-2*amp,axP,tabo,P:Math.exp(m[3]),b:m[4],sig:Math.exp(m[5]),tau:Math.exp(m[6]),seC:Math.sqrt(vc),seAx:Math.min(90,Math.sqrt(va))}; };
+})();
+
 (function(){
 "use strict";
-const APP_VERSION="astig-finder 2.4.1 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
+const APP_VERSION="astig-finder 2.5 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
 const $=id=>document.getElementById(id);
 const LS={ get(k,d){ try{ const v=localStorage.getItem("astig."+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem("astig."+k,JSON.stringify(v)); }catch(e){} } };
 
@@ -300,6 +367,7 @@ calShow();
 let eye="OD";
 function setEye(e){ eye=e; $("eyeOD").setAttribute("aria-pressed",e==="OD"); $("eyeOS").setAttribute("aria-pressed",e==="OS"); }
 $("eyeOD").onclick=()=>setEye("OD"); $("eyeOS").onclick=()=>setEye("OS");
+if(LS.get("methV",0)<4){ try{ localStorage.removeItem("astig.f.meth"); }catch(e){} LS.set("methV",4); }
 if(LS.get("methV",0)<3){ try{ localStorage.removeItem("astig.f.meth"); }catch(e){} LS.set("methV",3); }   // colour-mix retired (v2.1): perception goes by the sharper colour, not the mix
 const keep=["tester","dist","pupil","nAns","meth","pupSrc","age","light","expo"]; keep.forEach(k=>{ const v=LS.get("f."+k,null); if(v!=null) $(k).value=v; $(k).addEventListener("change",()=>LS.set("f."+k,$(k).value)); });
 function checkReady(){ const w=[]; if(!mmPerPx) w.push("Set the screen size first.");
@@ -341,7 +409,7 @@ function panel(ctx,M,pw,ph,ch,lvl,Rf,soft){ const img=imgData(ctx,pw,ph), D_=img
 // grid is the same for both patches, and equal extra blur cancels exactly from the comparison (second moments add).
 function grid(){ const dpr=window.devicePixelRatio||1, n=Math.max(1,Math.floor(dpr+0.01)); return {dpr,n,dev:mmPerPx*n/dpr}; }
 function toCanvas(img,pw){ const c=document.createElement("canvas"); c.width=pw; c.height=pw; c.getContext("2d",P3?{colorSpace:"display-p3"}:undefined).putImageData(img,0,0); return c; }
-function buildImgs(tr){ const g=grid(), dev=g.dev, dpx=deg=>T.d*Math.tan(deg*Math.PI/180)/dev, ctx=$("cv").getContext("2d",P3?{colorSpace:"display-p3"}:undefined);
+function buildImgs(tr){ if(tr.ct) return buildImgsCT(tr); const g=grid(), dev=g.dev, dpx=deg=>T.d*Math.tan(deg*Math.PI/180)/dev, ctx=$("cv").getContext("2d",P3?{colorSpace:"display-p3"}:undefined);
   const geo=(pupilMM,eyeD)=>{ const pxPerD=(pupilMM/1000)*T.d/dev, p=Math.max(dpx(14/60),2.2*eyeD*pxPerD,4), w=Math.max(1.5,0.3*p), Rp=2.5*p, Rf=Rp+0.5*p, soft=0.6*p; return {pxPerD,p,w,Rp,Rf,soft,pw:Math.ceil(2*(Rf+soft))+2}; };
   const lines=(G_,o)=>maskFrom(G_.pw,G_.pw,c=>{ c.translate(G_.pw/2,G_.pw/2); c.rotate(-o*Math.PI/180); c.beginPath(); c.arc(0,0,G_.Rp,0,7); c.clip(); for(let i=-3;i<=3;i++) c.fillRect(-G_.Rp-2,i*G_.p-G_.w/2,2*G_.Rp+4,G_.w); });
   let A,B,G_;
@@ -397,7 +465,22 @@ function flash(){ if(!T||!T.tr) return; clearTimeout(T.ft); T.show=true; render(
   if(T.expo>0) T.ft=setTimeout(()=>{ if(!T) return; T.show=false; render(); },T.expo); }
 function showAfterRest(ms){ clearTimeout(T.ft); clearTimeout(T.rt); T.show=false; render(); const tr=T.tr; T.rt=setTimeout(()=>{ if(T&&T.tr===tr) flash(); },ms); }
 function replay(){ if(!T||!T.tr||!T.ready) return; T.tr.replays=(T.tr.replays||0)+1; showAfterRest(Math.round(REST_MS*0.7)); }
+// ---------- research mode: contrast-model engine (ctm2), information-optimal spacing and screen blur ----------
+function ctLimits(){ const dpr=window.devicePixelRatio||1, n=Math.max(1,Math.floor(dpr+0.01)), radPerCss=mmPerPx/T.d, gapRad=0.6*Math.PI/180;
+  const pMaxRad=Math.min(2.5*Math.PI/180,((0.95*innerWidth)*radPerCss-gapRad)/14.4, (0.85*innerHeight)*radPerCss/7.2), pMinRad=Math.max(12/60*Math.PI/180,5*radPerCss*n/dpr);
+  return {fMin:1/pMaxRad,fMax:1/pMinRad}; }
+function nextTrialCT(){ if(T.S.n>=T.N){ finish(); return; }
+  if(!T.order.length){ const L=ORIS.map(o=>({type:1,phi:(o+90)%180})); [0,60,120].forEach(a=>["L","S"].forEach(col=>L.push({type:2,phiA:(a+90)%180,phiB:a,col}))); T.order=L.sort(()=>Math.random()-0.5); }
+  const t0=performance.now(), lim=ctLimits(), t=CT.design(T.S,T.order.pop(),{oR:DD/2,oG:-DD/2,fMin:lim.fMin,fMax:lim.fMax});
+  T.tr={ct:true,t,replays:0}; T.shownAt=0; T.imgs={tr:T.tr,...buildImgs(T.tr)}; T.blank=false; updHud();
+  const used=performance.now()-t0; showAfterRest(T.expo>0?Math.max(150,REST_MS-used):80); }
+function buildImgsCT(tr){ const g=grid(), dev=g.dev, t=tr.t, ctx=$("cv").getContext("2d",P3?{colorSpace:"display-p3"}:undefined);
+  const p=(1/t.f)*T.d/dev, w=Math.max(1.5,0.3*p), Rp=2.5*p, Rf=3*p, soft=0.6*p, pw=Math.ceil(2*(Rf+soft))+2;
+  const lines=o=>maskFrom(pw,pw,c=>{ c.translate(pw/2,pw/2); c.rotate(-o*Math.PI/180); c.beginPath(); c.arc(0,0,Rp,0,7); c.clip(); for(let i=-3;i<=3;i++) c.fillRect(-Rp-2,i*p-w/2,2*Rp+4,w); });
+  const one=(phi,col,sRad)=>{ let M=lines((phi+90)%180); const sp=sRad*T.d/dev; if(sp>0.7) M=discBlur(M,pw,pw,sp); return panel(ctx,M,pw,pw,col==="R"?0:1,col==="R"?LV_R:LV_G,Rf,soft); };
+  return {L:toCanvas(one(t.phiL,t.colL,t.sL),pw),R:toCanvas(one(t.phiR,t.colR,t.sR),pw),pw,gap:0.6*Math.PI/180*T.d/dev,n:g.n}; }
 function nextTrial(){ const G=T.G;
+  if(T.meth==="ct"&&T.practice>=3){ nextTrialCT(); return; }
   if(T.meth==="mix"){ const X=T.X;
     if(T.practice<3) T.tr={mix:true,practice:true,ori:ORIS[Math.floor(Math.random()*6)],aLeft:Math.random()<0.5};
     else { if(X.n+(T.probes?T.probes.length:0)>=T.N){ finish(); return; }
@@ -436,9 +519,12 @@ function nextTrial(){ const G=T.G;
     T.tr={...t,k:Math.round(1000*k)/1000,left:Math.random()<0.5,eye:eyeB,eyeU}; }
   T.tr.replays=0; T.shownAt=0; T.imgs={tr:T.tr,...buildImgs(T.tr)}; T.blank=false; updHud();
   showAfterRest(T.expo>0?REST_MS:80); setTimeout(()=>{ if(T&&!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; },(T.expo>0?REST_MS:80)+50); }
-function updHud(){ const pr=T.practice<3; $("prog").textContent=pr?`Practice ${T.practice+1} of 3`:`${(T.meth==="mix"?T.X.n+(T.probes?T.probes.length:0):T.G.n)+1} of ${T.N}`;
+function updHud(){ const pr=T.practice<3; $("prog").textContent=pr?`Practice ${T.practice+1} of 3`:`${(T.meth==="mix"?T.X.n+(T.probes?T.probes.length:0):T.meth==="ct"?T.S.n:T.G.n)+1} of ${T.N}`;
   if(!$("msg").dataset.hold) $("msg").textContent=pr?"Keep your eye on the dot. Which side's LINES look sharper (first impression)?  ← left · right →  · ↓ same · Space: show again":""; }
 function answer(leftSharper){ if(!T||!T.ready) return; T.ready=false; const tr=T.tr, rt=Math.round(performance.now()-T.shownAt);
+  if(tr.ct){ clearTimeout(T.ft); T.show=false; const t=tr.t, am=r=>+(r*180/Math.PI*60).toFixed(2);
+    T.log.push(["ct",t.cond.type,t.phiL,t.colL,am(t.sL),t.phiR,t.colR,am(t.sR),am(1/t.f),t.chi,leftSharper===null?"S":leftSharper?"L":"R",rt,tr.replays,+t.info.toFixed(3)]);
+    CT.update(T.S,t,leftSharper); setTimeout(nextTrial,0); return; }
   const same=leftSharper===null;
   if(tr.mix&&tr.probe){ T.show=false; T.probes.push(same?null:(leftSharper===tr.aLeft)); T.log.push(["probe",tr.phi,tr.aLeft?"red-left":"red-right",same?"S":leftSharper?"L":"R",same?"":(leftSharper===tr.aLeft?"red":"blue"),rt,0]); setTimeout(nextTrial,0); return; }
   if(tr.mix){ const aWorse=same?0.5:(leftSharper!==tr.aLeft); clearTimeout(T.ft); T.show=false;
@@ -464,7 +550,7 @@ $("stopBtn").onclick=()=>{ if(LM) lumEnd(); else stopTest(); }; $("againBtn").on
 // Eight sectors alternate the fixed colour (blue for colour-mix, red for red–green) and the adjustable one. The edges
 // between sectors look softest when the two are equally bright to this eye. Four settings from different starting levels.
 let LM=null, LUM=LS.get("lum",null);                 // LUM: {pid, pair, f, sd, n, level}
-const lumPair=()=>$("meth").value==="mix"?"RB":"RG";
+const lumPair=()=>$("meth").value==="mix"?"RB":"RG";        // research mode uses red/green too
 function lumValid(){ return LUM&&LUM.pid===$("pid").value.trim()&&LUM.pair===lumPair(); }
 function lumShow(){ const ok=lumValid(); $("lumState").textContent=ok?`matched for ${LUM.pid}: ${LUM.pair==="RB"?"red vs blue":"green vs red"} ×${LUM.f.toFixed(2)} of standard (±${Math.round(100*LUM.sd)}% between settings)`:`not matched (standard observer)`; $("lumState").className=ok?"":"note"; }
 ["pid","meth"].forEach(k=>$(k).addEventListener("input",lumShow)); $("meth").addEventListener("change",lumShow); lumShow();
@@ -496,7 +582,7 @@ function leaveStage(){ $("stage").hidden=true; $("msg").textContent=""; try{ if(
 addEventListener("resize",()=>{ if(T){ T.imgs=null; T.vcache=null; render(); } });
 $("goBtn").onclick=async()=>{ const meth=$("meth").value, ent=$("pupSrc").value==="entered", pm=pupModel(), pupil=meth==="mix"?4.5:ent?+$("pupil").value:+pm.P.toFixed(1), lm=lumValid()?LUM:null;
   MIX_RF=lm&&lm.pair==="RB"?lm.f:1; LV_G=Math.min(1,lm&&lm.pair==="RG"?lm.level*YRG[0]/YRG[1]:YRG[0]/YRG[1]);
-  T={ meth, X:meth==="mix"?mxNew():null, pid:$("pid").value.trim(), eye, tester:$("tester").value.trim(), notes:$("notes").value.trim(), distCm:+$("dist").value, d:+$("dist").value*10, pupil, N:+$("nAns").value,
+  T={ meth, X:meth==="mix"?mxNew():null, S:meth==="ct"?CT.new({P0:pupil,slP:ent?0.08:0.22,N:1500}):null, pid:$("pid").value.trim(), eye, tester:$("tester").value.trim(), notes:$("notes").value.trim(), distCm:+$("dist").value, d:+$("dist").value*10, pupil, N:+$("nAns").value,
       G:Object.assign(as2New(DD,sce(pupil)),{sdQ:ent?0.15:0.45}), expo:+$("expo").value, order:[], log:[], practice:0, pracWrong:0, started:new Date(), lum:lm, pupSrc:ent?"measured":`model (age ${$("age").value}, ${$("light").value} lighting)`, pupSd:ent?null:pm.sd };
   $("howCard").hidden=true; await enterStage(); addEventListener("keydown",onKey); nextTrial(); };
 function stopTest(){ removeEventListener("keydown",onKey); T=null; leaveStage(); $("setupCard").hidden=false; $("calCard").hidden=false; }
@@ -514,7 +600,19 @@ function finishMix(){ const X=T.X, sg=mxSign(), unstable=isNaN(sg), f=mxSummary(
     range_limited_answers:sat, practice_errors:T.pracWrong, duration_s:Math.round((Date.now()-T.started.getTime())/1000), screen_mm_per_px:+mmPerPx.toFixed(5), colour:P3?"P3":"sRGB", lca_D:+(2*O_MIX).toFixed(3),
     device:navigator.userAgent.slice(0,160), app:APP_VERSION,
     trials:JSON.stringify({cols:["normal_phi_deg","uA_red_minus_blue","left_patch","answer","A_worse","rt_ms","replays"],rows:T.log}) }; }
+function finishCT(){ const f=CT.summary(T.S), SC=scale("research"), cylRaw=f.cyl, cyl=cylRaw*SC.f, z=2*f.amp/Math.max(0.05,f.seC);
+  const status=2*f.amp<0.25?"under 0.25 D":z<1.5?"not significant":f.seC*SC.f>0.3?"too uncertain":z<2.5?"borderline":"significant";
+  const mer=ORIS.map(o=>{ const phi=(o+90)%180, tm=((180-phi)%180)||180; return {tabo:tm,D:+(f.M+SC.f*(f.A1*Math.cos(2*phi*Math.PI/180)+f.A2*Math.sin(2*phi*Math.PI/180))).toFixed(2),sd:+(SC.f*f.seC/2).toFixed(2)}; }).sort((a,b)=>a.tabo-b.tabo);
+  return { created:new Date().toISOString(), method:"research", brightness_match:T.lum?`green ×${T.lum.f} (±${Math.round(100*T.lum.sd)}%)`:"standard observer", participant:T.pid, eye:T.eye, tester:T.tester, notes:T.notes,
+    distance_cm:T.distCm, pupil_mm:+f.P.toFixed(1), pupil_prior_mm:T.pupil, pupil_source:T.pupSrc+" → fitted (contrast model)", viewing_ms:T.expo, answers:T.S.n,
+    cyl_D:+cyl.toFixed(2), axis_tabo:f.tabo, cyl_se_D:+(f.seC*SC.f).toFixed(2), axis_se_deg:Math.round(f.seAx), status, mean_focus_D:+f.M.toFixed(2), mean_focus_se_D:+f.seM.toFixed(2),
+    colour_bias:+f.b.toFixed(3), judgement_noise:+f.sig.toFixed(3), same_zone:+f.tau.toFixed(3),
+    cyl_raw_D:+cylRaw.toFixed(2), cyl_se_raw_D:+f.seC.toFixed(2), scale_factor:SC.f, scale_source:SC.src, cyl_scale_se_D:+(Math.abs(cyl)*(SC.src==="none"?0.4:SC.rel)).toFixed(2),
+    J0:+(-(cyl/2)*Math.cos(2*f.tabo*Math.PI/180)).toFixed(3), J45:+(-(cyl/2)*Math.sin(2*f.tabo*Math.PI/180)).toFixed(3), meridians:mer, distance_sph_if_myopic:null, practice_errors:T.pracWrong,
+    duration_s:Math.round((Date.now()-T.started.getTime())/1000), screen_mm_per_px:+mmPerPx.toFixed(5), colour:P3?"P3":"sRGB", lca_D:+DD.toFixed(3), device:navigator.userAgent.slice(0,160), app:APP_VERSION,
+    trials:JSON.stringify({cols:["ct","cond_type","phiL_normal","colL","blurL_arcmin","phiR_normal","colR","blurR_arcmin","period_arcmin","chi","answer","rt_ms","replays","expected_info"],rows:T.log}) }; }
 function finish(){ removeEventListener("keydown",onKey);
+  if(T.meth==="ct"){ const rec=finishCT(); T=null; leaveStage(); showResult(rec); save(rec); return; }
   if(T.meth==="mix"){ const rec=finishMix(); T=null; leaveStage(); showResult(rec); save(rec); return; }
   const G=T.G, f=as2Fit(G,true);                                       // pupil scale fitted from the answers, prior = age/lighting estimate (or measured)
   f.seAx=Math.min(90,f.seAx*1.7); f.seC*=1.5;                          // calibrated by simulation (Laplace understates both)
@@ -535,6 +633,7 @@ function finish(){ removeEventListener("keydown",onKey);
   T=null; leaveStage(); showResult(rec); save(rec); }
 function verdict(r){ const c=Math.abs(r.cyl_D);
   if(r.status==="invalid") return ["bad",`Out of range: this eye is too far out of focus at ${r.distance_cm} cm (mean focus ${pf(r.mean_focus_D)} D). Its blur is then larger than the line spacing, where a blurrier patch can look sharper, so no valid cylinder can be given. This version is valid for eyes within about ±1.25 D of focus at the test distance.`];
+  if(r.method==="research"&&r.status==="significant") return [Math.abs(r.cyl_D)>=0.75?"bad":"warn",`Research mode: ${Math.abs(r.cyl_D).toFixed(2)} D, axis ${r.axis_tabo}. The axis is reliable; the size is not yet validated (about ±40% until calibrated against refractions).`];
   if(r.status==="too uncertain") return ["warn",`Too uncertain to use: ${pf(r.cyl_D)} × ${r.axis_tabo} ± ${r.cyl_se_D.toFixed(2)} D. The answers were inconsistent; repeat (80 answers helps).`];
   if(r.status==="unreliable") return ["bad",`Unreliable run: the colour checks (${esc(r.focus_checks||"")}) disagreed or looked the same, so the eye's focus wasn't held to one side. Repeat with the screen at 30 cm (closer if needed).`];
   if(r.status==="under 0.25 D") return ["ok",`No clinically significant astigmatism (${pf(r.cyl_D)} D is under 0.25 D).`];
@@ -580,7 +679,7 @@ function allRecs(){ const m=new Map(); local.forEach(r=>m.set(r.id,{...r,_where:
 // Magnitude calibration. The cylinder's size depends on things the test can't measure (true pupil, the participant's
 // own chromatic aberration, the screen's real primaries, residual accommodation), all of which scale it. The fix is
 // empirical: regress the reference refraction's power vector on the test's raw power vector (through the origin).
-const SCALE_KEY={"red-green":"scale","colour-mix":"scale_mix"}, METH_NAME={"red-green":"Red–green","colour-mix":"Colour-mix"};
+const SCALE_KEY={"red-green":"scale","colour-mix":"scale_mix","research":"scale_ct"}, METH_NAME={"red-green":"Red–green","colour-mix":"Colour-mix","research":"Research (full range)"};
 function scale(m){ const s=LS.get(SCALE_KEY[m],null); return s&&s.f>0?{f:s.f,rel:s.rel,src:s.src}:{f:1,rel:m==="colour-mix"?0.15:0.3,src:"none"}; }
 function pv(c,a){ return [-(c/2)*Math.cos(2*a*Math.PI/180),-(c/2)*Math.sin(2*a*Math.PI/180)]; }
 function suggest(m){ const P=allRecs().filter(r=>(r.method||"red-green")===m&&r.status!=="unreliable"&&r.ref_cyl_D!=null&&r.ref_axis_tabo!=null&&Math.abs(r.ref_cyl_D)>=0.5&&r.cyl_raw_D!=null);
@@ -590,12 +689,12 @@ function suggest(m){ const P=allRecs().filter(r=>(r.method||"red-green")===m&&r.
   const k=sr/st; let rs=0; pairs.forEach(([t,f])=>{ rs+=(f[0]-k*t[0])**2+(f[1]-k*t[1])**2; });
   const se=Math.sqrt(rs/Math.max(1,2*P.length-1)/st); return {n:P.length,f:k,se}; }
 function renderScale(){ let h=`<b>Magnitude calibration</b><p class="note">Enter the JCC refraction on results (eyes with at least 0.50 D of cylinder count). Each method is calibrated separately. With 10 or more eyes, apply the suggested factor: it corrects the size of every later result from that method on this device. Raw values are always kept.</p>`;
-  for(const m of ["colour-mix","red-green"]){ const S_=scale(m), g=suggest(m), id=m==="colour-mix"?"Mix":"Rg";
+  for(const m of ["red-green","research"]){ const S_=scale(m), g=suggest(m), id=m==="research"?"Ct":"Rg";
     h+=`<div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding-top:8px"><span><b>${METH_NAME[m]}</b> · ${g.f!=null?`suggested <b class="num">× ${g.f.toFixed(2)}</b> ± ${g.se.toFixed(2)} from ${g.n} eye${g.n===1?"":"s"}${g.n<10?" (too few to rely on yet)":""}`:`${g.n} eye${g.n===1?"":"s"} with a reference`}</span>
       <span class="row"><span class="pill ${S_.src==="none"?"warn":"ok"}">${S_.src==="none"?"Uncalibrated":"× "+S_.f.toFixed(2)+" in use"}</span>${g.f!=null?`<button id="apply${id}" ${g.n<5?"disabled":""}>Apply</button>`:""}${S_.src!=="none"?`<button id="clear${id}">Remove</button>`:""}</span></div>`;
   }
   $("scaleBox").innerHTML=h;
-  for(const m of ["colour-mix","red-green"]){ const id=m==="colour-mix"?"Mix":"Rg", g=suggest(m);
+  for(const m of ["red-green","research"]){ const id=m==="research"?"Ct":"Rg", g=suggest(m);
     const a=$("apply"+id); if(a) a.onclick=()=>{ LS.set(SCALE_KEY[m],{f:+g.f.toFixed(3),rel:+(g.se/g.f).toFixed(3),src:`fitted to ${g.n} reference refractions`}); renderScale(); };
     const c=$("clear"+id); if(c) c.onclick=()=>{ try{ localStorage.removeItem("astig."+SCALE_KEY[m]); }catch(e){} renderScale(); }; } }
 async function saveRef(r){ const c=$("refCyl").value===""?null:+$("refCyl").value, a=$("refAx").value===""?null:Math.round(+$("refAx").value);
@@ -614,7 +713,7 @@ $("logBody").addEventListener("click",async e=>{ const b=e.target.closest("butto
   if(b.dataset.ask){ pendingDel=b.dataset.ask; renderLog(); return; } if(b.dataset.cancel){ pendingDel=null; renderLog(); return; }
   if(b.dataset.del){ const id=b.dataset.del; pendingDel=null; local=local.filter(r=>r.id!==id); LS.set("results",local); if(DB&&shared.some(r=>r.id===id)){ try{ await DB.collection("results").doc(id).delete(); }catch(e){} } renderLog(); } });
 $("filter").addEventListener("input",renderLog);
-const COLS=["created","method","participant","eye","tester","cyl_D","axis_tabo","cyl_se_D","cyl_scale_se_D","cyl_raw_D","scale_factor","scale_source","ref_cyl_D","ref_axis_tabo","axis_se_deg","status","mean_focus_D","J0","J45","distance_cm","pupil_mm","pupil_prior_mm","pupil_source","pupil_scale_rel_se","viewing_ms","answers","distance_sph_if_myopic","practice_errors","answers_lines_too_fine","range_limited_answers","brightness_match","focus_checks","focus_flip_share","duration_s","colour","lca_D","screen_mm_per_px","notes","meridians","app","device","trials"];
+const COLS=["created","method","participant","mean_focus_se_D","colour_bias","judgement_noise","same_zone","eye","tester","cyl_D","axis_tabo","cyl_se_D","cyl_scale_se_D","cyl_raw_D","scale_factor","scale_source","ref_cyl_D","ref_axis_tabo","axis_se_deg","status","mean_focus_D","J0","J45","distance_cm","pupil_mm","pupil_prior_mm","pupil_source","pupil_scale_rel_se","viewing_ms","answers","distance_sph_if_myopic","practice_errors","answers_lines_too_fine","range_limited_answers","brightness_match","focus_checks","focus_flip_share","duration_s","colour","lca_D","screen_mm_per_px","notes","meridians","app","device","trials"];
 function csv(){ const q=v=>{ const s=v==null?"":typeof v==="object"?JSON.stringify(v):String(v); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; };
   return [COLS.join(",")].concat(allRecs().map(r=>COLS.map(c=>q(r[c])).join(","))).join("\n"); }
 $("csvBtn").onclick=async()=>{ const text=csv(), name=`astig-results-${new Date().toISOString().slice(0,10)}.csv`; let done=false;
@@ -623,7 +722,7 @@ $("csvBtn").onclick=async()=>{ const text=csv(), name=`astig-results-${new Date(
   $("exportText").value=text; $("exportBox").hidden=done; };
 $("copyBtn").onclick=async()=>{ try{ await navigator.clipboard.writeText($("exportText").value); $("copyBtn").textContent="Copied"; }catch(e){ $("exportText").select(); } };
 renderLog();
-window.__astigTest={ tr:()=>T&&T.tr, G:()=>T&&T.G, X:()=>T&&T.X, ready:()=>!!(T&&T.ready), answer, O:()=>O_MIX };
+window.__astigTest={ tr:()=>T&&T.tr, G:()=>T&&T.G, X:()=>T&&T.X, S:()=>T&&T.S, ready:()=>!!(T&&T.ready), answer, O:()=>O_MIX };
 (async()=>{ if(!window.claude||!window.claude.use){ setStore("Saved on this device only","warn"); return; }
   const timer=setTimeout(()=>{ if(!DB) setStore("Study log unavailable: saving on this device","warn"); },10000);
   try{ const db=await window.claude.use("db"); if(!db){ clearTimeout(timer); setStore("Study log unavailable: saving on this device","warn"); return; }

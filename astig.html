@@ -104,6 +104,7 @@ textarea.export{ width:100%; min-height:90px; font-family:var(--mono); font-size
     <div class="row" style="justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:10px 12px">
       <span><b>Colour brightness</b> · <span id="lumState" class="note">not matched (standard observer)</span></span>
       <button id="lumBtn" type="button">Match brightness for this person</button>
+      <span class="note" style="flex-basis:100%">Make the two colours look equally bright (not the same colour): the edges between the sectors look softest when they are. On a Mac, turn off True Tone and Night Shift first (System Settings → Displays); they dim green.</span>
     </div>
     <label for="notes">Notes (optional)<input id="notes" autocomplete="off" placeholder="Lighting, current Rx worn, anything unusual"></label>
     <p class="note">Use a participant code, not a name. No pupil measurement needed: it's estimated from age and room lighting (±0.9 mm between people). The cylinder's size scales with the square of any pupil error, so calibrate it against refractions in the log below; the axis doesn't depend on the pupil.</p>
@@ -285,10 +286,31 @@ const CT={};
     const axP=((ang*90/Math.PI)%180+180)%180; let tabo=Math.round(180-axP)%180; if(tabo<=0) tabo+=180;
     return {M:m[0],seM:st.sd[0],A1:m[1],A2:m[2],amp,cyl:-2*amp,axP,tabo,P:Math.exp(m[3]),b:m[4],sig:Math.exp(m[5]),tau:Math.exp(m[6]),seC:Math.sqrt(vc),seAx:Math.min(90,Math.sqrt(va))}; };
 })();
+// Final estimate: maximum a posteriori (Nelder–Mead from the particle mean and the best particles), Laplace uncertainty.
+// The particle mean of |astigmatism| is pulled high by the posterior spread; the MAP is not.
+CT.fitMAP=S=>{ const lpost=th=>CT.logPrior(S.pr,th)+CT.logLik(S,th), n=7;
+  const nm=(x0,st,it)=>{ let P=[x0.slice()]; for(let i=0;i<n;i++){ const x=x0.slice(); x[i]+=st[i]; P.push(x); } let F=P.map(lpost);
+    for(let k=0;k<it;k++){ const o=[...P.keys()].sort((a,b)=>F[b]-F[a]); P=o.map(i=>P[i]); F=o.map(i=>F[i]); const c=new Array(n).fill(0); for(let i=0;i<n;i++) for(let j=0;j<n;j++) c[j]+=P[i][j]/n;
+      const pt=a=>c.map((v,j)=>v+a*(P[n][j]-v)), xr=pt(-1), fr=lpost(xr);
+      if(fr>F[0]){ const xe=pt(-2), fe=lpost(xe); if(fe>fr){P[n]=xe;F[n]=fe;}else{P[n]=xr;F[n]=fr;} } else if(fr>F[n-1]){P[n]=xr;F[n]=fr;}
+      else { const xc=pt(0.5), fc=lpost(xc); if(fc>F[n]){P[n]=xc;F[n]=fc;} else for(let i=1;i<=n;i++){ P[i]=P[i].map((v,j)=>P[0][j]+0.5*(v-P[0][j])); F[i]=lpost(P[i]); } } }
+    let b=0; for(let i=1;i<P.length;i++) if(F[i]>F[b]) b=i; return {x:P[b],f:F[b]}; };
+  const st=CT.stats(S), idx=[...S.P.keys()].sort((a,b)=>S.W[b]-S.W[a]).slice(0,8), starts=[st.m].concat(idx.map(i=>S.P[i]));
+  let best=null; for(const s0 of starts){ let r=nm(s0,[0.3,0.15,0.15,0.08,0.04,0.2,0.3],220); r=nm(r.x,[0.06,0.04,0.04,0.02,0.01,0.05,0.08],220); if(!best||r.f>best.f) best=r; }
+  const x=best.x, h=[0.02,0.015,0.015,0.01,0.005,0.03,0.05], H=[...Array(n)].map(()=>new Array(n).fill(0));
+  for(let i=0;i<n;i++) for(let j=i;j<n;j++){ const e=(a,b)=>{ const y=x.slice(); y[i]+=a*h[i]; y[j]+=b*h[j]; return lpost(y); }; H[i][j]=H[j][i]=(e(1,1)-e(1,-1)-e(-1,1)+e(-1,-1))/(4*h[i]*h[j]); }
+  const A=H.map((r,i)=>r.map(v=>-v).concat([...Array(n)].map((_,j)=>i===j?1:0))); for(let c=0;c<n;c++){ let p=c; for(let r=c+1;r<n;r++) if(Math.abs(A[r][c])>Math.abs(A[p][c])) p=r; [A[c],A[p]]=[A[p],A[c]]; const d=A[c][c]||1e-9; for(let k=0;k<2*n;k++) A[c][k]/=d; for(let r=0;r<n;r++) if(r!==c){ const fct=A[r][c]; for(let k=0;k<2*n;k++) A[r][k]-=fct*A[c][k]; } }
+  const Cv=A.map(r=>r.slice(n)), amp=Math.hypot(x[1],x[2]), ang=Math.atan2(x[2],x[1]);
+  // amplitude SE: delta method, but not below the spread of the error ellipse (avoids a falsely tiny ± near zero)
+  const ev=0.5*(Cv[1][1]+Cv[2][2])+Math.sqrt(0.25*(Cv[1][1]-Cv[2][2])**2+Cv[1][2]**2), u=amp>1e-6?[x[1]/amp,x[2]/amp]:[1,0];
+  const seAmp=Math.max(Math.sqrt(Math.max(0,u[0]*u[0]*Cv[1][1]+2*u[0]*u[1]*Cv[1][2]+u[1]*u[1]*Cv[2][2])),0.5*Math.sqrt(Math.max(0,ev)));
+  const g=[-x[2]/(amp*amp+1e-9),x[1]/(amp*amp+1e-9)], seAng=Math.sqrt(Math.max(0,g[0]*g[0]*Cv[1][1]+2*g[0]*g[1]*Cv[1][2]+g[1]*g[1]*Cv[2][2]))*90/Math.PI;
+  const axP=((ang*90/Math.PI)%180+180)%180; let tabo=Math.round(180-axP)%180; if(tabo<=0) tabo+=180;
+  return {M:x[0],seM:Math.sqrt(Math.max(0,Cv[0][0])),A1:x[1],A2:x[2],amp,cyl:-2*amp,axP,tabo,P:Math.exp(x[3]),b:x[4],sig:Math.exp(x[5]),tau:Math.exp(x[6]),seC:2*seAmp,seAx:Math.min(90,seAng)}; };
 
 (function(){
 "use strict";
-const APP_VERSION="astig-finder 2.5 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
+const APP_VERSION="astig-finder 2.5.1 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
 const $=id=>document.getElementById(id);
 const LS={ get(k,d){ try{ const v=localStorage.getItem("astig."+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem("astig."+k,JSON.stringify(v)); }catch(e){} } };
 
@@ -600,7 +622,7 @@ function finishMix(){ const X=T.X, sg=mxSign(), unstable=isNaN(sg), f=mxSummary(
     range_limited_answers:sat, practice_errors:T.pracWrong, duration_s:Math.round((Date.now()-T.started.getTime())/1000), screen_mm_per_px:+mmPerPx.toFixed(5), colour:P3?"P3":"sRGB", lca_D:+(2*O_MIX).toFixed(3),
     device:navigator.userAgent.slice(0,160), app:APP_VERSION,
     trials:JSON.stringify({cols:["normal_phi_deg","uA_red_minus_blue","left_patch","answer","A_worse","rt_ms","replays"],rows:T.log}) }; }
-function finishCT(){ const f=CT.summary(T.S), SC=scale("research"), cylRaw=f.cyl, cyl=cylRaw*SC.f, z=2*f.amp/Math.max(0.05,f.seC);
+function finishCT(){ const f=CT.fitMAP(T.S), SC=scale("research"), cylRaw=f.cyl, cyl=cylRaw*SC.f, z=2*f.amp/Math.max(0.05,f.seC);
   const status=2*f.amp<0.25?"under 0.25 D":z<1.5?"not significant":f.seC*SC.f>0.3?"too uncertain":z<2.5?"borderline":"significant";
   const mer=ORIS.map(o=>{ const phi=(o+90)%180, tm=((180-phi)%180)||180; return {tabo:tm,D:+(f.M+SC.f*(f.A1*Math.cos(2*phi*Math.PI/180)+f.A2*Math.sin(2*phi*Math.PI/180))).toFixed(2),sd:+(SC.f*f.seC/2).toFixed(2)}; }).sort((a,b)=>a.tabo-b.tabo);
   return { created:new Date().toISOString(), method:"research", brightness_match:T.lum?`green ×${T.lum.f} (±${Math.round(100*T.lum.sd)}%)`:"standard observer", participant:T.pid, eye:T.eye, tester:T.tester, notes:T.notes,
@@ -612,7 +634,7 @@ function finishCT(){ const f=CT.summary(T.S), SC=scale("research"), cylRaw=f.cyl
     duration_s:Math.round((Date.now()-T.started.getTime())/1000), screen_mm_per_px:+mmPerPx.toFixed(5), colour:P3?"P3":"sRGB", lca_D:+DD.toFixed(3), device:navigator.userAgent.slice(0,160), app:APP_VERSION,
     trials:JSON.stringify({cols:["ct","cond_type","phiL_normal","colL","blurL_arcmin","phiR_normal","colR","blurR_arcmin","period_arcmin","chi","answer","rt_ms","replays","expected_info"],rows:T.log}) }; }
 function finish(){ removeEventListener("keydown",onKey);
-  if(T.meth==="ct"){ const rec=finishCT(); T=null; leaveStage(); showResult(rec); save(rec); return; }
+  if(T.meth==="ct"){ $("msg").textContent="Calculating…"; T.show=false; render(); setTimeout(()=>{ const rec=finishCT(); T=null; leaveStage(); showResult(rec); save(rec); },30); return; }
   if(T.meth==="mix"){ const rec=finishMix(); T=null; leaveStage(); showResult(rec); save(rec); return; }
   const G=T.G, f=as2Fit(G,true);                                       // pupil scale fitted from the answers, prior = age/lighting estimate (or measured)
   f.seAx=Math.min(90,f.seAx*1.7); f.seC*=1.5;                          // calibrated by simulation (Laplace understates both)

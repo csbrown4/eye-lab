@@ -221,7 +221,7 @@ function as2Fit(G,freeQ){ const m=as2Mean(G), x0=[m.M,m.A1,m.A2,m.ls1,m.ls2].con
 
 (function(){
 "use strict";
-const APP_VERSION="astig-finder 2.3 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
+const APP_VERSION="astig-finder 2.4.1 (red–green engine v2 + colour-mix balance; 250 ms flash with focus star)";
 const $=id=>document.getElementById(id);
 const LS={ get(k,d){ try{ const v=localStorage.getItem("astig."+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } }, set(k,v){ try{ localStorage.setItem("astig."+k,JSON.stringify(v)); }catch(e){} } };
 
@@ -357,7 +357,10 @@ function buildImgs(tr){ const g=grid(), dev=g.dev, dpx=deg=>T.d*Math.tan(deg*Mat
     else if(tr.probe){ A=paint(vmap((tr.phi+90)%180),1); B=paint(vmap((tr.phi+90)%180),-1); }                     // focus-side check: A pure red, B pure blue, same lines
     else { A=paint(vmap((tr.phi+90)%180),tr.uA); B=paint(vmap(tr.phi),-tr.uA); }                                   // A: lines with normal φ; B: normal φ+90
     return {L:toCanvas(tr.aLeft?A:B,pw),R:toCanvas(tr.aLeft?B:A,pw),pw,gap:dpx(0.6),n:g.n}; }
-  const k=tr.k, sB=Math.sqrt(Math.abs(k)); G_=geo(T.pupil,Math.max(sB,tr.eye)); const pw=G_.pw;
+  const k=tr.k, sB=Math.sqrt(Math.abs(k)); G_=geo(T.pupil,Math.max(sB,tr.eye));
+  // Line spacing must stay well above the eye's own blur, or the pattern reverses (spurious resolution) and the blurrier
+  // patch can look sharper. Use a generous pupil and the posterior's upper focus error, never the model pupil alone.
+  tr.pDeg=G_.p*dev/T.d*180/Math.PI; const pw=G_.pw;
   if(tr.type===2){ const ch=tr.col==="L"?0:1, lv=tr.col==="L"?LV_R:LV_G, MA=lines(G_,tr.oriA), MB=lines(G_,tr.oriB), bl=(M_,on)=>on&&sB>0?discBlur(M_,pw,pw,sB*G_.pxPerD):M_;
     const A=panel(ctx,bl(MA,k>0),pw,pw,ch,lv,G_.Rf,G_.soft), B=panel(ctx,bl(MB,k<0),pw,pw,ch,lv,G_.Rf,G_.soft);   // A (lines oriA) blurred when k > 0
     return {L:toCanvas(tr.left?A:B,pw),R:toCanvas(tr.left?B:A,pw),pw,gap:dpx(0.6),n:g.n}; }
@@ -418,7 +421,7 @@ function nextTrial(){ const G=T.G;
     T.tr.replays=0; T.shownAt=0; T.imgs={tr:T.tr,...buildImgs(T.tr)}; T.show=false; T.blank=false; render(); updHud();     // images ready before the blink
     setTimeout(()=>{ if(!T) return; flash(); if(!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; },80); return; }
   if(T.practice<3){ const ori=ORIS[Math.floor(Math.random()*6)], k=(Math.random()<0.5?1:-1)*3.2;
-    T.tr={type:1,phi:(ori+90)%180,ori,k,left:Math.random()<0.5,eye:1,practice:true}; }
+    T.tr={type:1,phi:(ori+90)%180,ori,k,left:Math.random()<0.5,eye:1,eyeU:2,practice:true}; }
   else { if(G.n>=T.N){ finish(); return; }
     // Each block: 6 colour comparisons (red vs green, same lines) and 6 orientation comparisons (one colour, lines at right
     // angles, in red and in green). The orientation comparisons carry the pupil scale (their red/green ratio gives the mean
@@ -428,7 +431,9 @@ function nextTrial(){ const G=T.G;
     const k=Math.max(-4,Math.min(4,as2Pred(t,sm.M,sm.A1,sm.A2,G.Q0,G.dD)+(Math.random()<0.5?-1:1)*0.1));   // a visible step either side of the predicted balance point
     const Dm=ph=>sm.M+sm.A1*Math.cos(2*ph*Math.PI/180)+sm.A2*Math.sin(2*ph*Math.PI/180);
     const eyeB=t.type===1?Math.abs(Dm(t.phi))+G.dD/2:Math.max(Math.abs(Dm(t.phiA)),Math.abs(Dm(t.phiB)))+G.dD/2;
-    T.tr={...t,k:Math.round(1000*k)/1000,left:Math.random()<0.5,eye:eyeB}; }
+    // plausible maximum focus error for spacing: the largest |D| across 24 posterior draws, never below 2 D for the first 8 answers
+    let eyeU=0; for(let q=0;q<24;q++){ const s2=as2Sample(G,as2Weights(G),Math.random); for(const ph of [0,45,90,135]){ const v=Math.abs(s2.M+s2.A1*Math.cos(2*ph*Math.PI/180)+s2.A2*Math.sin(2*ph*Math.PI/180))+G.dD/2; if(v>eyeU) eyeU=v; } }
+    T.tr={...t,k:Math.round(1000*k)/1000,left:Math.random()<0.5,eye:eyeB,eyeU}; }
   T.tr.replays=0; T.shownAt=0; T.imgs={tr:T.tr,...buildImgs(T.tr)}; T.blank=false; updHud();
   showAfterRest(T.expo>0?REST_MS:80); setTimeout(()=>{ if(T&&!T.fits) $("msg").textContent="The patches don't fit this screen: move the screen further away or use a larger screen."; },(T.expo>0?REST_MS:80)+50); }
 function updHud(){ const pr=T.practice<3; $("prog").textContent=pr?`Practice ${T.practice+1} of 3`:`${(T.meth==="mix"?T.X.n+(T.probes?T.probes.length:0):T.G.n)+1} of ${T.N}`;
@@ -447,7 +452,7 @@ function answer(leftSharper){ if(!T||!T.ready) return; T.ready=false; const tr=T
     $("msg").dataset.hold=1; $("msg").textContent=correct?"✓":"Look again: one side was clearly blurred. Compare the lines, not the colours.";
     setTimeout(()=>{ delete $("msg").dataset.hold; nextTrial(); }, correct?350:1600); return; }
   clearTimeout(T.ft); T.show=false;
-  T.log.push(tr.type===2?["orient",tr.col==="L"?"red":"green",tr.oriA,tr.oriB,tr.k,tr.left?"A-left":"A-right",same?"S":leftSharper?"L":"R",r===0.5?0.5:r?1:0,rt,tr.replays]:["colour",tr.ori,tr.k,tr.left?"R":"G",same?"S":leftSharper?"L":"R",r===0.5?0.5:r?1:0,rt,tr.replays]);
+  T.log.push(tr.type===2?["orient",tr.col==="L"?"red":"green",tr.oriA,tr.oriB,tr.k,tr.left?"A-left":"A-right",same?"S":leftSharper?"L":"R",r===0.5?0.5:r?1:0,rt,tr.replays,+(tr.pDeg||0).toFixed(3)]:["colour",tr.ori,tr.k,tr.left?"R":"G",same?"S":leftSharper?"L":"R",r===0.5?0.5:r?1:0,rt,tr.replays,+(tr.pDeg||0).toFixed(3)]);
   as2Update(T.G,tr.type===2?{type:2,phiA:tr.phiA,phiB:tr.phiB,col:tr.col}:{type:1,phi:tr.phi},tr.k,r); setTimeout(nextTrial,0); }
 function onKey(e){ if(!T) return; if(e.key==="ArrowLeft"){ e.preventDefault(); answer(true); } else if(e.key==="ArrowRight"){ e.preventDefault(); answer(false); } else if(e.key==="ArrowDown"){ e.preventDefault(); answer(null); } else if(e.key===" "){ e.preventDefault(); replay(); } else if(e.key==="Escape"){ stopTest(); } }
 let lastTap=0;
@@ -514,10 +519,13 @@ function finish(){ removeEventListener("keydown",onKey);
   const G=T.G, f=as2Fit(G,true);                                       // pupil scale fitted from the answers, prior = age/lighting estimate (or measured)
   f.seAx=Math.min(90,f.seAx*1.7); f.seC*=1.5;                          // calibrated by simulation (Laplace understates both)
   let lo=1,hi=10; for(let i=0;i<40;i++){ const m_=(lo+hi)/2; if(sce(m_)*m_*m_<f.Q*T.pupil*T.pupil) lo=m_; else hi=m_; } const pupFit=(lo+hi)/2;   // effective pupil implied by the fitted scale
-  const SC=scale("red-green"), cylRaw=-2*f.amp, cyl=cylRaw*SC.f, zC=2*f.amp/Math.max(0.05,f.seC), status=2*f.amp<0.25?"under 0.25 D":zC<1.5?"not significant":f.seC*SC.f>0.3?"too uncertain":zC<2.5?"borderline":"significant";
+  const blurDeg=ori=>{ const ph=(ori+90)%180, D=Math.abs(f.A0+f.A1*Math.cos(2*ph*Math.PI/180)+f.A2*Math.sin(2*ph*Math.PI/180))+G.dD/2; return pupFit/1000*D*180/Math.PI; };
+  const rows=T.log.filter(r_=>r_[0]==="colour"||r_[0]==="orient"), tooFine=rows.filter(r_=>{ const pD=r_[r_.length-1]; if(!pD) return false; const b=r_[0]==="colour"?blurDeg(r_[1]):Math.max(blurDeg(r_[2]),blurDeg(r_[3])); return pD<1.5*b; }).length;
+  const invalid=(rows.length>0&&tooFine/rows.length>0.1)||Math.abs(f.A0)>1.25;
+  const SC=scale("red-green"), cylRaw=-2*f.amp, cyl=cylRaw*SC.f, zC=2*f.amp/Math.max(0.05,f.seC), status=invalid?"invalid":2*f.amp<0.25?"under 0.25 D":zC<1.5?"not significant":f.seC*SC.f>0.3?"too uncertain":zC<2.5?"borderline":"significant";
   const mer=ORIS.map(o=>{ const phi=(o+90)%180, m=f.meri(phi), tm=((180-phi)%180)||180; return {tabo:tm,D:+(f.A0+(m.D-f.A0)*SC.f).toFixed(2),sd:+(1.5*m.sd*SC.f).toFixed(2)}; }).sort((a,b)=>a.tabo-b.tabo);
   const sph=f.Dmax<-0.25?+(f.Dmax-100/T.distCm).toFixed(2):null;
-  const rec={ created:new Date().toISOString(), method:"red-green", brightness_match:T.lum?`green ×${T.lum.f} (±${Math.round(100*T.lum.sd)}%)`:"standard observer", participant:T.pid, eye:T.eye, tester:T.tester, notes:T.notes, distance_cm:T.distCm, pupil_mm:+pupFit.toFixed(1), pupil_prior_mm:T.pupil, pupil_source:T.pupSrc+" → fitted from answers", pupil_scale_rel_se:+(f.qRelSE||0).toFixed(2), viewing_ms:T.expo, answers:G.n,
+  const rec={ created:new Date().toISOString(), method:"red-green", brightness_match:T.lum?`green ×${T.lum.f} (±${Math.round(100*T.lum.sd)}%)`:"standard observer", participant:T.pid, eye:T.eye, tester:T.tester, notes:T.notes, distance_cm:T.distCm, pupil_mm:+pupFit.toFixed(1), pupil_prior_mm:T.pupil, pupil_source:T.pupSrc+" → fitted from answers", pupil_scale_rel_se:+(f.qRelSE||0).toFixed(2), viewing_ms:T.expo, answers_lines_too_fine:tooFine, answers:G.n,
     cyl_D:+cyl.toFixed(2), axis_tabo:f.tabo, cyl_se_D:+(f.seC*SC.f).toFixed(2), cyl_scale_se_D:+(Math.abs(cyl)*SC.rel).toFixed(2),
     cyl_raw_D:+cylRaw.toFixed(2), cyl_se_raw_D:+f.seC.toFixed(2), scale_factor:SC.f, scale_source:SC.src, axis_se_deg:Math.round(f.seAx), status, mean_focus_D:+f.A0.toFixed(2),
     J0:+(-(cyl/2)*Math.cos(2*f.tabo*Math.PI/180)).toFixed(3), J45:+(-(cyl/2)*Math.sin(2*f.tabo*Math.PI/180)).toFixed(3), meridians:mer, distance_sph_if_myopic:sph, practice_errors:T.pracWrong,
@@ -526,6 +534,7 @@ function finish(){ removeEventListener("keydown",onKey);
     trials:JSON.stringify({cols_colour:["colour",'line_ori_deg',"k_D2","left_colour","answer","red_sharper","rt_ms","replays"],cols_orient:["orient","colour","oriA","oriB","k_D2","A_side","answer","A_worse","rt_ms","replays"],rows:T.log}) };
   T=null; leaveStage(); showResult(rec); save(rec); }
 function verdict(r){ const c=Math.abs(r.cyl_D);
+  if(r.status==="invalid") return ["bad",`Out of range: this eye is too far out of focus at ${r.distance_cm} cm (mean focus ${pf(r.mean_focus_D)} D). Its blur is then larger than the line spacing, where a blurrier patch can look sharper, so no valid cylinder can be given. This version is valid for eyes within about ±1.25 D of focus at the test distance.`];
   if(r.status==="too uncertain") return ["warn",`Too uncertain to use: ${pf(r.cyl_D)} × ${r.axis_tabo} ± ${r.cyl_se_D.toFixed(2)} D. The answers were inconsistent; repeat (80 answers helps).`];
   if(r.status==="unreliable") return ["bad",`Unreliable run: the colour checks (${esc(r.focus_checks||"")}) disagreed or looked the same, so the eye's focus wasn't held to one side. Repeat with the screen at 30 cm (closer if needed).`];
   if(r.status==="under 0.25 D") return ["ok",`No clinically significant astigmatism (${pf(r.cyl_D)} D is under 0.25 D).`];
@@ -547,7 +556,7 @@ function showResult(r){ $("resCard").hidden=false; $("setupCard").hidden=true; $
   $("resTitle").textContent=`${r.participant} · ${r.eye}`; $("resMain").textContent=`${pf(r.cyl_D)} × ${r.axis_tabo}`;
   const [cls,txt]=verdict(r); $("resVerdict").innerHTML=`<span class="pill ${cls}">${r.status}</span> ${txt}`;
   const kv=[["Uncertainty",`± ${r.cyl_se_D.toFixed(2)} D from the answers, axis ± ${r.axis_se_deg}°`],
-    ["Magnitude scale",r.method==="colour-mix"?(r.scale_source==="none"?"Uncalibrated. No pupil is involved, but a built-in tendency for redder lines to look sharper, and people's own colour focus, can scale the size by about ±15% (axis unaffected). Calibrate against refractions below.":`× ${r.scale_factor.toFixed(2)} (${esc(r.scale_source)}); scale uncertainty ± ${r.cyl_scale_se_D.toFixed(2)} D`):r.scale_source==="none"?`<b>Uncalibrated.</b> The size can be off by about ±30% and has tended to read low (pupil, the eye's own colour focus, the screen's colours). The axis is not affected. Calibrate against refractions below.`:`× ${r.scale_factor.toFixed(2)} (${esc(r.scale_source)}); scale uncertainty ± ${r.cyl_scale_se_D.toFixed(2)} D`],["Mean focus",r.mean_focus_D==null?"not measured by this method":`${pf(r.mean_focus_D)} D (${r.mean_focus_D>=0?"behind":"in front of"} the screen)`],["Power vector",`J0 ${pf(r.J0)} · J45 ${pf(r.J45)}`],
+    ["Magnitude scale",r.method==="colour-mix"?(r.scale_source==="none"?"Uncalibrated. No pupil is involved, but a built-in tendency for redder lines to look sharper, and people's own colour focus, can scale the size by about ±15% (axis unaffected). Calibrate against refractions below.":`× ${r.scale_factor.toFixed(2)} (${esc(r.scale_source)}); scale uncertainty ± ${r.cyl_scale_se_D.toFixed(2)} D`):r.scale_source==="none"?`<b>Uncalibrated.</b> The pupil scale is fitted from the answers, but for small cylinders it leans on the age/lighting estimate, so the size can be off by up to about ±30% (the axis is not affected). Calibrate against refractions below.`:`× ${r.scale_factor.toFixed(2)} (${esc(r.scale_source)}); scale uncertainty ± ${r.cyl_scale_se_D.toFixed(2)} D`],["Mean focus",r.mean_focus_D==null?"not measured by this method":`${pf(r.mean_focus_D)} D (${r.mean_focus_D>=0?"behind":"in front of"} the screen)`],["Power vector",`J0 ${pf(r.J0)} · J45 ${pf(r.J45)}`],
     ["By meridian",r.meridians.map(m=>`${m.tabo}°: ${pf(m.D)}`).join("  ")],["Brightness",r.brightness_match||"standard observer"],["Setup",`${r.method==="colour-mix"?"colour-mix balance":"red–green"} · ${r.distance_cm} cm · ${r.pupil_mm==null?"no pupil needed":"pupil "+r.pupil_mm+" mm"} · ${r.answers} answers · ${r.colour}`]];
   if(r.pupil_prior_mm!=null) kv.push(["Pupil",`effective ${r.pupil_mm} mm from your answers (starting estimate ${r.pupil_prior_mm} mm${r.pupil_scale_rel_se>0.005?`; scale ± ${Math.round(100*r.pupil_scale_rel_se)}%`:""})`]);
   if(r.viewing_ms!=null) kv.push(["Viewing",r.viewing_ms>0?`${r.viewing_ms/1000} s per look after a 1 s rest (focus controlled)`:"until answered (focus not controlled: size may be biased)"]);
@@ -599,13 +608,13 @@ const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",
 let pendingDel=null;
 function renderLog(){ renderScale(); const f=$("filter").value.trim().toLowerCase(), rows=allRecs().filter(r=>!f||String(r.participant).toLowerCase().includes(f));
   if(!rows.length){ $("logBody").innerHTML=`<tr><td colspan="11"><div class="empty">${f?"No results for that participant.":"No results yet. Finished tests appear here, newest first."}</div></td></tr>`; return; }
-  const cls={"significant":"bad","borderline":"warn","not significant":"mute","under 0.25 D":"ok","unreliable":"bad","too uncertain":"warn"};
+  const cls={"significant":"bad","borderline":"warn","not significant":"mute","under 0.25 D":"ok","unreliable":"bad","too uncertain":"warn","invalid":"bad"};
   $("logBody").innerHTML=rows.map(r=>`<tr><td class="num">${esc(r.created.slice(0,16).replace("T"," "))}</td><td>${esc(r.participant)}</td><td>${esc(r.eye)}</td><td class="num">${pf(r.cyl_D)} × ${r.axis_tabo}</td><td class="num">${r.cyl_se_D.toFixed(2)} / ${r.axis_se_deg}°</td><td><span class="pill ${cls[r.status]||"mute"}">${esc(r.status)}</span></td><td class="num">${r.mean_focus_D==null?"–":pf(r.mean_focus_D)}</td><td class="num">${r.distance_cm}</td><td class="num">${r.pupil_mm==null?"mix":r.pupil_mm}</td><td>${esc(r.tester)}${r._where==="device"?' <span class="pill warn" title="Only on this device">device</span>':""}</td><td>${pendingDel===r.id?`<span class="confirm">Delete? <button class="danger" data-del="${r.id}">Delete</button><button data-cancel="1">Keep</button></span>`:`<button data-ask="${r.id}" aria-label="Delete this result">✕</button>`}</td></tr>`).join(""); }
 $("logBody").addEventListener("click",async e=>{ const b=e.target.closest("button"); if(!b) return;
   if(b.dataset.ask){ pendingDel=b.dataset.ask; renderLog(); return; } if(b.dataset.cancel){ pendingDel=null; renderLog(); return; }
   if(b.dataset.del){ const id=b.dataset.del; pendingDel=null; local=local.filter(r=>r.id!==id); LS.set("results",local); if(DB&&shared.some(r=>r.id===id)){ try{ await DB.collection("results").doc(id).delete(); }catch(e){} } renderLog(); } });
 $("filter").addEventListener("input",renderLog);
-const COLS=["created","method","participant","eye","tester","cyl_D","axis_tabo","cyl_se_D","cyl_scale_se_D","cyl_raw_D","scale_factor","scale_source","ref_cyl_D","ref_axis_tabo","axis_se_deg","status","mean_focus_D","J0","J45","distance_cm","pupil_mm","pupil_prior_mm","pupil_source","pupil_scale_rel_se","viewing_ms","answers","distance_sph_if_myopic","practice_errors","range_limited_answers","brightness_match","focus_checks","focus_flip_share","duration_s","colour","lca_D","screen_mm_per_px","notes","meridians","app","device","trials"];
+const COLS=["created","method","participant","eye","tester","cyl_D","axis_tabo","cyl_se_D","cyl_scale_se_D","cyl_raw_D","scale_factor","scale_source","ref_cyl_D","ref_axis_tabo","axis_se_deg","status","mean_focus_D","J0","J45","distance_cm","pupil_mm","pupil_prior_mm","pupil_source","pupil_scale_rel_se","viewing_ms","answers","distance_sph_if_myopic","practice_errors","answers_lines_too_fine","range_limited_answers","brightness_match","focus_checks","focus_flip_share","duration_s","colour","lca_D","screen_mm_per_px","notes","meridians","app","device","trials"];
 function csv(){ const q=v=>{ const s=v==null?"":typeof v==="object"?JSON.stringify(v):String(v); return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; };
   return [COLS.join(",")].concat(allRecs().map(r=>COLS.map(c=>q(r[c])).join(","))).join("\n"); }
 $("csvBtn").onclick=async()=>{ const text=csv(), name=`astig-results-${new Date().toISOString().slice(0,10)}.csv`; let done=false;

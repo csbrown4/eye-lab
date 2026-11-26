@@ -4352,7 +4352,7 @@ flagged: |μ| ≥ 3 dB and at least twice its ±; disc sector from the Jansonius
     draw(env){ this.env=env; const Lt=vfLumTable(), bgY=0.30, bc=nflCode(Lt,bgY), bg=`rgb(${bc},${bc},${bc})`, g_=ntCv(env,bg), ctx=g_.ctx, eye=S.eye["ρ"]; env.stage.style.background=bg;
       const F=RP.F||nflFix(env,RP_LOCS.map(([x,y])=>[x,y,3]))||{x:g_.cxp,y:g_.cyp}; nflCross(ctx,env,F);
       if(RP.active&&RP.phase==="show"&&RP.tr.kind!=="blank"){ const it=RP.tr; let x,y,lg; if(it.kind==="bs"){ x=eye==="OS"?-15:15; y=-1.5; lg=Math.log10(2.2); } else { const l=RP.locs[it.i]; x=l.x; y=l.y; lg=it.lg; }
-        const [X,Y]=nflPx(env,F,x,y); rpRing(ctx,env,X,Y,lg,bgY,Lt); }
+        const [X,Y]=nflPx(env,F,x,y); rpRing(ctx,env,X,Y,lg,bgY,Lt); nflCross(ctx,env,F); }   // cross on top: a big ring near it mustn't cover it
       const R_=ntR("ρ"), f=e=>{ const o=R_[e]; if(!o) return `${e}: –`; const A=rpAnalyse(o), unrel=(o.fpN&&o.fp/o.fpN>0.5)||(o.flN&&o.fl/o.flN>0.5);
         return `${e}: neural capacity <b>${Math.round(100*A.cap)}%</b> of the eye's own best areas · upper field ${Math.round(100*A.sup)}% · lower field ${Math.round(100*A.inf)}%${A.low.length?` · <b>${A.low.length} place${A.low.length>1?"s":""} under 50%</b> (${A.low.map(l=>`${Math.abs(l.x).toFixed(0)}° ${(e==="OS"?l.x>0:l.x<0)?"nasal":"temporal"}, ${Math.abs(l.y).toFixed(0)}° ${l.y>0?"up":"down"} → ${l.sec}`).join("; ")})`:""} · catches: blank ${o.fp}/${o.fpN}, blind spot ${o.fl}/${o.flN}${unrel?" · <b>unreliable</b>":""}`; };
       let chart=""; if(R_[eye]){ const A=rpAnalyse(R_[eye]); chart=nflWheel(A.sec,eye,"capacity by sector, %"); }
@@ -4412,17 +4412,17 @@ catches: 2 blank, 2 rings in the blind spot`,
     const w=Math.ceil((px1-px0)/sc), h=Math.ceil((py1-py0)/sc), c=Math.pow(10,it.lc), NL=21, imgs=[];
     const deg=(X,Y)=>[Math.atan((px0+X*sc-F.x)/k)*180/Math.PI, Math.atan((F.y-(py0+Y*sc))/k)*180/Math.PI];
     const pat=new Float32Array(w*h), inside=new Uint8Array(w*h); for(let Y=0;Y<h;Y++) for(let X=0;X<w;X++){ const [dx,dy]=deg(X+0.5,Y+0.5), i=Y*w+X;
-      inside[i]=circ?(Math.hypot(dx,dy)<=5):(mask?mask(dx,dy):1); pat[i]=Math.sin(2*Math.PI*FD_SF*dx); }
+      inside[i]=(circ?(Math.hypot(dx,dy)<=5):(mask?mask(dx,dy):1))&&Math.hypot(dx,dy)>=0.8; pat[i]=Math.sin(2*Math.PI*FD_SF*dx); }
     for(let l=0;l<NL;l++){ const a=-1+2*l/(NL-1), cv=document.createElement("canvas"); cv.width=w; cv.height=h; const cx=cv.getContext("2d"), im=cx.createImageData(w,h), D_=im.data;
       for(let i=0;i<w*h;i++){ const Y_=inside[i]?FD_BG*(1+c*a*pat[i]):FD_BG, cd=nflCode(Lt,Math.max(0,Math.min(1,Y_))); D_[i*4]=D_[i*4+1]=D_[i*4+2]=cd; D_[i*4+3]=255; }
       cx.putImageData(im,0,0); imgs.push(cv); }
     return {imgs,px0,py0,pw:px1-px0,ph:py1-py0,NL}; }
-  function fdAnim(tok){ const env=NT["φ"].env; const I=fdImgs(env,FD.tr); let f=0, t0=null;
+  function fdAnim(tok){ const env=NT["φ"].env; const I=fdImgs(env,FD.tr), Fx=FD.blk==="dn"?FD.Fdn:FD.Fup; let f=0, t0=null;   // the cross is redrawn on top every frame, so it never fades or blinks with the grating
     const cv=$("cvs"), ctx=p3ctx(cv), Lt=vfLumTable(), bc=nflCode(Lt,FD_BG), bg=`rgb(${bc},${bc},${bc})`, ramp=120;
     const tick=ts=>{ if(tok.dead||!FD.active) return; if(t0==null) t0=ts; const t=ts-t0;
-      if(t>=FD_MS){ if(I){ ctx.fillStyle=bg; ctx.fillRect(I.px0-1,I.py0-1,I.pw+2,I.ph+2); } FD.phase="wait"; draw(); setTimeout(()=>fdEnd(tok),Math.max(0,1500-FD_MS)); return; }
+      if(t>=FD_MS){ if(I){ ctx.fillStyle=bg; ctx.fillRect(I.px0-1,I.py0-1,I.pw+2,I.ph+2); nflCross(ctx,env,Fx); } FD.phase="wait"; draw(); setTimeout(()=>fdEnd(tok),Math.max(0,1500-FD_MS)); return; }
       if(I){ const env_=Math.min(1,t/ramp,(FD_MS-t)/ramp), tf=Math.sin(2*Math.PI*(f%FD.fpc+0.5)/FD.fpc), a=Math.max(-1,Math.min(1,env_*tf)), li=Math.round((a+1)/2*(I.NL-1));
-        ctx.imageSmoothingEnabled=true; ctx.drawImage(I.imgs[li],I.px0,I.py0,I.pw,I.ph); }
+        ctx.imageSmoothingEnabled=true; ctx.drawImage(I.imgs[li],I.px0,I.py0,I.pw,I.ph); nflCross(ctx,env,Fx); }
       f++; FD.raf=requestAnimationFrame(tick); };
     FD.raf=requestAnimationFrame(tick); }
   function fdEnd(tok){ if(tok.dead||!FD.active||FD.phase!=="wait") return; const it=FD.tr, seen=FD.resp; FD.n++; FD.log.push({kind:it.kind,i:it.i,lc:it.lc,seen});

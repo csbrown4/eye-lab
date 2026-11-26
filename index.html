@@ -6731,7 +6731,8 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     if(!why){ const o=JSON.parse(localStorage.getItem(CRUMB_K)||"null"); if(o&&o.on) why=`The page closed or reloaded last time while the camera was in use (last step: ${o.stage}).`; }
     try{ localStorage.removeItem(CRUMB_K); }catch(e){}
     if(why){ LD.crashWhy=why; setTimeout(()=>ldSet(why),500); }
-    else if(APP_BRIDGE&&APP_BRIDGE.version) setTimeout(()=>{ if(!LD.on) ldSet(`Camera off. (Eye Lab app build ${APP_BRIDGE.version()}.)`); },500); }catch(e){}
+    else if(APP_BRIDGE&&APP_BRIDGE.version) setTimeout(()=>{ if(!LD.on) ldSet(`Camera off. (Eye Lab app build ${APP_BRIDGE.version()}.)`); },500);
+    else setTimeout(()=>{ if(!LD.on) ldSet(`Camera off. (Running in the browser${/Android/i.test(navigator.userAgent)?`, Chrome ${(navigator.userAgent.match(/Chrome\/(\d+)/)||[])[1]||"?"}`:""}, not the Eye Lab app.)`); },500); }catch(e){}
   $("ldCal").onclick=()=>{ if(!LD.on){ ldSet("Start the camera first."); return; } LD.calBuf=[]; };
   $("ldFollow").checked=!!S.ldFollow; $("ldFollow").onchange=e=>{ S.ldFollow=e.target.checked; ldChip(); save(); };
   ldChip();

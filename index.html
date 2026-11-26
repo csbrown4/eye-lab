@@ -336,6 +336,9 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
     </div></div>
     <div class="ng" data-g="ne"><button type="button" class="nh" aria-expanded="true"><span class="car" aria-hidden="true"></span><span class="nt">Neuro &amp; fields</span><i class="nc">5</i></button><div class="nb">
       <button type="button" class="ni" data-m="v"><span>Visual field</span></button>
+      <button type="button" class="ni" data-m="μ"><span>Hemifield balance<span class="new beta">BETA</span></span></button>
+      <button type="button" class="ni" data-m="ρ"><span>Ring perimetry<span class="new beta">BETA</span></span></button>
+      <button type="button" class="ni" data-m="φ"><span>Frequency doubling<span class="new beta">BETA</span></span></button>
       <button type="button" class="ni" data-m="r"><span>Red desaturation</span></button>
       <button type="button" class="ni" data-m="m"><span>Motion-defined form</span></button>
     </div></div>
@@ -375,7 +378,7 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
             <option value="4">6/24 equivalent</option>
           </select>
         </label>
-        <label data-modes="THSFWDACXGVKBMEPYQNROJfvrcdebkmsoaxitwyhjlgzq1234567890" id="eyeWrap"><span id="eyeLbl">Maddox rod over</span>
+        <label data-modes="THSFWDACXGVKBMEPYQNROJfvrcdebkmsoaxitwyhjlgzq1234567890μρφ" id="eyeWrap"><span id="eyeLbl">Maddox rod over</span>
           <div class="seg" role="group" aria-label="Eye">
             <button type="button" id="eOD">OD (right)</button>
             <button type="button" id="eOS">OS (left)</button>
@@ -699,6 +702,10 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
     </section>
 
     <div class="panels">
+  <section class="card" data-modes="μρφ">
+    <h2>Results map</h2>
+    <div id="nflChart"></div>
+  </section>
   <section class="card" data-modes="v">
     <h2>Field map</h2>
     <div id="vfChart"></div>
@@ -1209,7 +1216,7 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
   }
 
   // ===== tests added in v17: tonic vergence, Maxwell's spot, vernier acuity, blur suppression =====
-  const TMETA = {"w": {"g": "Colour", "n": "Tritan test", "d": "Tritan (S-cone) threshold by odd-one-out on large soft patches, calibrated colours, age-adjusted provisional limit.", "k": ["colour", "tritan", "blue-yellow", "acquired"]}, "3": {"g": "Fusion & suppression", "n": "Sustained binocular stability", "d": "Percentage of time single, suppressed (each eye) or diplopic over 30–120 s, with an optional prism load.", "k": ["rg", "fusion", "suppression", "intermittent"]}, "4": {"g": "Stereo & correspondence", "n": "Depth-cue conflict", "d": "Relative weight of stereo versus perspective in judging slant, from cue-conflict surfaces.", "k": ["rg", "stereo", "perspective"]}, "5": {"g": "Accommodation", "n": "Astigmatism (lens-free)", "d": "Cylinder and axis from the eye's own chromatic aberration: coloured line patches compared by colour and by orientation, no lenses.", "k": ["refraction", "cylinder", "chromatic"]}, "9": {"g": "Accommodation", "n": "Anisometropia (lens-free)", "d": "Interocular focus difference and accommodative lag from red/green chromatic focus through the dichoptic glasses.", "k": ["rg", "refraction", "aniso"]}, "0": {"g": "Fusion & suppression", "n": "Anisometropia tolerance", "d": "Stereo threshold with blur (monovision) or a size difference (aniseikonia) added to one eye.", "k": ["rg", "monovision", "aniseikonia"]}, "8": {"g": "Strabismus & motility", "n": "Cover test", "d": "Dichoptic cover with flashed lines (H and V, each eye, DVD), or a camera-tracked cover–uncover and alternate cover.", "k": ["rg", "phoria", "tropia", "camera"]}, "6": {"g": "Retina, media & glare", "n": "Moreland's blue arcs", "d": "Entoptic blue arcs from a red bar in the dark-adapted eye: nerve fibre activity, experimental.", "k": ["entoptic", "optic nerve"]}, "7": {"g": "Retina, media & glare", "n": "Haidinger's brushes", "d": "Macular pigment brushes in the screen's polarised blue light: fixation (eccentric fixation) and macular pigment.", "k": ["entoptic", "fixation", "macula"]}, "T": {"g": "Phoria", "n": "Thorington", "d": "Maddox rod streak read on a calibrated prism-dioptre scale.", "k": ["maddox", "pen"]}, "H": {"g": "Phoria", "n": "Howell", "d": "6 Δ base-down dissociation with an accommodation lock, at 33 cm.", "k": ["prism"]}, "S": {"g": "Phoria", "n": "Schober", "d": "Red cross for one eye, green rings for the other.", "k": ["rg"]}, "V": {"g": "Vergence", "n": "Ranges & facility", "d": "Software prism: smooth blur, break and recovery ramps, and jump facility.", "k": ["rg"]}, "K": {"g": "Vergence", "n": "Adaptation", "d": "How quickly the phoria shifts toward a sustained vergence demand, and how it decays.", "k": ["rg"]}, "F": {"g": "Vergence", "n": "Fixation disparity", "d": "Graded nonius pairs under fusion, the fixation disparity curve, and a compensation check.", "k": ["rg", "prism"]}, "N": {"g": "Vergence", "n": "Tonic vergence", "d": "Where vergence rests with nothing to fuse and nothing sharp to focus on.", "k": ["rg"]}, "W": {"g": "Fusion & suppression", "n": "Worth 4 dot", "d": "Fusion, suppression or diplopia, at an exact visual angle.", "k": ["rg"]}, "D": {"g": "Stereo & correspondence", "n": "Stereo", "d": "Random-dot plates for screening, or a fine line-stereo staircase down to a few arcseconds.", "k": ["rg"]}, "A": {"g": "Stereo & correspondence", "n": "Aniseikonia", "d": "Size-match two half squares in 0.5% steps.", "k": ["rg"]}, "C": {"g": "Stereo & correspondence", "n": "Cyclo", "d": "Torsional deviation with red-green lines or double Maddox.", "k": ["rg", "maddox"]}, "M": {"g": "Fusion & suppression", "n": "Suppression map", "d": "Dichoptic probes map suppression zones out to 8°.", "k": ["rg"]}, "E": {"g": "Fusion & suppression", "n": "Eye dominance", "d": "Contrast balance point between the eyes, in dB.", "k": ["rg"]}, "Y": {"g": "Fusion & suppression", "n": "Binocular acuity", "d": "One eye's acuity measured with both eyes open.", "k": ["rg"]}, "R": {"g": "Fusion & suppression", "n": "Blur suppression", "d": "How much defocus one eye can carry before binocular vision looks blurred: a monovision tolerance test.", "k": ["rg"]}, "X": {"g": "Accommodation", "n": "Facility", "d": "±2.00 D or 12 BO / 3 BI flipper facility with a timer.", "k": ["flip", "rg"]}, "U": {"g": "Accommodation", "n": "Duochrome", "d": "Red-green near duochrome for lag and add checks.", "k": ["none"]}, "J": {"g": "Acuity & contrast", "n": "Vernier acuity", "d": "Hyperacuity for each eye, compared with letter acuity to separate optical from neural loss.", "k": ["none"]}, "O": {"g": "Retina, media & glare", "n": "Maxwell's spot", "d": "An entoptic image of the fovea shows where the eye is really pointing.", "k": ["none"]}, "L": {"g": "Retina, media & glare", "n": "Halometer", "d": "Map of the glare halo around a bright source.", "k": ["none"]}, "G": {"g": "Strabismus & motility", "n": "Hess / Lancaster", "d": "Near Hess screen in nine gazes, with optional torsion.", "k": ["rg"]}, "Q": {"g": "Tools", "n": "Prism check", "d": "Measures any prism's true power on a dissociated scale.", "k": ["rg", "prism"]}, "p": {"g": "Accommodation", "n": "Near points", "d": "Push-up amplitude and near point of convergence, with the camera measuring your distance as you lean in.", "k": ["none"]}, "i": {"g": "Colour", "n": "Ishihara-style plates", "d": "Generated dot plates along cone-confusion lines: a 12-plate screening set and a 39-plate detailed set with graded red–green, protan/deutan classification and tritan plates.", "k": ["none"]}, "t": {"g": "Acuity & contrast", "n": "N-point reading card", "d": "Near reading card in N notation at true physical size, with M and logMAR equivalents.", "k": ["none"]}, "x": {"g": "Accommodation", "n": "Fused cross cylinder", "d": "Accommodative lag with a ±0.50 cross cylinder and plus lenses: binocular, monocular, or dichoptic with one cross cylinder.", "k": ["jcc", "rg"]}, "I": {"g": "Accommodation", "n": "Chromatic lag", "d": "A chromatic optometer: the eye's own colour fringing measures how far focus lags behind the target, with no lenses.", "k": ["none", "flip"]}, "f": {"g": "Phoria", "n": "Flashed phoria", "d": "Forced-choice dissociated phoria from brief flashes, with its own uncertainty. Works at near and at distance.", "k": ["rg"]}, "v": {"g": "Neuro & fields", "n": "Visual field", "d": "24-2 or 10-2 pattern, Bayesian thresholds (dB map) or threshold-related screening, with blind-spot, false-positive and false-negative catch trials.", "k": ["none"]}, "r": {"g": "Neuro & fields", "n": "Red desaturation", "d": "How much red saturation, or brightness, one eye loses compared with the other.", "k": ["none"]}, "c": {"g": "Acuity & contrast", "n": "Contrast", "d": "Letter contrast sensitivity and low-contrast acuity, with dithering for contrasts finer than the screen's 256 levels.", "k": ["none"]}, "e": {"g": "Strabismus & motility", "n": "Saccades & pursuit", "d": "Pursuit gain and catch-up saccades, saccade latency and accuracy, antisaccades and nine-gaze motility tracked by the camera; plus camera-free versions.", "k": ["none"]}, "b": {"g": "Fusion & suppression", "n": "Binocular combination", "d": "Binocular balance by orientation combination and by dichoptic motion, suppression by dichoptic global motion, and rivalry dynamics.", "k": ["rg"]}, "n": {"g": "Vergence", "n": "Reserves & AC/A", "d": "Positive and negative fusional vergence with a Risley at near and 3 m, calculated, gradient and proximal AC/A, Sheard and Percival.", "k": ["prism"]}, "k": {"g": "Colour", "n": "Colour vision", "d": "Cone-confusion-line thresholds (protan, deutan, tritan) in luminance noise, plus screening plates.", "k": ["none"]}, "m": {"g": "Neuro & fields", "n": "Motion-defined form", "d": "Digits visible only through motion: a test of the motion pathway, sensitive after optic neuritis.", "k": ["none"]}, "s": {"g": "Retina, media & glare", "n": "Straylight", "d": "Intraocular light scatter by the compensation-comparison method (as in the C-Quant).", "k": ["none"]}, "d": {"g": "Acuity & contrast", "n": "Distance acuity", "d": "A logMAR line at the exact size for the distance (3 m or more), with a duochrome.", "k": ["none"]}, "l": {"g": "Strabismus & motility", "n": "Binocular single vision field", "d": "Where in the field of gaze the eyes stay single, charted on rings out to 40°.", "k": ["rg"]}, "z": {"g": "Colour", "n": "Colour arrangement", "d": "A D-15-style hue arrangement on the calibrated screen: the type of defect from the pattern of errors, with confusion and selectivity indices.", "k": ["none"]}};
+  const TMETA = {"w": {"g": "Colour", "n": "Tritan test", "d": "Tritan (S-cone) threshold by odd-one-out on large soft patches, calibrated colours, age-adjusted provisional limit.", "k": ["colour", "tritan", "blue-yellow", "acquired"]}, "3": {"g": "Fusion & suppression", "n": "Sustained binocular stability", "d": "Percentage of time single, suppressed (each eye) or diplopic over 30–120 s, with an optional prism load.", "k": ["rg", "fusion", "suppression", "intermittent"]}, "4": {"g": "Stereo & correspondence", "n": "Depth-cue conflict", "d": "Relative weight of stereo versus perspective in judging slant, from cue-conflict surfaces.", "k": ["rg", "stereo", "perspective"]}, "5": {"g": "Accommodation", "n": "Astigmatism (lens-free)", "d": "Cylinder and axis from the eye's own chromatic aberration: coloured line patches compared by colour and by orientation, no lenses.", "k": ["refraction", "cylinder", "chromatic"]}, "9": {"g": "Accommodation", "n": "Anisometropia (lens-free)", "d": "Interocular focus difference and accommodative lag from red/green chromatic focus through the dichoptic glasses.", "k": ["rg", "refraction", "aniso"]}, "0": {"g": "Fusion & suppression", "n": "Anisometropia tolerance", "d": "Stereo threshold with blur (monovision) or a size difference (aniseikonia) added to one eye.", "k": ["rg", "monovision", "aniseikonia"]}, "8": {"g": "Strabismus & motility", "n": "Cover test", "d": "Dichoptic cover with flashed lines (H and V, each eye, DVD), or a camera-tracked cover–uncover and alternate cover.", "k": ["rg", "phoria", "tropia", "camera"]}, "6": {"g": "Retina, media & glare", "n": "Moreland's blue arcs", "d": "Entoptic blue arcs from a red bar in the dark-adapted eye: nerve fibre activity, experimental.", "k": ["entoptic", "optic nerve"]}, "7": {"g": "Retina, media & glare", "n": "Haidinger's brushes", "d": "Macular pigment brushes in the screen's polarised blue light: fixation (eccentric fixation) and macular pigment.", "k": ["entoptic", "fixation", "macula"]}, "T": {"g": "Phoria", "n": "Thorington", "d": "Maddox rod streak read on a calibrated prism-dioptre scale.", "k": ["maddox", "pen"]}, "H": {"g": "Phoria", "n": "Howell", "d": "6 Δ base-down dissociation with an accommodation lock, at 33 cm.", "k": ["prism"]}, "S": {"g": "Phoria", "n": "Schober", "d": "Red cross for one eye, green rings for the other.", "k": ["rg"]}, "V": {"g": "Vergence", "n": "Ranges & facility", "d": "Software prism: smooth blur, break and recovery ramps, and jump facility.", "k": ["rg"]}, "K": {"g": "Vergence", "n": "Adaptation", "d": "How quickly the phoria shifts toward a sustained vergence demand, and how it decays.", "k": ["rg"]}, "F": {"g": "Vergence", "n": "Fixation disparity", "d": "Graded nonius pairs under fusion, the fixation disparity curve, and a compensation check.", "k": ["rg", "prism"]}, "N": {"g": "Vergence", "n": "Tonic vergence", "d": "Where vergence rests with nothing to fuse and nothing sharp to focus on.", "k": ["rg"]}, "W": {"g": "Fusion & suppression", "n": "Worth 4 dot", "d": "Fusion, suppression or diplopia, at an exact visual angle.", "k": ["rg"]}, "D": {"g": "Stereo & correspondence", "n": "Stereo", "d": "Random-dot plates for screening, or a fine line-stereo staircase down to a few arcseconds.", "k": ["rg"]}, "A": {"g": "Stereo & correspondence", "n": "Aniseikonia", "d": "Size-match two half squares in 0.5% steps.", "k": ["rg"]}, "C": {"g": "Stereo & correspondence", "n": "Cyclo", "d": "Torsional deviation with red-green lines or double Maddox.", "k": ["rg", "maddox"]}, "M": {"g": "Fusion & suppression", "n": "Suppression map", "d": "Dichoptic probes map suppression zones out to 8°.", "k": ["rg"]}, "E": {"g": "Fusion & suppression", "n": "Eye dominance", "d": "Contrast balance point between the eyes, in dB.", "k": ["rg"]}, "Y": {"g": "Fusion & suppression", "n": "Binocular acuity", "d": "One eye's acuity measured with both eyes open.", "k": ["rg"]}, "R": {"g": "Fusion & suppression", "n": "Blur suppression", "d": "How much defocus one eye can carry before binocular vision looks blurred: a monovision tolerance test.", "k": ["rg"]}, "X": {"g": "Accommodation", "n": "Facility", "d": "±2.00 D or 12 BO / 3 BI flipper facility with a timer.", "k": ["flip", "rg"]}, "U": {"g": "Accommodation", "n": "Duochrome", "d": "Red-green near duochrome for lag and add checks.", "k": ["none"]}, "J": {"g": "Acuity & contrast", "n": "Vernier acuity", "d": "Hyperacuity for each eye, compared with letter acuity to separate optical from neural loss.", "k": ["none"]}, "O": {"g": "Retina, media & glare", "n": "Maxwell's spot", "d": "An entoptic image of the fovea shows where the eye is really pointing.", "k": ["none"]}, "L": {"g": "Retina, media & glare", "n": "Halometer", "d": "Map of the glare halo around a bright source.", "k": ["none"]}, "G": {"g": "Strabismus & motility", "n": "Hess / Lancaster", "d": "Near Hess screen in nine gazes, with optional torsion.", "k": ["rg"]}, "Q": {"g": "Tools", "n": "Prism check", "d": "Measures any prism's true power on a dissociated scale.", "k": ["rg", "prism"]}, "p": {"g": "Accommodation", "n": "Near points", "d": "Push-up amplitude and near point of convergence, with the camera measuring your distance as you lean in.", "k": ["none"]}, "i": {"g": "Colour", "n": "Ishihara-style plates", "d": "Generated dot plates along cone-confusion lines: a 12-plate screening set and a 39-plate detailed set with graded red–green, protan/deutan classification and tritan plates.", "k": ["none"]}, "t": {"g": "Acuity & contrast", "n": "N-point reading card", "d": "Near reading card in N notation at true physical size, with M and logMAR equivalents.", "k": ["none"]}, "x": {"g": "Accommodation", "n": "Fused cross cylinder", "d": "Accommodative lag with a ±0.50 cross cylinder and plus lenses: binocular, monocular, or dichoptic with one cross cylinder.", "k": ["jcc", "rg"]}, "I": {"g": "Accommodation", "n": "Chromatic lag", "d": "A chromatic optometer: the eye's own colour fringing measures how far focus lags behind the target, with no lenses.", "k": ["none", "flip"]}, "f": {"g": "Phoria", "n": "Flashed phoria", "d": "Forced-choice dissociated phoria from brief flashes, with its own uncertainty. Works at near and at distance.", "k": ["rg"]}, "v": {"g": "Neuro & fields", "n": "Visual field", "d": "24-2 or 10-2 pattern, Bayesian thresholds (dB map) or threshold-related screening, with blind-spot, false-positive and false-negative catch trials.", "k": ["none"]}, "r": {"g": "Neuro & fields", "n": "Red desaturation", "d": "How much red saturation, or brightness, one eye loses compared with the other.", "k": ["none"]}, "c": {"g": "Acuity & contrast", "n": "Contrast", "d": "Letter contrast sensitivity and low-contrast acuity, with dithering for contrasts finer than the screen's 256 levels.", "k": ["none"]}, "e": {"g": "Strabismus & motility", "n": "Saccades & pursuit", "d": "Pursuit gain and catch-up saccades, saccade latency and accuracy, antisaccades and nine-gaze motility tracked by the camera; plus camera-free versions.", "k": ["none"]}, "b": {"g": "Fusion & suppression", "n": "Binocular combination", "d": "Binocular balance by orientation combination and by dichoptic motion, suppression by dichoptic global motion, and rivalry dynamics.", "k": ["rg"]}, "n": {"g": "Vergence", "n": "Reserves & AC/A", "d": "Positive and negative fusional vergence with a Risley at near and 3 m, calculated, gradient and proximal AC/A, Sheard and Percival.", "k": ["prism"]}, "k": {"g": "Colour", "n": "Colour vision", "d": "Cone-confusion-line thresholds (protan, deutan, tritan) in luminance noise, plus screening plates.", "k": ["none"]}, "m": {"g": "Neuro & fields", "n": "Motion-defined form", "d": "Digits visible only through motion: a test of the motion pathway, sensitive after optic neuritis.", "k": ["none"]}, "s": {"g": "Retina, media & glare", "n": "Straylight", "d": "Intraocular light scatter by the compensation-comparison method (as in the C-Quant).", "k": ["none"]}, "d": {"g": "Acuity & contrast", "n": "Distance acuity", "d": "A logMAR line at the exact size for the distance (3 m or more), with a duochrome.", "k": ["none"]}, "l": {"g": "Strabismus & motility", "n": "Binocular single vision field", "d": "Where in the field of gaze the eyes stay single, charted on rings out to 40°.", "k": ["rg"]}, "z": {"g": "Colour", "n": "Colour arrangement", "d": "A D-15-style hue arrangement on the calibrated screen: the type of defect from the pattern of errors, with confusion and selectivity indices.", "k": ["none"]}, "μ": {"g": "Neuro & fields", "n": "Hemifield balance", "d": "Mirror-image spots above and below fixation, matched along nerve fibre bundles: one-sided (arcuate) loss pointed to a disc sector, no calibration needed.", "k": ["glaucoma", "nerve fibre", "arcuate", "OCT"]}, "ρ": {"g": "Neuro & fields", "n": "Ring perimetry", "d": "Vanishing ring targets (Frisén high-pass resolution): the smallest ring seen estimates local ganglion cell capacity, by disc sector.", "k": ["glaucoma", "ganglion cell", "neural capacity"]}, "φ": {"g": "Neuro & fields", "n": "Frequency doubling", "d": "Flickering coarse gratings in the FDT C-20 layout: magnocellular loss relative to the eye's own centre.", "k": ["glaucoma", "FDT", "frequency doubling"]}};
   const KITS = {jcc:'<span class="tag">⊕ ±0.50 cross cylinder + trial lenses</span>', rg:'<span class="tag"><i class="dot dr"></i><i class="dot dg"></i>Red-green flippers</span>', prism:'<span class="tag">▲ Prism or Risley</span>', maddox:'<span class="tag">≡ Maddox rod</span>', pen:'<span class="tag">✺ Penlight</span>', flip:'<span class="tag">± Flippers</span>', none:'<span class="tag">Screen only</span>'};
   const lin = v => v<=0.04045 ? v/12.92 : Math.pow((v+0.055)/1.055,2.4);      // sRGB/P3 decode
   const enc = v => v<=0.0031308 ? 12.92*v : 1.055*Math.pow(v,1/2.4)-0.055;     // sRGB/P3 encode
@@ -3373,6 +3380,7 @@ match N, v and the clear-zone radius to the real phenomenon by switching back an
         else { const c=k=>R_.pts.filter(p=>p.st===k).length, q=(fx,fy)=>R_.pts.filter(p=>fx(p.x)&&fy(p.y)&&p.st&&p.st!=="seen").length;
           res=`<span>seen <b>${c("seen")}</b> · relative (missed, seen at maximum) <b>${c("relative")}</b> · absolute <b>${c("absolute")}</b> of ${R_.pts.length}</span>
             <span>missed by quadrant: upper left ${q(x=>x<0,y=>y>0)} · upper right ${q(x=>x>0,y=>y>0)} · lower left ${q(x=>x<0,y=>y<0)} · lower right ${q(x=>x>0,y=>y<0)}</span><span>${rel}${unrel?" · <b>unreliable: repeat</b>":""}</span>`; }
+        if(R_.thr&&C.A&&pat==="24-2"){ const H_=hwEstimate(C.A,S.eye.v,S.asAge); res+=`<span>estimated ganglion cells (Harwerth, anchored to this eye's own general height): <b>${Math.round(H_.tot)}%</b> of expected over the tested points · by disc sector: ${NFL_SEC.map(([n])=>H_.pct[n]!=null?`${n} ${Math.round(H_.pct[n])}%`:null).filter(Boolean).join(" · ")}</span>`; C.svg+=nflWheel(H_.pct,S.eye.v,"estimated ganglion cells, %"); }
         chartHtml=C.svg+`<p style="margin:6px 0 0;font-size:.86rem" class="muted">${R_.thr?"Numbers = screen dB (higher = dimmer spot seen = more sensitive); &lt;0 = not seen at the brightest; amber outline = 5–9 dB, red = 9 dB or more below the eye's own hill of vision.":"Filled = seen at the threshold-related level · amber = missed twice, seen at maximum · red square = not seen at maximum."}</p>`; }
       const ch=$("vfChart"); if(ch) ch.innerHTML=chartHtml;
       const done=VF2.pts.filter(p=>p.done).length;
@@ -3549,6 +3557,7 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
         steps:`<li>Lens glasses on (${A} lens over ${S.eye["2"]}); calibrate the glasses. Full screen, room dim.</li><li>Press S. Look at the cross. Faint vertical stripes flash to the left or right of it. Sometimes clear horizontal stripes appear on both sides at the same time; ignore those and look for the vertical ones. Which side were the vertical stripes, ← or →? Guess when unsure. 40 answers.</li>` }; } };
 
   // ======================= tests added in v108 =======================
+  ["μ","ρ","φ"].forEach(m=>{ S.dist=S.dist||{}; S.eye=S.eye||{}; if(S.dist[m]==null) S.dist[m]=30; if(S.eye[m]==null) S.eye[m]="OD"; });
   [["asN",6],["mbLvl",35],["mbDur",500],["hbPulse","1"],["hbField","blue"],["ctMethod","soft"],["tlMode","blur"],["tlEye","OD"],["coPupil",S.coPupil||4]].forEach(([k,v])=>{ if(S[k]==null) S[k]=v; });
   // colour panel of the chromatic tests: black pattern (mask M, 0..1) on a red or green field with a soft (raised-cosine)
   // edge, so the field's own outline carries no sharp edge that the eye's red/green focus difference could act on
@@ -4162,6 +4171,305 @@ unreliable if more than 25% of catches get “arcs” or more than 20% of red fl
         opt:`<p>Purkinje described faint blue arcs that appear when a small red light is seen just beside fixation in the dark; Moreland studied them in detail. They trace the paths of the nerve fibres leaving the stimulated patch of retina, arching above and below the fovea toward the optic disc, and are thought to come from those fibres' activity affecting their neighbours: a rare chance to see the nerve fibre layer at work. They need long-wavelength light (red or orange), are brightest right at the bar's onset and fade within a second, so the bar is flashed.</p><p>Each arc belongs to one half of the retina, so the test asks for the upper and lower arcs separately: nerve fibre damage tends to respect the horizontal line (glaucoma often starts in one half). In glaucoma, not seeing the arcs has been associated with larger cups, worse mean defect and an abnormal glaucoma hemifield test (Pagano and colleagues, American Ophthalmological Society thesis). Green bars of equal brightness and blank flashes are catch trials, and one answer picture shows arcs going the wrong way; picking those means guessing, which makes the run unreliable.</p><p>Many healthy people never see the arcs, so absence alone means little. The useful findings are an arc that's reliably seen on one side and not the other, or in one eye and not the other, with clean catch trials.</p>`,
         rows:`<tr><th>Pattern</th><th>Interpretation (experimental)</th></tr><tr><td>Both arcs, both eyes, catches clean</td><td>Normal</td></tr><tr><td>One arc reliably missing</td><td>Possible nerve fibre damage in that half of the retina (arc above fixation = inferior retina); correlate with fields and OCT</td></tr><tr><td>Seen in one eye only</td><td>Possible nerve fibre damage in the other, if reliably seen in the first</td></tr><tr><td>Never seen in either eye</td><td>Common; uninformative</td></tr><tr><td>Arcs on catch flashes</td><td>Unreliable run</td></tr>`,
         steps:`<li>Dark room, a few minutes in the dark first. Screen brightness low. No glasses or filters needed; cover the eye not tested, and set it above.</li><li>Press S and keep looking at the dim grey dot. A bar flashes beside it. Watch at the moment it appears for faint bluish arcs leaving its top and bottom.</li><li>Pick the picture that matches what you saw: 1 both arcs, 2 upper only, 3 lower only, 4 arcs going the other way, 5 nothing (tap the button on a tablet). Some flashes are catch trials, so “nothing” is often the right answer. 20 flashes, about 2 minutes. Then the other eye.</li>` }; } };
+
+  // ================= nerve fibre layer / ganglion cell tests (v143) =================
+  // Shared geometry. Field coordinates in degrees as the patient sees them (+x right, +y up), for the tested eye.
+  // Retina: Jansonius et al. 2009 trajectory model, right-eye retinal coordinates (+x nasal, +y superior, disc at 15°, 2°).
+  // A field point maps to the retina by flipping up/down (and left/right for a left eye); its nerve fibre enters the
+  // disc at angle φ0, which is turned into a Garway-Heath disc sector (the sectors on an OCT nerve fibre printout).
+  function nflJPhi(phi0,r){ const r0=4; if(r<=r0) return phi0; let b,c;
+    if(phi0>=0){ c=1.9+1.4*Math.tanh((phi0-121)/14); b=Math.exp(-1.9+3.9*Math.tanh(-(phi0-121)/14)); }
+    else { c=1.0+0.5*Math.tanh((-phi0-90)/25); b=-Math.exp(0.7+1.5*Math.tanh(-(-phi0-90)/25)); }
+    return phi0+b*Math.pow(r-r0,c); }
+  const nflYs=x=>x>0?2*(x/15)**2:0;
+  function nflToDisc(x,y){ const X=x-15, Y=y-nflYs(x); return {r:Math.hypot(X,Y),phi:Math.atan2(Y,X)*180/Math.PI}; }
+  function nflFromDisc(r,phi){ const x=r*Math.cos(phi*Math.PI/180)+15; return [x,r*Math.sin(phi*Math.PI/180)+nflYs(x)]; }
+  const nflRet=(x,y,eye)=>[eye==="OS"?-x:x,-y];                         // field → right-eye-style retinal coordinates
+  const nflField=(xr,yr,eye)=>[eye==="OS"?-xr:xr,-yr];
+  function nflPhi0(xr,yr){ const P=nflToDisc(xr,yr), sup=yr>=nflYs(xr);
+    if(xr>13||P.r<=4.5) return {phi0:P.phi,direct:true};                  // beyond or next to the disc: straight in
+    const f=p=>{ let d=nflJPhi(p,P.r)-P.phi; while(d>180)d-=360; while(d<-180)d+=360; return Math.abs(d); };
+    let best=sup?120:-120, bv=1e9; for(let p=sup?60:-180;p<=(sup?180:-70);p+=0.5){ const v=f(p); if(v<bv){ bv=v; best=p; } }
+    return bv>4?{phi0:P.phi,direct:true}:{phi0:best,direct:false}; }
+  // Garway-Heath sectors, degrees round the disc from temporal (toward the fovea) through superior
+  const NFL_SEC=[["T",311,40],["TS",41,80],["NS",81,120],["N",121,230],["NI",231,270],["TI",271,310]];
+  const nflGH=phi0=>((180-phi0)%360+360)%360;
+  function nflSector(x,y,eye){ const [xr,yr]=nflRet(x,y,eye), q=nflPhi0(xr,yr), g=nflGH(q.phi0);
+    const s=NFL_SEC.find(([n,a,b])=>a>b?(g>=a||g<=b):(g>=a&&g<=b)); return {sec:s?s[0]:"T",gh:g,phi0:q.phi0}; }
+  const NFL_SECNAME={T:"temporal",TS:"superotemporal",NS:"superonasal",N:"nasal",NI:"inferonasal",TI:"inferotemporal"};
+  // fibre path through a field point, as field coordinates (for drawing)
+  function nflPath(x,y,eye){ const [xr,yr]=nflRet(x,y,eye), q=nflPhi0(xr,yr), P=nflToDisc(xr,yr), out=[];
+    if(q.direct){ for(let r=4;r<=P.r;r+=0.5) out.push(nflField(...nflFromDisc(r,P.phi),eye)); return out; }
+    for(let r=4;r<=Math.min(P.r+4,28);r+=0.5) out.push(nflField(...nflFromDisc(r,nflJPhi(q.phi0,r)),eye)); return out; }
+  // Watson 2014: midget ganglion cell receptive field spacing (degrees) in the visual field, ON or OFF lattice
+  const WAT={t:[0.9851,1.058,22.14],s:[0.9935,1.035,16.35],n:[0.9729,1.084,7.633],i:[0.996,0.9932,12.13]};
+  function watSp(r,k){ const [a,r2,re]=WAT[k], d=33162.3*(a*Math.pow(1+r/r2,-2)+(1-a)*Math.exp(-r/re)), f=0.8928/(1+r/41.03); return Math.sqrt(2/(Math.sqrt(3)*f*d/2)); }
+  function midgetSpacing(x,y,eye){ const r=Math.hypot(x,y); if(r<1e-6) return watSp(0,"t"); const temp=eye==="OS"?x<0:x>0;
+    const sh=watSp(r,temp?"t":"n"), sv=watSp(r,y>=0?"s":"i"); return Math.sqrt(x*x*sh*sh+y*y*sv*sv)/r; }
+  // where the fixation mark goes so that every listed field point (with its radius, deg) fits; null if they can't
+  function nflFix(env,pts){ const W=env.W*env.dpr, H=env.H*env.dpr, k=env.d/env.dev, m=6;
+    let xlo=-Infinity,xhi=Infinity,ylo=-Infinity,yhi=Infinity;
+    pts.forEach(([x,y,rad])=>{ const xa=k*Math.tan((x-rad)*Math.PI/180), xb=k*Math.tan((x+rad)*Math.PI/180), ya=-k*Math.tan((y+rad)*Math.PI/180), yb=-k*Math.tan((y-rad)*Math.PI/180);
+      xlo=Math.max(xlo,m-xa); xhi=Math.min(xhi,W-m-xb); ylo=Math.max(ylo,m-ya); yhi=Math.min(yhi,H-m-yb); });
+    if(xlo>xhi||ylo>yhi) return null; const cl=(v,a,b)=>Math.max(a,Math.min(b,v)); return {x:cl(W/2,xlo,xhi),y:cl(H/2,ylo,yhi)}; }
+  const nflPx=(env,F,x,y)=>[F.x+env.d*Math.tan(x*Math.PI/180)/env.dev, F.y-env.d*Math.tan(y*Math.PI/180)/env.dev];
+  function nflCross(ctx,env,F,col){ const a=Math.max(4,ntDegPx(env,0.35)), t=Math.max(2,0.05*ntPPD(env)); ctx.fillStyle=col||"#000"; ctx.fillRect(F.x-a,F.y-t/2,2*a,t); ctx.fillRect(F.x-t/2,F.y-a,t,2*a); }
+  // grey with dithering between 8-bit codes, so luminance steps far below one code are exact on average
+  function nflCode(L,Y){ let c=0; while(c<254&&L[c+1]<=Y) c++; const p=Math.max(0,Math.min(1,(Y-L[c])/Math.max(1e-9,L[c+1]-L[c]))); return c+(Math.random()<p?1:0); }
+  // small disc-sector chart (OCT style: T on the side of the fovea); vals: {T:..} as a % of expected, or text
+  function nflWheel(vals,eye,title){ const R=52, cx=75, cy=62, temporalLeft=eye==="OD"; let s=`<svg viewBox="0 0 150 146" style="width:180px;display:inline-block;vertical-align:top">`;
+    const pt=(deg,rr)=>{ const th=deg*Math.PI/180, sx=temporalLeft?-1:1; return [cx+sx*rr*Math.cos(th),cy-rr*Math.sin(th)]; };
+    NFL_SEC.forEach(([n,a,b])=>{ const a0=a, a1=b<a?b+360:b, mid=(a0+a1)/2, [x0,y0]=pt(a0,R), [x1,y1]=pt(a1+1,R), v=vals[n], col=v==null?"var(--line)":v>=85?"#3a9a5b":v>=70?"#e0a020":"#d0342c";
+      s+=`<path d="M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${R},${R} 0 ${a1-a0>180?1:0} ${temporalLeft?1:0} ${x1.toFixed(1)},${y1.toFixed(1)} Z" fill="${col}" fill-opacity=".75" stroke="var(--panel)" stroke-width="1.5"/>`;
+      const [tx,ty]=pt(mid,R*0.62); s+=`<text x="${tx.toFixed(1)}" y="${(ty+3).toFixed(1)}" text-anchor="middle" font-size="9" fill="${v==null?"currentColor":"#fff"}">${n}${v!=null?" "+Math.round(v):""}</text>`; });
+    return s+`<text x="75" y="128" text-anchor="middle" font-size="8.5" fill="currentColor">${title}</text><text x="75" y="140" text-anchor="middle" font-size="8" fill="currentColor" opacity=".7">${eye} disc, as on the OCT printout</text></svg>`; }
+
+  // ---------------- μ: hemifield balance along nerve fibre bundles ----------------
+  // Nerve fibres from the upper and lower retina never cross the horizontal raphe, and glaucoma usually starts in one
+  // half. Two identical spots flash together at mirror-image places above and below fixation, on the same arcuate
+  // bundle level; the person says which looked stronger (or same, or neither). A Bayesian staircase on the brightness
+  // difference finds the point of equal appearance for each pair: the upper spot needing more light means the upper
+  // field (lower retina) is less sensitive there. Screen brightness, pupil and media affect both spots equally and
+  // cancel. Near threshold, because well above it perceived contrast stops tracking sensitivity (contrast constancy).
+  const HB2={active:false,phase:"",tok:{},tr:null,pairs:[],n:0,s0:20,same3:0,fp:0,fpN:0,fl:0,flN:0,F:null};
+  const HB2_SITES=[[-3,3],[-9,4],[-15,5],[-6,9],[1,9],[6,12]];               // right eye, nasal field = −x; mirrored for OS
+  const HB2_R=0.86;                                                           // spot radius (Goldmann size V)
+  function hb2Sites(eye){ return HB2_SITES.map(([x,y])=>[eye==="OS"?-x:x,y]); }
+  function hb2Stop(){ HB2.active=false; HB2.phase=""; HB2.tok.dead=true; HB2.tok={}; }
+  function hb2Start(){ hb2Stop(); const env=NT["μ"].env, eye=S.eye["μ"]; if(!env) return;
+    const sites=hb2Sites(eye), F=nflFix(env,sites.flatMap(([x,y])=>[[x,y,HB2_R],[x,-y,HB2_R]]).concat([[eye==="OS"?-15:15,-1.5,HB2_R]]));
+    if(!F){ HB2.msg="The spots don't fit on this screen at this distance: sit closer (about 30 cm) or use Present full screen."; draw(); return; }
+    HB2.msg=""; Object.assign(HB2,{active:true,F,n:0,s0:20,same3:0,fp:0,fpN:0,fl:0,flN:0,log:[],tok:{},
+      pairs:sites.map(([x,y])=>({x,y,ad:PSE({lo:-10,hi:10,n:81,sLo:1,sHi:6,ns:6,minT:5,maxT:5,sdStop:0}),n:0}))});
+    const order=[]; HB2.pairs.forEach((p,i)=>{ for(let k=0;k<5;k++) order.push({kind:"pair",i}); }); for(let k=0;k<3;k++) order.push({kind:"blank"}); for(let k=0;k<2;k++) order.push({kind:"bs"});
+    HB2.order=order.sort(()=>Math.random()-0.5); HB2.N=HB2.order.length; draw(); setTimeout(()=>hb2Next(HB2.tok),1200); }
+  function hb2Next(tok){ if(tok.dead||!HB2.active) return; if(!HB2.order.length||HB2.n>=40){ hb2Finish(); return; }
+    const it=HB2.order.pop(); if(it.kind==="pair"){ const p=HB2.pairs[it.i]; it.d=Math.round(10*p.ad.next())/10; }   // d (dB) = how much brighter the upper spot is
+    HB2.tr=it; HB2.phase="show"; ntFlash(200,()=>draw(),()=>{ if(tok.dead) return; HB2.phase="answer"; draw(); },tok); }
+  function hb2Resp(a){ if(!HB2.active||HB2.phase!=="answer") return; const it=HB2.tr; HB2.n++; HB2.log.push({...it,a,s0:HB2.s0});
+    if(it.kind==="blank"){ HB2.fpN++; if(a!=="none") HB2.fp++; }
+    else if(it.kind==="bs"){ HB2.flN++; if(a!=="none") HB2.fl++; }
+    else { const p=HB2.pairs[it.i];
+      if(a==="none"){ HB2.s0=Math.max(0,HB2.s0-2); HB2.order.unshift({kind:"pair",i:it.i}); HB2.same3=0; }   // neither seen: brighter, and ask this pair again later
+      else { p.ad.update(it.d,a==="up"?true:a==="down"?false:null); p.n++;
+        if(a==="same"){ if(++HB2.same3>=3){ HB2.s0=Math.min(30,HB2.s0+1); HB2.same3=0; } } else HB2.same3=0; } }
+    HB2.phase="dark"; draw(); setTimeout(()=>hb2Next(HB2.tok),700+Math.random()*600); }
+  function hb2Finish(){ const eye=S.eye["μ"], r=ntR("μ");
+    r[eye]={pairs:HB2.pairs.map(p=>{ const e=p.ad.est(), up=nflSector(p.x,p.y,eye), lo=nflSector(p.x,-p.y,eye); return {x:p.x,y:p.y,mu:+e.mu.toFixed(1),sd:+e.sd.toFixed(1),n:p.n,secUp:up.sec,secLo:lo.sec}; }),
+      fp:HB2.fp,fpN:HB2.fpN,fl:HB2.fl,flN:HB2.flN,n:HB2.n,s0:HB2.s0,d:S.dist["μ"],when:Date.now()};
+    hb2Stop(); save(); draw(); beep(660,200); }
+  function hb2Chart(R_,eye){ const sc=7, W_=300, H_=230, cx=W_/2, cy=H_/2, P=([x,y])=>[cx+x*sc,cy-y*sc]; let s=`<svg viewBox="0 0 ${W_} ${H_}" style="width:100%;max-width:${W_+40}px;display:block" font-size="9">`;
+    s+=`<line x1="0" y1="${cy}" x2="${W_}" y2="${cy}" stroke="currentColor" stroke-opacity=".2"/><line x1="${cx}" y1="0" x2="${cx}" y2="${H_}" stroke="currentColor" stroke-opacity=".2"/>`;
+    const bx=(eye==="OS"?-15:15); s+=`<ellipse cx="${P([bx,-1.5])[0]}" cy="${P([bx,-1.5])[1]}" rx="${2.5*sc}" ry="${3*sc}" fill="none" stroke="currentColor" stroke-opacity=".4" stroke-dasharray="3 3"/>`;
+    R_.pairs.forEach(p=>{ const sig=Math.abs(p.mu)>=3&&Math.abs(p.mu)>=2*p.sd, worseUp=p.mu>0;
+      [[p.x,p.y,true],[p.x,-p.y,false]].forEach(([x,y,isUp])=>{ const bad=sig&&(isUp===worseUp), path=nflPath(x,y,eye);
+        s+=`<path d="${path.map((q,i)=>(i?"L":"M")+P(q).map(v=>v.toFixed(1)).join(" ")).join("")}" fill="none" stroke="${bad?"#d0342c":"#4a6fd0"}" stroke-opacity="${bad?0.9:0.35}" stroke-width="${bad?2:1}"/>`;
+        const [X,Y]=P([x,y]); s+=`<circle cx="${X}" cy="${Y}" r="${HB2_R*sc}" fill="${bad?"#d0342c":"#888"}"/>`; });
+      const [X,Y]=P([p.x,p.y]); s+=`<text x="${X+8}" y="${Y-6}" fill="currentColor">${p.mu>=0?"+":""}${p.mu.toFixed(1)}</text>`; });
+    return s+`<text x="4" y="12" fill="currentColor" opacity=".7">${eye} field as the patient sees it · lines: nerve fibre paths to the disc</text></svg>`; }
+  NT["μ"]={ name:"Hemifield balance",
+    ctl:`<label data-modes="μ">Run<div class="btns"><button type="button" data-nta="μ:start" class="primary">Start (S)</button><button type="button" data-nta="μ:stop">Stop</button></div></label>`,
+    stop:hb2Stop, clear(){ S.ntRes&&(S.ntRes["μ"]={}); }, act(a){ if(a==="start") hb2Start(); else { hb2Stop(); draw(); } },
+    hud(){ return !HB2.active?"S start · look at the cross":HB2.phase==="answer"?"stronger: ↑ upper · ↓ lower · Space same · N saw neither":"look at the cross"; },
+    key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ hb2Start(); return true; }
+      if(HB2.active&&HB2.phase==="answer"){ const m={ArrowUp:"up",ArrowDown:"down"," ":"same",n:"none",N:"none",ArrowLeft:"none"}[k]; if(m){ hb2Resp(m); return true; } } return false; },
+    draw(env){ this.env=env; const L=vfLumTable(), B=vfBg(), bg=`rgb(${B.c},${B.c},${B.c})`, g_=ntCv(env,bg), ctx=g_.ctx, eye=S.eye["μ"]; env.stage.style.background=bg;
+      const F=HB2.F||nflFix(env,hb2Sites(eye).flatMap(([x,y])=>[[x,y,HB2_R],[x,-y,HB2_R]]))||{x:g_.cxp,y:g_.cyp};
+      nflCross(ctx,env,F);
+      if(HB2.active&&HB2.phase==="show"&&HB2.tr.kind!=="blank"){ const it=HB2.tr, spots=[];
+        if(it.kind==="bs") spots.push([eye==="OS"?-15:15,-1.5,HB2.s0]);
+        else { const p=HB2.pairs[it.i]; spots.push([p.x,p.y,HB2.s0-it.d/2],[p.x,-p.y,HB2.s0+it.d/2]); }
+        spots.forEach(([x,y,sdb])=>{ const [X,Y]=nflPx(env,F,x,y), r=ntDegPx(env,HB2_R), Yt=B.Y+vfInc(sdb), R=Math.ceil(r), w=2*R+1, im=ntImg(ctx,w,w), D_=im.data;
+          for(let j=0;j<w;j++) for(let i=0;i<w;i++){ const q=(j*w+i)*4, c=(i-R)**2+(j-R)**2<=r*r?nflCode(L,Yt):B.c; D_[q]=D_[q+1]=D_[q+2]=c; D_[q+3]=255; }
+          ctx.putImageData(im,Math.round(X-R),Math.round(Y-R)); }); }
+      const R_=ntR("μ"), f=e=>{ const o=R_[e]; if(!o) return `${e}: –`; const sig=o.pairs.filter(p=>Math.abs(p.mu)>=3&&Math.abs(p.mu)>=2*p.sd), unrel=(o.fpN&&o.fp/o.fpN>0.34)||(o.flN&&o.fl/o.flN>0.5);
+        const mean=o.pairs.reduce((a,p)=>a+p.mu,0)/o.pairs.length;
+        return `${e}: ${o.pairs.map(p=>`${Math.abs(p.x)}°${p.x*(e==="OS"?-1:1)<0?" nasal":" temporal"}/${p.y}°: <b>${p.mu>=0?"+":""}${p.mu.toFixed(1)} ± ${p.sd.toFixed(1)} dB</b>`).join(" · ")}<br>mean ${mean>=0?"+":""}${mean.toFixed(1)} dB (+ = upper field weaker) · catches: blank ${o.fp}/${o.fpN}, blind spot ${o.fl}/${o.flN}${unrel?" · <b>unreliable: repeat</b>":""}`+
+          (sig.length&&!unrel?`<br><b>${sig.map(p=>`${p.mu>0?"upper":"lower"} spot at ${Math.abs(p.x)}°/${p.y}° weaker by ${Math.abs(p.mu).toFixed(1)} dB → ${NFL_SECNAME[p.mu>0?p.secUp:p.secLo]} (${p.mu>0?p.secUp:p.secLo}) disc sector`).join("; ")}</b>: compare with the OCT nerve fibre layer in that sector`:(unrel?"":"<br>no pair differs by 3 dB or more: balanced")); };
+      const T_=HB2.tr, readout=`<span>${HB2.msg||(HB2.active?`flash ${HB2.n+1} of about ${HB2.N} · spots ${(HB2.s0).toFixed(0)} screen dB`:"stopped")}</span><span>${f("OD")}</span><span>${f("OS")}</span>`;
+      const ch=R_[eye]?hb2Chart(R_[eye],eye):""; const sec=R_[eye]?(()=>{ const v={}; R_[eye].pairs.forEach(p=>{ const w=Math.abs(p.mu)>=3&&Math.abs(p.mu)>=2*p.sd; [[p.secUp,p.mu>0],[p.secLo,p.mu<0]].forEach(([s_,worse])=>{ const val=w&&worse?60:100; v[s_]=Math.min(v[s_]??100,val); }); }); return nflWheel(v,eye,"flagged sectors"); })():"";
+      return {readout,warns:["Experimental: a within-eye comparison, not a calibrated field. One eye at a time, other eye covered, habitual near correction, room dim. Keep your eye on the cross; answer the very first impression."],
+        chart:ch||sec?`<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start">${ch}${sec}</div>`:"",
+        eq:`6 mirror pairs (right eye, nasal = −x; mirrored for the left): ${HB2_SITES.map(([x,y])=>`(${x}, ±${y})`).join(" ")} degrees
+spots ${2*HB2_R}° (size V), 200 ms, both together; upper at s0 − d/2, lower at s0 + d/2 screen dB (d > 0: upper brighter)
+P(“upper stronger”) = Φ((d − μ)/σ), “same” = half-weight, Bayesian grid over μ (−10…+10 dB) and σ; 5 judgements per pair
+μ > 0: the upper spot needed more light to match → upper field (inferior retina) less sensitive at that bundle
+s0 starts at 20 screen dB; “neither seen” → 2 dB brighter and the pair is asked again; three “same” in a row → 1 dB dimmer (keeps it near threshold, where differences in sensitivity show)
+catches: 3 blank flashes and 2 spots in the blind spot (expected answer: neither)
+flagged: |μ| ≥ 3 dB and at least twice its ±; disc sector from the Jansonius 2009 fibre model and Garway-Heath sectors`,
+        opt:`<p>Nerve fibres from the upper and lower halves of the retina meet at the horizontal raphe but never cross it, and the commonest nerve fibre diseases (glaucoma, ischaemic optic neuropathy, branch vascular occlusions) damage one half more than the other. This test compares mirror-image places above and below fixation directly, flashing them together and asking which looked stronger. Anything that affects both spots equally (screen brightness, pupil size, cataract, attention, criterion) cancels, so it needs no calibration and no normative data: each eye is its own control.</p><p>The spots are kept near threshold, because well above threshold perceived contrast stops tracking sensitivity (contrast constancy), which would hide a loss. Each pair sits on a different arcuate bundle level; the nerve fibre model (Jansonius) traces where those fibres enter the disc, so a weak spot points to a disc sector you can compare with the OCT nerve fibre layer printout.</p><p>What it can't see: loss that is equal above and below (diffuse damage), which the ring perimetry and frequency-doubling tests are for.</p>`,
+        rows:`<tr><th>Result</th><th>Meaning (experimental)</th></tr><tr><td>All pairs within ±3 dB</td><td>Balanced</td></tr><tr><td>One or two neighbouring pairs weaker on one side</td><td>Possible arcuate loss in that bundle: check the named disc sector on OCT</td></tr><tr><td>Every pair weaker on the same side</td><td>Altitudinal pattern (e.g. ischaemic optic neuropathy), or a tilted head / eyelid: repeat with the lid lifted</td></tr><tr><td>Catches answered wrong</td><td>Unreliable: repeat</td></tr>`,
+        steps:`<li>Dim room, about 30 cm, habitual near correction, one eye covered. Set the eye being tested.</li><li>Press S and keep looking at the cross. Two spots flash at once, one above and one below. Answer: ↑ upper was stronger, ↓ lower was stronger, Space the same, N saw neither (or only noise). First impression; don't look at the spots.</li><li>About 35 flashes, 2–3 minutes. Then the other eye.</li>` }; } };
+
+  // ---------------- ρ: ring perimetry (high-pass resolution, Frisén) ----------------
+  // Ring targets: a bright core with dark borders, mean luminance equal to the background, so they vanish when they
+  // can't be resolved: detection threshold = resolution threshold. The smallest ring seen at a place is set by how far
+  // apart the surviving ganglion cells are, so (normal size ÷ measured size)² estimates the fraction of cells left
+  // there (Frisén's "neural capacity"). Normal size = k × midget ganglion cell spacing (Watson 2014) at that place;
+  // k is taken from the eye's own best half of the locations, so the result is relative to its healthiest areas.
+  const RP={active:false,phase:"",tok:{},tr:null,locs:[],n:0,fp:0,fpN:0,fl:0,flN:0,F:null};
+  const RP_LOCS=(()=>{ const L=[]; [45,135,225,315].forEach(a=>L.push([3*Math.cos(a*Math.PI/180),3*Math.sin(a*Math.PI/180)]));
+    [30,90,150,210,270,330].forEach(a=>L.push([8*Math.cos(a*Math.PI/180),8*Math.sin(a*Math.PI/180)])); [60,120,240,300].forEach(a=>L.push([14*Math.cos(a*Math.PI/180),14*Math.sin(a*Math.PI/180)]));
+    return L.map(([x,y])=>[+x.toFixed(2),+y.toFixed(2)]); })();
+  const RP_G=[]; for(let v=-1.0;v<=0.8001;v+=0.025) RP_G.push(+v.toFixed(3));   // log10 ring diameter (deg)
+  const RP_K0=9;                                                              // starting guess: ring diameter ≈ 9 × midget spacing
+  function rpStop(){ RP.active=false; RP.phase=""; RP.tok.dead=true; RP.tok={}; }
+  function rpStart(){ rpStop(); const env=NT["ρ"].env, eye=S.eye["ρ"]; if(!env) return; const F=nflFix(env,RP_LOCS.map(([x,y])=>[x,y,3]));
+    if(!F){ RP.msg="The rings don't fit at this distance: sit at about 30 cm or use Present full screen."; draw(); return; } RP.msg="";
+    const locs=RP_LOCS.map(([x0,y])=>{ const x=eye==="OS"?-x0:x0, mu=Math.log10(RP_K0*midgetSpacing(x,y,eye)); return {x,y,mu0:mu,post:RP_G.map(g=>Math.exp(-0.5*((g-mu)/0.3)**2)),n:0,done:false}; });
+    const order=[]; locs.forEach((l,i)=>{ order.push({kind:"ring",i}); order.push({kind:"ring",i}); }); for(let k=0;k<2;k++) order.push({kind:"blank"}); for(let k=0;k<2;k++) order.push({kind:"bs"});
+    Object.assign(RP,{active:true,F,locs,order:order.sort(()=>Math.random()-0.5),n:0,fp:0,fpN:0,fl:0,flN:0,log:[],tok:{}}); RP.N=RP.order.length+8; draw(); setTimeout(()=>rpNext(RP.tok),1200); }
+  const rpPost=l=>{ const s=l.post.reduce((a,b)=>a+b,0); let m=0,m2=0; l.post.forEach((w,i)=>{ m+=w*RP_G[i]; m2+=w*RP_G[i]**2; }); m/=s; return {mu:m,sd:Math.sqrt(Math.max(0,m2/s-m*m))}; };
+  const rpP=(lg,T)=>0.03+0.92*normCdf((lg-T)/0.05);
+  function rpNext(tok){ if(tok.dead||!RP.active) return;
+    if(!RP.order.length){ const left=RP.locs.map((l,i)=>[i,rpPost(l).sd]).filter(([i,sd])=>sd>0.08&&RP.locs[i].n<3).sort((a,b)=>b[1]-a[1]);   // third looks where still uncertain
+      if(left.length&&RP.n<40) left.slice(0,Math.min(left.length,40-RP.n)).forEach(([i])=>RP.order.push({kind:"ring",i})); }
+    if(!RP.order.length||RP.n>=40){ rpFinish(); return; }
+    const it=RP.order.shift(); if(it.kind==="ring") it.lg=Math.max(RP_G[0],Math.min(RP_G[RP_G.length-1],rpPost(RP.locs[it.i]).mu));
+    RP.tr=it; RP.resp=false; RP.phase="show"; RP.t0=performance.now();
+    ntFlash(165,()=>draw(),()=>{ if(tok.dead) return; RP.phase="wait"; draw(); setTimeout(()=>rpEnd(tok),1100); },tok); }
+  function rpEnd(tok){ if(tok.dead||!RP.active||RP.phase!=="wait") return; const it=RP.tr, seen=RP.resp; RP.n++; RP.log.push({...it,seen});
+    if(it.kind==="blank"){ RP.fpN++; if(seen) RP.fp++; } else if(it.kind==="bs"){ RP.flN++; if(seen) RP.fl++; }
+    else { const l=RP.locs[it.i]; l.n++; l.post=l.post.map((w,j)=>w*(seen?rpP(it.lg,RP_G[j]):1-rpP(it.lg,RP_G[j]))); }
+    RP.phase="dark"; draw(); setTimeout(()=>rpNext(tok),400+Math.random()*500); }
+  function rpFinish(){ const eye=S.eye["ρ"], r=ntR("ρ"), L=RP.locs.map(l=>{ const e=rpPost(l), sp=midgetSpacing(l.x,l.y,eye); return {x:l.x,y:l.y,lg:+e.mu.toFixed(3),sd:+e.sd.toFixed(3),sp:+sp.toFixed(4),n:l.n,sec:nflSector(l.x,l.y,eye).sec}; });
+    r[eye]={locs:L,fp:RP.fp,fpN:RP.fpN,fl:RP.fl,flN:RP.flN,n:RP.n,d:S.dist["ρ"],when:Date.now()}; rpStop(); save(); draw(); beep(660,200); }
+  function rpAnalyse(o){ const ks=o.locs.map(l=>Math.pow(10,l.lg)/l.sp).sort((a,b)=>a-b), k=ks[Math.floor((ks.length-1)/4)];   // best quarter (smallest rings relative to cell spacing) = the eye's own normal
+    o.locs.forEach(l=>{ l.cap=Math.min(1.2,Math.pow(k*l.sp/Math.pow(10,l.lg),2)); });
+    const mean=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null, cap=mean(o.locs.map(l=>l.cap)), sup=mean(o.locs.filter(l=>l.y>0).map(l=>l.cap)), inf=mean(o.locs.filter(l=>l.y<0).map(l=>l.cap));
+    const bySec={}; o.locs.forEach(l=>{ (bySec[l.sec]=bySec[l.sec]||[]).push(l.cap); }); const sec={}; Object.entries(bySec).forEach(([s_,a])=>sec[s_]=100*mean(a));
+    return {k,cap,sup,inf,sec,low:o.locs.filter(l=>l.cap<0.5)}; }
+  function rpRing(ctx,env,X,Y,lg,bgY,Lt){ const D=ntDegPx(env,Math.pow(10,lg)), R=D/2, w=D*0.15, ext=Math.ceil(R+w)+1, n=2*ext+1, im=ntImg(ctx,n,n), Dd=im.data, dL=Math.min(bgY,1-bgY)*0.8, S3=3;
+    for(let j=0;j<n;j++) for(let i=0;i<n;i++){ let acc=0; for(let a=0;a<S3;a++) for(let b=0;b<S3;b++){ const u=Math.hypot(i-ext+(a+0.5)/S3-0.5,j-ext+(b+0.5)/S3-0.5)-R, au=Math.abs(u); acc+=au<w/2?dL:au<w?-dL:0; }
+      const q=(j*n+i)*4, c=nflCode(Lt,bgY+acc/(S3*S3)); Dd[q]=Dd[q+1]=Dd[q+2]=c; Dd[q+3]=255; }
+    ctx.putImageData(im,Math.round(X-ext),Math.round(Y-ext)); }
+  NT["ρ"]={ name:"Ring perimetry",
+    ctl:`<label data-modes="ρ">Run<div class="btns"><button type="button" data-nta="ρ:start" class="primary">Start (S)</button><button type="button" data-nta="ρ:stop">Stop</button></div></label>`,
+    stop:rpStop, clear(){ S.ntRes&&(S.ntRes["ρ"]={}); }, act(a){ if(a==="start") rpStart(); else { rpStop(); draw(); } },
+    hud(){ return RP.active?"Space whenever you see a ring · look at the cross":"S start · Space when a ring appears"; },
+    key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ rpStart(); return true; } if(k===" "&&RP.active&&(RP.phase==="show"||RP.phase==="wait")&&performance.now()-RP.t0>=120){ RP.resp=true; return true; } return false; },
+    draw(env){ this.env=env; const Lt=vfLumTable(), bgY=0.30, bc=nflCode(Lt,bgY), bg=`rgb(${bc},${bc},${bc})`, g_=ntCv(env,bg), ctx=g_.ctx, eye=S.eye["ρ"]; env.stage.style.background=bg;
+      const F=RP.F||nflFix(env,RP_LOCS.map(([x,y])=>[x,y,3]))||{x:g_.cxp,y:g_.cyp}; nflCross(ctx,env,F);
+      if(RP.active&&RP.phase==="show"&&RP.tr.kind!=="blank"){ const it=RP.tr; let x,y,lg; if(it.kind==="bs"){ x=eye==="OS"?-15:15; y=-1.5; lg=Math.log10(2.2); } else { const l=RP.locs[it.i]; x=l.x; y=l.y; lg=it.lg; }
+        const [X,Y]=nflPx(env,F,x,y); rpRing(ctx,env,X,Y,lg,bgY,Lt); }
+      const R_=ntR("ρ"), f=e=>{ const o=R_[e]; if(!o) return `${e}: –`; const A=rpAnalyse(o), unrel=(o.fpN&&o.fp/o.fpN>0.5)||(o.flN&&o.fl/o.flN>0.5);
+        return `${e}: neural capacity <b>${Math.round(100*A.cap)}%</b> of the eye's own best areas · upper field ${Math.round(100*A.sup)}% · lower field ${Math.round(100*A.inf)}%${A.low.length?` · <b>${A.low.length} place${A.low.length>1?"s":""} under 50%</b> (${A.low.map(l=>`${Math.abs(l.x).toFixed(0)}° ${(e==="OS"?l.x>0:l.x<0)?"nasal":"temporal"}, ${Math.abs(l.y).toFixed(0)}° ${l.y>0?"up":"down"} → ${l.sec}`).join("; ")})`:""} · catches: blank ${o.fp}/${o.fpN}, blind spot ${o.fl}/${o.flN}${unrel?" · <b>unreliable</b>":""}`; };
+      let chart=""; if(R_[eye]){ const A=rpAnalyse(R_[eye]); chart=nflWheel(A.sec,eye,"capacity by sector, %"); }
+      const readout=`<span>${RP.msg||(RP.active?`flash ${RP.n+1} of about ${RP.N}`:"stopped")}</span><span>${f("OD")}</span><span>${f("OS")}</span>`;
+      return {readout,chart,warns:["Experimental: capacity is relative to the eye's own best quarter of places, so damage spread evenly over the whole field won't show. One eye covered, habitual near correction (blur enlarges rings), about 30 cm, keep looking at the cross."],
+        eq:`rings: bright core (width 0.15·D) between dark borders (0.075·D each side), mean = background (${bgY} of white), so a ring too small to resolve is invisible; 165 ms
+14 places: 4 at 3°, 6 at 8°, 4 at 14°; ZEST on log ring diameter, 2–3 looks each; P(seen) = 0.03 + 0.92·Φ((log D − log T)/0.05)
+midget ganglion cell spacing s(x, y): Watson 2014 (field meridians, ON or OFF lattice); expected D = k·s, k = best quarter of D/s in this eye
+capacity at a place = (k·s / D)², capped at 1.2; neural capacity = mean over places (after Frisén's high-pass resolution perimetry)
+catches: 2 blank, 2 rings in the blind spot`,
+        opt:`<p>Frisén's high-pass resolution perimetry uses rings whose average brightness equals the background, so a ring is only seen once its core and borders can be told apart: the size you need is set by the spacing of the ganglion cells that sample that place. Where cells have died the survivors are further apart and the threshold ring is bigger; (normal size ÷ measured size)² estimates the fraction still working. Frisén summed this into a "neural capacity" for the whole field.</p><p>Normal size here comes from a model of midget ganglion cell spacing across the field (Watson 2014), scaled to this eye's own best places, because the screen and distance aren't calibrated to Frisén's instrument. So it finds places and sectors that are worse than the rest of the same eye, and it can't detect loss spread evenly over everything.</p>`,
+        rows:`<tr><th>Capacity at a place</th><th>Meaning (experimental)</th></tr><tr><td>Over 70%</td><td>Similar to the eye's best areas</td></tr><tr><td>50–70%</td><td>Possible local loss: repeat</td></tr><tr><td>Under 50% at neighbouring places / one sector</td><td>Likely local ganglion cell loss: compare with OCT in that sector</td></tr>`,
+        steps:`<li>About 30 cm, one eye covered, habitual near correction (blur makes rings look bigger). Dim room.</li><li>Press S and look at the cross. Press Space whenever you see a ring, however faint or small. Some flashes are empty: no ring is a normal answer.</li><li>About 35 flashes, 2 minutes. Then the other eye.</li>` }; } };
+
+  // ---------------- φ: frequency-doubling perimetry ----------------
+  // A coarse grating (0.25 c/deg) reversing contrast fast (about 20 Hz here) looks like twice as many stripes: the
+  // frequency-doubling illusion, carried by a subset of magnocellular (My-type) ganglion cells that are sparse and so
+  // have little reserve. Detection of the flickering grating, in a central disc and 16 squares of 10° out to 20°, as in
+  // the FDT C-20. Calibration-free scoring: the centre's threshold is measured first, then each square is screened at
+  // a fixed multiple of it; misses are graded at higher contrasts. LCD note: the reversal is 3 (or 6) frames per cycle,
+  // never 2, so it doesn't beat against an LCD's frame-by-frame polarity inversion (the cause of temporary image
+  // retention); contrast is low and each look lasts 0.72 s.
+  const FD={active:false,phase:"",tok:{},tr:null,n:0,raf:0,fp:0,fpN:0,fl:0,flN:0,cv:null};
+  const FD_SQ=(()=>{ const L=[]; for(const yb of [10,0,-10,-20]) for(const xb of [-20,-10,0,10]) L.push({x0:xb,y0:yb,x1:xb+10,y1:yb+10}); return L; })();
+  const FD_SF=0.25, FD_HZ=20, FD_MS=720, FD_BG=0.40, FD_G=[]; for(let v=-2.6;v<=0.0001;v+=0.025) FD_G.push(+v.toFixed(3));
+  const fdLevels=[0.35,0.65,1.3];                                             // log10 contrast above the centre threshold: screen (×2.2), grade (×4.5), max (×20)
+  function fdStop(){ FD.active=false; FD.phase=""; FD.tok.dead=true; FD.tok={}; cancelAnimationFrame(FD.raf); }
+  function fdStart(){ fdStop(); const env=NT["φ"].env; if(!env) return;
+    const up=nflFix(env,[[-20,20,0],[20,20,0],[-20,-1,0],[20,-1,0],[0,0,5]]), dn=nflFix(env,[[-20,1,0],[20,1,0],[-20,-20,0],[20,-20,0],[0,0,5]]);
+    if(!up||!dn){ FD.msg="The 20° squares don't fit: sit at 25–30 cm (13″ laptop) and use Present full screen."; draw(); return; } FD.msg="";
+    const fpc=Math.max(3,Math.round((1000/NTF.fdt)/FD_HZ)); FD.fpc=fpc===4?3:fpc;           // frames per cycle (never 2 or 4: see above)
+    Object.assign(FD,{active:true,T:null,Fup:up,Fdn:dn,blk:"up",n:0,fp:0,fpN:0,fl:0,flN:0,log:[],tok:{},cpost:FD_G.map(g=>Math.exp(-0.5*((g+1.6)/0.5)**2)),cn:0,
+      sq:FD_SQ.map((q,i)=>({...q,i,st:null,lv:0,miss:0}))});
+    FD.queue=[]; for(let k=0;k<7;k++) FD.queue.push({kind:"c"}); FD.queue.push({kind:"blank"});
+    draw(); setTimeout(()=>fdNext(FD.tok),1200); }
+  const fdPost=()=>{ const w=FD.cpost, s=w.reduce((a,b)=>a+b,0); let m=0,m2=0; w.forEach((v,i)=>{ m+=v*FD_G[i]; m2+=v*FD_G[i]**2; }); m/=s; return {mu:m,sd:Math.sqrt(Math.max(0,m2/s-m*m))}; };
+  const fdP=(lc,T)=>0.03+0.92*normCdf((lc-T)/0.08);
+  function fdPlan(){ // after the centre: each square once at the screening level; blocks of the upper then lower half (the cross moves between them)
+    const T=fdPost().mu, mk=(arr)=>arr.sort(()=>Math.random()-0.5);
+    FD.T=T; FD.upQ=mk(FD.sq.filter(q=>q.y0>=0).map(q=>({kind:"sq",i:q.i}))).concat([{kind:"bs"}]); FD.dnQ=mk(FD.sq.filter(q=>q.y0<0).map(q=>({kind:"sq",i:q.i}))).concat([{kind:"blank"},{kind:"bs"}]);
+    FD.upQ=mk(FD.upQ); FD.dnQ=mk(FD.dnQ); }
+  function fdNext(tok){ if(tok.dead||!FD.active) return;
+    if(!FD.queue.length){ if(FD.T==null){ fdPlan(); FD.queue=FD.upQ; FD.blk="up"; }
+      else { const retry=FD.sq.filter(q=>q.st==="retest"&&(FD.blk==="up"?q.y0>=0:q.y0<0)).map(q=>({kind:"sq",i:q.i}));
+        if(retry.length&&FD.n<40) FD.queue=retry.slice(0,40-FD.n);
+        else if(FD.blk==="up"){ FD.blk="dn"; FD.queue=FD.dnQ; FD.phase="move"; draw(); setTimeout(()=>fdNext(tok),2500); return; } } }
+    if(!FD.queue.length||FD.n>=40){ fdFinish(); return; }
+    const it=FD.queue.shift(); if(it.kind==="c"){ it.lc=Math.max(FD_G[0],Math.min(0,fdPost().mu)); } else if(it.kind==="sq"){ const q=FD.sq[it.i]; it.lc=Math.min(0,FD.T+fdLevels[q.lv]); } else if(it.kind==="bs") it.lc=Math.min(0,FD.T+0.65);
+    FD.tr=it; FD.resp=false; FD.phase="show"; FD.t0=performance.now(); fdAnim(tok); }
+  // drawn frame by frame: precomputed grating images at a few signed amplitudes, chosen per frame
+  function fdImgs(env,it){ const F=FD.blk==="dn"?FD.Fdn:FD.Fup, k=env.d/env.dev, Lt=vfLumTable(), sc=4, eye=S.eye["φ"];
+    let x0,x1,y0,y1,circ=false,mask=null; if(it.kind==="c"||(it.kind==="sq"&&false)){ x0=-5;x1=5;y0=-5;y1=5;circ=true; }
+    else if(it.kind==="bs"){ const bx=eye==="OS"?-15:15; x0=bx-2;x1=bx+2;y0=-3.5;y1=0.5; }
+    else if(it.kind==="sq"){ const q=FD.sq[it.i]; x0=q.x0;x1=q.x1;y0=q.y0;y1=q.y1; mask=(x,y)=>Math.hypot(x,y)>=5; }
+    else return null;
+    const px0=F.x+k*Math.tan(x0*Math.PI/180), px1=F.x+k*Math.tan(x1*Math.PI/180), py0=F.y-k*Math.tan(y1*Math.PI/180), py1=F.y-k*Math.tan(y0*Math.PI/180);
+    const w=Math.ceil((px1-px0)/sc), h=Math.ceil((py1-py0)/sc), c=Math.pow(10,it.lc), NL=21, imgs=[];
+    const deg=(X,Y)=>[Math.atan((px0+X*sc-F.x)/k)*180/Math.PI, Math.atan((F.y-(py0+Y*sc))/k)*180/Math.PI];
+    const pat=new Float32Array(w*h), inside=new Uint8Array(w*h); for(let Y=0;Y<h;Y++) for(let X=0;X<w;X++){ const [dx,dy]=deg(X+0.5,Y+0.5), i=Y*w+X;
+      inside[i]=circ?(Math.hypot(dx,dy)<=5):(mask?mask(dx,dy):1); pat[i]=Math.sin(2*Math.PI*FD_SF*dx); }
+    for(let l=0;l<NL;l++){ const a=-1+2*l/(NL-1), cv=document.createElement("canvas"); cv.width=w; cv.height=h; const cx=cv.getContext("2d"), im=cx.createImageData(w,h), D_=im.data;
+      for(let i=0;i<w*h;i++){ const Y_=inside[i]?FD_BG*(1+c*a*pat[i]):FD_BG, cd=nflCode(Lt,Math.max(0,Math.min(1,Y_))); D_[i*4]=D_[i*4+1]=D_[i*4+2]=cd; D_[i*4+3]=255; }
+      cx.putImageData(im,0,0); imgs.push(cv); }
+    return {imgs,px0,py0,pw:px1-px0,ph:py1-py0,NL}; }
+  function fdAnim(tok){ const env=NT["φ"].env; const I=fdImgs(env,FD.tr); let f=0, t0=null;
+    const cv=$("cvs"), ctx=p3ctx(cv), Lt=vfLumTable(), bc=nflCode(Lt,FD_BG), bg=`rgb(${bc},${bc},${bc})`, ramp=120;
+    const tick=ts=>{ if(tok.dead||!FD.active) return; if(t0==null) t0=ts; const t=ts-t0;
+      if(t>=FD_MS){ if(I){ ctx.fillStyle=bg; ctx.fillRect(I.px0-1,I.py0-1,I.pw+2,I.ph+2); } FD.phase="wait"; draw(); setTimeout(()=>fdEnd(tok),Math.max(0,1500-FD_MS)); return; }
+      if(I){ const env_=Math.min(1,t/ramp,(FD_MS-t)/ramp), tf=Math.sin(2*Math.PI*(f%FD.fpc+0.5)/FD.fpc), a=Math.max(-1,Math.min(1,env_*tf)), li=Math.round((a+1)/2*(I.NL-1));
+        ctx.imageSmoothingEnabled=true; ctx.drawImage(I.imgs[li],I.px0,I.py0,I.pw,I.ph); }
+      f++; FD.raf=requestAnimationFrame(tick); };
+    FD.raf=requestAnimationFrame(tick); }
+  function fdEnd(tok){ if(tok.dead||!FD.active||FD.phase!=="wait") return; const it=FD.tr, seen=FD.resp; FD.n++; FD.log.push({kind:it.kind,i:it.i,lc:it.lc,seen});
+    if(it.kind==="c"){ FD.cpost=FD.cpost.map((w,j)=>w*(seen?fdP(it.lc,FD_G[j]):1-fdP(it.lc,FD_G[j]))); FD.cn++; }
+    else if(it.kind==="blank"){ FD.fpN++; if(seen) FD.fp++; } else if(it.kind==="bs"){ FD.flN++; if(seen) FD.fl++; }
+    else { const q=FD.sq[it.i]; if(seen) q.st=["normal","mild","moderate"][q.lv]; else if(q.lv===0&&q.miss===0){ q.miss=1; q.st="retest"; } else if(q.lv<2){ q.lv++; q.st="retest"; } else q.st="severe"; }
+    FD.phase="dark"; draw(); setTimeout(()=>fdNext(tok),500+Math.random()*500); }
+  function fdFinish(){ const eye=S.eye["φ"], r=ntR("φ"), e=fdPost();
+    r[eye]={T:+e.mu.toFixed(3),Tsd:+e.sd.toFixed(3),sq:FD.sq.map(q=>({x0:q.x0,y0:q.y0,st:q.st==="retest"||!q.st?"incomplete":q.st})),fp:FD.fp,fpN:FD.fpN,fl:FD.fl,flN:FD.flN,n:FD.n,fpc:FD.fpc,hz:+(1000/NTF.fdt/FD.fpc).toFixed(1),d:S.dist["φ"],when:Date.now()};
+    fdStop(); save(); draw(); beep(660,200); }
+  function fdChart(o,eye){ const sc=5, W_=230, cx=W_/2, cy=W_/2, col={normal:"#3a9a5b",mild:"#e0a020",moderate:"#d0342c",severe:"#7a1010",incomplete:"#999"};
+    let s=`<svg viewBox="0 0 ${W_} ${W_+14}" style="width:230px;display:inline-block;vertical-align:top" font-size="9">`;
+    o.sq.forEach(q=>{ s+=`<rect x="${cx+q.x0*sc+1}" y="${cy-(q.y0+10)*sc+1}" width="${10*sc-2}" height="${10*sc-2}" fill="${col[q.st]}" fill-opacity=".8"/>`; });
+    s+=`<circle cx="${cx}" cy="${cy}" r="${5*sc}" fill="${col.normal}" stroke="var(--panel)" stroke-width="2"/><text x="${cx}" y="${cy+3}" text-anchor="middle" fill="#fff">${(-20*o.T).toFixed(0)} dB</text>`;
+    return s+`<text x="${cx}" y="${W_+10}" text-anchor="middle" fill="currentColor">${eye} · as the patient sees it · centre = its threshold</text></svg>`; }
+  NT["φ"]={ name:"Frequency doubling",
+    ctl:`<label data-modes="φ">Run<div class="btns"><button type="button" data-nta="φ:start" class="primary">Start (S)</button><button type="button" data-nta="φ:stop">Stop</button></div></label>`,
+    stop:fdStop, clear(){ S.ntRes&&(S.ntRes["φ"]={}); }, act(a){ if(a==="start") fdStart(); else { fdStop(); draw(); } },
+    hud(){ return FD.active?(FD.phase==="move"?"the cross has moved: look at it":"Space whenever you see stripes or flicker · look at the cross"):"S start · Space when you see anything"; },
+    key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ fdStart(); return true; } if(k===" "&&FD.active&&(FD.phase==="show"||FD.phase==="wait")&&performance.now()-FD.t0>=150){ FD.resp=true; return true; } return false; },
+    draw(env){ this.env=env; const Lt=vfLumTable(), bc=nflCode(Lt,FD_BG), bg=`rgb(${bc},${bc},${bc})`, g_=ntCv(env,bg), ctx=g_.ctx, eye=S.eye["φ"]; env.stage.style.background=bg;
+      const F=FD.active?(FD.blk==="dn"?FD.Fdn:FD.Fup):{x:g_.cxp,y:g_.cyp}; nflCross(ctx,env,F);
+      const R_=ntR("φ"), f=e=>{ const o=R_[e]; if(!o) return `${e}: –`; const c=k_=>o.sq.filter(q=>q.st===k_).length, unrel=(o.fpN&&o.fp/o.fpN>0.34)||(o.flN&&o.fl/o.flN>0.5);
+        const hemi=y=>o.sq.filter(q=>(y>0?q.y0>=0:q.y0<0)&&q.st!=="normal"&&q.st!=="incomplete").length;
+        return `${e}: centre threshold <b>${(100*Math.pow(10,o.T)).toFixed(1)}% contrast</b> (${(-20*o.T).toFixed(1)} dB) · squares: normal ${c("normal")}, mild ${c("mild")}, moderate ${c("moderate")}, severe ${c("severe")}${c("incomplete")?`, not finished ${c("incomplete")}`:""} · abnormal above / below fixation ${hemi(1)} / ${hemi(-1)} · ${o.hz} Hz · catches: blank ${o.fp}/${o.fpN}, blind spot ${o.fl}/${o.flN}${unrel?" · <b>unreliable</b>":""}`; };
+      const readout=`<span>${FD.msg||(FD.active?(FD.phase==="move"?"<b>look at the cross in its new place</b>":`flash ${FD.n+1} (up to 40) · ${FD.T==null?"centre threshold":FD.blk==="up"?"upper half":"lower half"}`):"stopped")}</span><span>${f("OD")}</span><span>${f("OS")}</span>`;
+      const chart=R_[eye]?fdChart(R_[eye],eye):"";
+      return {readout,chart,warns:["Experimental: thresholds are relative to the centre of the same eye, not to age norms, and the screen isn't the FDT instrument. It flickers at about 20 Hz in short (0.7 s) low-contrast flashes; stop if it's uncomfortable or if you are photosensitive. One eye covered, about 25–30 cm, full screen."],
+        eq:`grating ${FD_SF} c/deg, sine across, counterphased at ${FD.fpc?(1000/NTF.fdt/FD.fpc).toFixed(1):"≈20"} Hz (${FD.fpc||3} frames a cycle, never 2 or 4: no beating with LCD polarity inversion), ${FD_MS} ms with 120 ms ramps, mean ${FD_BG} of white, dithered
+layout as the FDT C-20: centre disc radius 5° and 16 squares of 10° to 20°; the cross moves low for the upper half, high for the lower half
+centre: ZEST on log contrast (7 looks); squares screened at ×2.2 the centre threshold (+7 dB), a miss is repeated once, then shown at ×4.5 (+13 dB) and ×20 (max)
+normal = seen at ×2.2 · mild = seen at ×4.5 · moderate = seen only at ×20 · severe = not seen at all; at most 40 flashes
+catches: blank and blind-spot gratings`,
+        opt:`<p>A coarse grating that reverses contrast fast looks like it has twice as many stripes. That frequency-doubling illusion is carried by a small group of large ganglion cells with fast, nonlinear responses; there are few of them, so losing some shows early. The FDT (and the Humphrey Matrix) uses it for glaucoma screening: a flickering grating in 17 patches out to 20°, with the contrast needed to see it as the measure.</p><p>Here the centre's own threshold is measured first and every square is judged against it, so screen brightness and gamma differences cancel; the price is that a loss affecting the centre too isn't measured against norms. The flicker is drawn so it can't build up a charge on an LCD (odd number of frames a cycle) and stays low in contrast and brief.</p>`,
+        rows:`<tr><th>Squares</th><th>Meaning (experimental)</th></tr><tr><td>All normal</td><td>No frequency-doubling loss relative to the centre</td></tr><tr><td>One or two mild</td><td>Common in normal eyes (fatigue, lid, lens rim): repeat</td></tr><tr><td>Neighbouring abnormal squares in one half, or any moderate/severe</td><td>Possible nerve fibre loss: correlate with the field and OCT</td></tr>`,
+        steps:`<li>Present full screen, about 25–30 cm (a 13″ laptop), one eye covered, habitual near correction, dim room.</li><li>Press S and look at the cross. Press Space whenever you see anything: stripes, flicker or shimmer. Many flashes are faint, and some are empty.</li><li>Halfway, the cross jumps from the bottom to the top of the screen: look at it again before carrying on. Up to 40 flashes.</li>` }; } };
+
+  try{ Object.assign(window.__thorTest=window.__thorTest||{},{HB2,hb2Start,hb2Resp,RP,rpStart,FD,fdStart,nflSector,nflPhi0,midgetSpacing,rpAnalyse}); }catch(e){}
+  // ---------------- visual field → ganglion cells (Harwerth) ----------------
+  // Harwerth et al.: local ganglion cell count from perimetric sensitivity at each eccentricity (as used in Medeiros'
+  // combined structure–function index), with the screen dB anchored to an age-normal HFA hill at the eye's own
+  // general height, then summed by disc sector through the fibre model.
+  function hwEstimate(A,eye,age){ const ag=+age||30, N=e=>33.5-0.22*e-0.065*Math.max(0,ag-25);
+    const cnt=(ds,e)=>{ const ec=e*1.32, m=0.054*ec+0.9, b=-1.5*ec-14.8, gc=(ds-1-b)/m; return Math.pow(10,0.1*gc); };
+    const sec={}, tot={obs:0,exp:0}; A.pts.forEach(p=>{ const e=Math.hypot(p.x,p.y), exp=cnt(N(e),e), obs=cnt(Math.max(-5,N(e)+Math.min(0,p.dev)),e), s_=nflSector(p.x,p.y,eye).sec;
+      (sec[s_]=sec[s_]||{obs:0,exp:0}); sec[s_].obs+=obs; sec[s_].exp+=exp; tot.obs+=obs; tot.exp+=exp; });
+    const pct={}; Object.entries(sec).forEach(([k,v])=>pct[k]=100*v.obs/v.exp); return {pct,tot:100*tot.obs/tot.exp}; }
+  try{ Object.assign(window.__thorTest,{hwEstimate,vfAnalyse}); }catch(e){}
 
   // ---------------- 7: Haidinger's brushes ----------------
   // Macular pigment absorbs blue light polarised along one direction more than the other (it is dichroic, with its
@@ -5993,7 +6301,7 @@ ${cs?"letters 2.8° tall (the size of Pelli–Robson letters at 1 m); threshold 
       }
 
       else if(NT[m]){ const r_=NT[m].draw({W,H,dpr,dev,cx,cy0,d,k,vw,vh,eye,other,g,svg,stage,am})||{};
-        readout=r_.readout||""; eq=r_.eq||""; opt=r_.opt||""; rows=r_.rows||""; steps=r_.steps||""; const sw=scrSuspect(); if(sw) warns.push(sw); (r_.warns||[]).forEach(w=>warns.push(w)); }
+        readout=r_.readout||""; if("μρφ".includes(m)&&$("nflChart")) $("nflChart").innerHTML=r_.chart||""; eq=r_.eq||""; opt=r_.opt||""; rows=r_.rows||""; steps=r_.steps||""; const sw=scrSuspect(); if(sw) warns.push(sw); (r_.warns||[]).forEach(w=>warns.push(w)); }
       else if(m==="e"){ // eye movements
         const deg_=a=>d*Math.tan(a*Math.PI/180), Wt="#e8e8e8", typ=S.emType;
         const res=(S.emRes||{})[typ];
@@ -6173,7 +6481,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     const r=$("ruler"); r.style.width=(100/k)+"px"; r.replaceChildren();
     for(let i=0;i<=10;i++){const t=document.createElement("div");t.style.cssText=`position:absolute;bottom:0;left:${i*10/k-1}px;width:2px;height:${i%5?10:20}px;background:currentColor`;r.appendChild(t);}
   }
-  function eyeLabel(m){ return {w:"Eye being tested","5":"Eye being tested","6":"Eye being tested","7":"Eye being tested",z:"Eye being tested",g:"Eye being tested",i:"Eye being tested",t:"Eye being tested",x:"Eye being tested",k:"Eye being tested",m:"Eye being tested",s:"Eye being tested",o:"Eye being tested",a:"Eye being tested",v:"Eye being tested",c:"Eye being tested",d:"Eye being tested",r:"Suspected (worse) eye",O:"Eye being tested",J:"Eye being tested",T:"Maddox rod over",H:"Prism over",C:S.cyMethod==="dm"?"Red Maddox over":lensOverTxt()}[m] || lensOverTxt(); }
+  function eyeLabel(m){ return {"μ":"Eye being tested","ρ":"Eye being tested","φ":"Eye being tested",w:"Eye being tested","5":"Eye being tested","6":"Eye being tested","7":"Eye being tested",z:"Eye being tested",g:"Eye being tested",i:"Eye being tested",t:"Eye being tested",x:"Eye being tested",k:"Eye being tested",m:"Eye being tested",s:"Eye being tested",o:"Eye being tested",a:"Eye being tested",v:"Eye being tested",c:"Eye being tested",d:"Eye being tested",r:"Suspected (worse) eye",O:"Eye being tested",J:"Eye being tested",T:"Maddox rod over",H:"Prism over",C:S.cyMethod==="dm"?"Red Maddox over":lensOverTxt()}[m] || lensOverTxt(); }
   function lensOverTxt(){ const n=LA().name; return n[0].toUpperCase()+n.slice(1)+" lens over"; }
   function pairTxt(){ const a=LA().name, b=LB().name; return a[0].toUpperCase()+a.slice(1)+"-"+b; }
   const setv=(id,v)=>{const e=$(id); if(e) e.value=String(v);};
@@ -7047,6 +7355,9 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     "9":()=>({run:AN.active,ans:true,start:"s",z:[["ArrowLeft","Left panel sharper"],["ArrowRight","Right panel sharper"]],x:[["ArrowDown","Same"],[" ","Look again"]],how:"Each eye sees one panel. Look at the centre dot; the letters show briefly after a short rest. Tap the LEFT half if the left panel's letters were sharper, the RIGHT half if the right panel's were, Same if equal."}),
     "0":()=>({run:TL.active,ans:TL.phase==="answer",start:"s",v:1,z:[["ArrowUp","Disc IN FRONT"],["ArrowDown","Disc BEHIND"]],how:"Look at the centre dot. A dotty patch flashes with a disc floating in front or behind: tap the TOP half for in front, the BOTTOM half for behind."}),
     "8":()=>(S.ctMethod==="cam"?{run:CVT.active,ans:false,start:"s",z:[],how:"Look at the cross the whole time, head still. It jumps to five dots first, then stays in the middle."}:CVT.tr&&CVT.tr.ax==="V"?{run:CVT.active,ans:CVT.phase==="answer",start:"s",v:1,z:[["ArrowUp","Left line HIGHER"],["ArrowDown","Left line LOWER"]],how:"Look at the cross. Two lines flash. One above the other: tap LEFT or RIGHT for where the top one was. Side by side: tap TOP if the left one was higher, BOTTOM if lower."}:{run:CVT.active,ans:CVT.phase==="answer",start:"s",z:[["ArrowLeft","Top line LEFT"],["ArrowRight","Top line RIGHT"]],how:"Look at the cross. Two lines flash. One above the other: tap LEFT or RIGHT for where the top one was. Side by side: tap TOP if the left one was higher, BOTTOM if lower."}),
+    "μ":()=>({run:HB2.active,ans:HB2.phase==="answer",start:"s",v:1,z:[["ArrowUp","UPPER spot stronger"],["ArrowDown","LOWER spot stronger"]],x:[[" ","Same"],["n","Saw neither"]],how:"Look at the cross. Two spots flash, one above and one below: tap the top half if the upper one looked stronger, the bottom half if the lower one did, Same if equal, Saw neither if you missed them."}),
+    "ρ":()=>({run:RP.active,ans:true,start:"s",z:[[" ","I saw a ring"]],how:"Look at the cross. Tap whenever a ring appears, however faint."}),
+    "φ":()=>({run:FD.active,ans:true,start:"s",z:[[" ","I saw something"]],how:"Look at the cross. Tap whenever you see stripes or flicker."}),
     "6":()=>({run:MB.active,ans:MB.phase==="answer",start:"s",z:[],x:MB_PICS.map(([k,l])=>[k,k+" "+l]),how:"Look at the dim dot. A bar flashes beside it. Then tap the picture that matches what you saw: both arcs, upper only, lower only, arcs the other way, or nothing."}),
     "7":()=>({run:HB.active,ans:true,start:"s",v:1,z:[["ArrowUp","Centred on the dot"],["ArrowLeft","Off to the LEFT"],["ArrowRight","Off to the RIGHT"],["ArrowDown","Not seen"]],how:"Look at the black dot and rotate the tablet back and forth. Then tap a band, top to bottom: hourglass centred on the dot · centred to the left · centred to the right · not seen."}),
     y:()=>({run:VT.active,ans:VT.phase==="answer",start:"s",z:[["ArrowLeft","Top line LEFT"],["ArrowRight","Top line RIGHT"]],how:"Keep the dots single and look at the gap. After each jump two short lines flash: tap LEFT if the top one was left of the bottom one, RIGHT if it was right. Guess when unsure."}),

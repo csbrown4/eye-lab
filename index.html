@@ -272,7 +272,6 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
     </div>
     <div class="bar-actions">
       <button type="button" id="navToggle" class="ghost only-narrow">All tests</button>
-      <button type="button" id="tpadBtn" class="ghost" title="On-screen keys for touch screens">Keys</button>
       <button type="button" id="setupBtn" class="ghost">Setup</button>
     </div>
   </header>
@@ -819,6 +818,9 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
     </div>
     <label id="scrWWrap">Width of the lit picture <span class="u">(mm, measured with a ruler)</span><input id="scrW" type="number" min="150" max="1500" step="0.5"></label>
     <p id="scrInfo" class="scrinfo"></p>
+    <label>On-screen keypad <span class="u">(for touch screens: arrows, Space, letters and digits)</span>
+      <select id="tpadSel"><option value="0">Off</option><option value="1">On</option></select>
+    </label>
     <label>Present full screen using
       <select id="fsMode"><option value="api">Browser full screen (hides the bars)</option><option value="fill">Fill the window (no black flash or notice; bars stay)</option></select>
     </label>
@@ -6975,9 +6977,9 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     const touch=matchMedia("(pointer:coarse)").matches&&!matchMedia("(pointer:fine)").matches;
     // automatic: shown on touch screens only for tests answered by typing (letters, digits, readings, gap direction)
     const typing=()=>false;   // every test now has its own tap answers; the full keypad is on the Keys button
-    const apply=()=>{ const on=S.tpad==null?(touch&&typing()):S.tpad; pad.hidden=!on; $("tpadBtn").classList.toggle("on",on); };
+    const apply=()=>{ const on=S.tpad==null?(touch&&typing()):S.tpad; pad.hidden=!on; $("tpadSel").value=on?"1":"0"; };
     setInterval(()=>{ if(S.tpad==null) apply(); },300);
-    $("tpadBtn").onclick=()=>{ S.tpad = S.tpad==null ? pad.hidden : (S.tpad ? false : null); apply(); save(); }; apply();
+    $("tpadSel").onchange=e=>{ S.tpad = e.target.value==="1"; apply(); save(); }; apply();
     if(touch) document.documentElement.style.touchAction="manipulation";
   })();
 

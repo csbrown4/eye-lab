@@ -3549,7 +3549,7 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
         steps:`<li>Lens glasses on (${A} lens over ${S.eye["2"]}); calibrate the glasses. Full screen, room dim.</li><li>Press S. Look at the cross. Faint vertical stripes flash to the left or right of it. Sometimes clear horizontal stripes appear on both sides at the same time; ignore those and look for the vertical ones. Which side were the vertical stripes, ← or →? Guess when unsure. 40 answers.</li>` }; } };
 
   // ======================= tests added in v108 =======================
-  [["asN",6],["mbLvl",35],["mbSide","rand"],["hbPulse","1"],["hbField","blue"],["ctMethod","soft"],["tlMode","blur"],["tlEye","OD"],["coPupil",S.coPupil||4]].forEach(([k,v])=>{ if(S[k]==null) S[k]=v; });
+  [["asN",6],["mbLvl",35],["mbDur",500],["hbPulse","1"],["hbField","blue"],["ctMethod","soft"],["tlMode","blur"],["tlEye","OD"],["coPupil",S.coPupil||4]].forEach(([k,v])=>{ if(S[k]==null) S[k]=v; });
   // colour panel of the chromatic tests: black pattern (mask M, 0..1) on a red or green field with a soft (raised-cosine)
   // edge, so the field's own outline carries no sharp edge that the eye's red/green focus difference could act on
   function chromPanel(ctx,M,pw,ph,isGreen,Rf,soft){ const gLin=P3?0.2290/0.6917:0.2126/0.7152, img=ntImg(ctx,pw,ph), D_=img.data, cx=pw/2, cy=ph/2;
@@ -4088,42 +4088,80 @@ OD covered: eso = −v*; OS covered: eso = +v*; covered eye up = +v*; adaptive, 
   const T_label=t=>t?`${t.cov} covered · ${t.ax==="H"?"horizontal":"vertical"}`:"";
 
   // ---------------- 6: Moreland's blue arcs ----------------
-  // A dim red bar near fixation in a dark-adapted eye makes two faint blue arcs that run from the bar, above and below
-  // fixation, toward the blind spot: they follow the ganglion-cell axons of the stimulated retina (an effect of
-  // activity in the nerve fibres themselves). They are reported missing over damaged nerve fibre bundles (optic
-  // neuritis, glaucoma). Here: bar flashed for 1 s on a black screen at random to the left or right of fixation; the
-  // person reports which way the arcs went, or none. In each eye they should go toward that eye's blind spot.
-  const MB={active:false,phase:"",tok:{},tr:null,n:0,log:[]};
+  // A red bar just beside fixation, on a black screen, makes two faint blue arcs at its onset: they leave the bar's top
+  // and bottom and arch above and below fixation toward the blind spot, along the paths of the nerve fibres from the
+  // stimulated retina (activity in those fibres affecting their neighbours). With the bar between fixation and the blind
+  // spot they shrink to a short straight "spike" toward it. They are best seen right at onset and fade within a second,
+  // so the bar is flashed. Reported weak or missing over damaged nerve-fibre bundles (optic neuritis; in glaucoma,
+  // failure to see them goes with larger cups, worse mean defect and an abnormal hemifield test).
+  // v139: the person picks a picture of what they saw (both arcs / upper only / lower only / arcs the wrong way / none),
+  // so each arc (each hemifield) is scored separately; equal-brightness green bars and blank flashes are catch trials
+  // (the arcs need long-wavelength light, so "arcs" on those = guessing or suggestion); two distances from fixation.
+  const MB={active:false,phase:"",tok:{},tr:null,n:0,log:[],order:[]};
+  const MB_PICS=[["1","Both arcs"],["2","Upper arc only"],["3","Lower arc only"],["4","Arcs the other way"],["5","Nothing"]];
   function mbStop(){ MB.active=false; MB.phase=""; MB.tok.dead=true; MB.tok={}; }
-  function mbStart(){ mbStop(); MB.active=true; MB.n=0; MB.log=[]; mbTrial(); }
-  function mbTrial(){ if(!MB.active) return; if(MB.n>=10){ const r=ntR("6"); r[S.eye["6"]]={log:MB.log,when:Date.now()}; mbStop(); save(); draw(); beep(660,200); return; }
-    const side=S.mbSide==="rand"?(Math.random()<0.5?-1:1):S.mbSide==="L"?-1:1; MB.tr={side}; MB.phase="dark"; draw();
-    const tok=MB.tok; setTimeout(()=>{ if(tok.dead) return; MB.phase="show"; ntFlash(1000,()=>draw(),()=>{ if(tok.dead) return; MB.phase="answer"; draw(); },tok); },2500+Math.random()*1000); }
-  function mbResp(a){ if(!MB.active||MB.phase!=="answer") return; MB.log.push({side:MB.tr.side,a}); MB.n++; MB.phase="dark"; mbTrial(); }
+  function mbOrder(){ const L=[]; [1.5,3].forEach(e=>{ for(let i=0;i<6;i++) L.push({kind:"red",ecc:e}); }); for(let i=0;i<4;i++) L.push({kind:"green",ecc:i%2?3:1.5}); for(let i=0;i<4;i++) L.push({kind:"blank",ecc:i%2?3:1.5}); return L.sort(()=>Math.random()-0.5); }
+  function mbStart(){ mbStop(); MB.active=true; MB.n=0; MB.log=[]; MB.order=mbOrder(); MB.N=MB.order.length; mbTrial(); }
+  function mbTrial(){ if(!MB.active) return; if(!MB.order.length){ const r=ntR("6"); r[S.eye["6"]]={v:2,log:MB.log,lvl:+S.mbLvl||35,dur:+S.mbDur||500,when:Date.now()}; mbStop(); save(); draw(); beep(660,200); return; }
+    MB.tr=MB.order.pop(); MB.phase="dark"; draw();
+    const tok=MB.tok; setTimeout(()=>{ if(tok.dead) return; MB.phase="show"; ntFlash(+S.mbDur||500,()=>draw(),()=>{ if(tok.dead) return; MB.phase="answer"; draw(); },tok); },2200+Math.random()*1200); }
+  function mbResp(a){ if(!MB.active||MB.phase!=="answer") return; MB.log.push({kind:MB.tr.kind,ecc:MB.tr.ecc,a}); MB.n++; MB.phase="dark"; mbTrial(); }
   const S_eyeBS=e=>e==="OS"?-1:1;                                             // blind spot: right of fixation for OD, left for OS
+  function mbScore(o){ if(!o||!o.log) return null; const L=o.log; if(o.v!==2) return {old:true,n:L.length,seen:L.filter(x=>x.a!=="none").length};
+    const red=L.filter(x=>x.kind==="red"), cat=L.filter(x=>x.kind!=="red"), up=x=>x.a==="1"||x.a==="2", lo=x=>x.a==="1"||x.a==="3";
+    const fa=cat.filter(x=>x.a!=="5").length, wrong=red.filter(x=>x.a==="4").length, U=red.filter(up).length, D=red.filter(lo).length, n=red.length;
+    const byE=[1.5,3].map(e=>{ const r=red.filter(x=>x.ecc===e); return {e,n:r.length,U:r.filter(up).length,D:r.filter(lo).length}; });
+    const faR=cat.length?fa/cat.length:0, reliable=faR<=0.25&&wrong<=Math.max(1,0.2*n), seenAny=U+D>0;
+    let verdict;
+    if(!reliable) verdict="unreliable: arcs reported on catch flashes or going the wrong way, so the answers can't be trusted";
+    else if(Math.max(U,D)<0.3*n) verdict="arcs not seen reliably: common, and not informative on its own";
+    else if(Math.abs(U-D)>=0.5*n) verdict=`<b>${U<D?"upper":"lower"} arc seen much less often</b> than the ${U<D?"lower":"upper"} (${U<D?"superior":"inferior"} visual field, ${U<D?"inferior":"superior"} retina): worth correlating with the visual field and OCT nerve fibre layer`;
+    else verdict="both arcs seen: normal pattern";
+    return {n,U,D,fa,nc:cat.length,wrong,byE,reliable,verdict}; }
+  // the answer pictures, drawn for this eye: the bar sits on the side away from the blind spot, arcs arch toward it
+  function mbPics(ctx,env,cx,cy,bs){ const W=ctx.canvas.width, gap=Math.round(W*0.012), bw=Math.min(W*0.15,(W*0.92-4*gap)/5), bh=bw*0.8, tot=5*bw+4*gap, x0=cx-tot/2;
+    ctx.save(); ctx.textAlign="center";
+    MB_PICS.forEach(([k,lab],i)=>{ const X=x0+i*(bw+gap), mx=X+bw/2, my=cy+bh*0.5, u=bw*0.13, bx=mx-bs*u*1.3;
+      ctx.strokeStyle="#333"; ctx.lineWidth=1; ctx.strokeRect(X,cy,bw,bh);
+      ctx.fillStyle="#666"; ctx.fillRect(mx-1.5,my-1.5,3,3);                                  // fixation
+      ctx.fillStyle="#7a1010"; ctx.fillRect(bx-u*0.12,my-u*1.1,u*0.24,u*2.2);                   // bar
+      ctx.strokeStyle="#4a6fd0"; ctx.lineWidth=Math.max(1.5,bw*0.025);
+      const arc=(sgn,dir)=>{ ctx.beginPath(); ctx.moveTo(bx,my+sgn*u*1.1); ctx.quadraticCurveTo(mx+dir*bs*u*0.4,my+sgn*u*2.6,mx+dir*bs*u*2.6,my+sgn*u*0.5); ctx.stroke(); };
+      if(k==="1"||k==="2") arc(-1,1); if(k==="1"||k==="3") arc(1,1);
+      if(k==="4"){ ctx.beginPath(); ctx.moveTo(bx,my-u*1.1); ctx.quadraticCurveTo(bx-bs*u*1.2,my-u*2.4,bx-bs*u*2.2,my-u*0.6); ctx.stroke(); ctx.beginPath(); ctx.moveTo(bx,my+u*1.1); ctx.quadraticCurveTo(bx-bs*u*1.2,my+u*2.4,bx-bs*u*2.2,my+u*0.6); ctx.stroke(); }
+      ctx.fillStyle="#9a9a9a"; ctx.font=`600 ${Math.round(bw*0.13)}px system-ui,sans-serif`; ctx.fillText(k,mx,cy+bh+bw*0.16);
+      ctx.fillStyle="#7a7a7a"; ctx.font=`${Math.round(bw*0.095)}px system-ui,sans-serif`; ctx.fillText(lab,mx,cy+bh+bw*0.29); });
+    ctx.restore(); }
   NT["6"]={ name:"Moreland's blue arcs",
-    ctl:`<label data-modes="6">Red bar<select data-ntk="mbLvl" data-ntt="num"><option value="20">dim</option><option value="35">medium</option><option value="60">bright</option></select></label>
-      <label data-modes="6">Bar position<select data-ntk="mbSide"><option value="rand">Random left / right</option><option value="L">Always left of fixation</option><option value="R">Always right of fixation</option></select></label>
+    ctl:`<label data-modes="6">Red bar<select data-ntk="mbLvl" data-ntt="num"><option value="20">dim</option><option value="35">medium</option><option value="60">bright</option><option value="100">full</option></select></label>
+      <label data-modes="6">Flash<select data-ntk="mbDur" data-ntt="num"><option value="300">0.3 s</option><option value="500">0.5 s</option><option value="1000">1 s</option></select></label>
       <label data-modes="6">Run<div class="btns"><button type="button" data-nta="6:start" class="primary">Start (S)</button><button type="button" data-nta="6:stop">Stop</button></div></label>`,
     stop:mbStop, clear(){ S.ntRes&&(S.ntRes["6"]={}); }, act(a){ if(a==="start") mbStart(); else { mbStop(); draw(); } },
-    hud(){ return !MB.active?"S start":MB.phase==="answer"?"arcs went: ← left · → right · ↓ none seen":"look at the dim dot"; },
-    key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ mbStart(); return true; } if(MB.active&&MB.phase==="answer"){ if(k==="ArrowLeft"){ mbResp("L"); return true; } if(k==="ArrowRight"){ mbResp("R"); return true; } if(k==="ArrowDown"){ mbResp("none"); return true; } } return false; },
-    draw(env){ this.env=env; const g_=ntCv(env,"#000"), ctx=g_.ctx, ppd=ntPPD(env), s=Math.max(2,0.08*ppd);
-      ctx.fillStyle="rgb(40,40,40)"; ctx.fillRect(g_.cxp-s/2,g_.cyp-s/2,s,s);
-      if(MB.active&&MB.phase==="show"){ const w=Math.max(2,0.3*ppd), h=ntDegPx(env,2.5), x=g_.cxp+MB.tr.side*ntDegPx(env,1.5), L=(+S.mbLvl||35)/100;
-        ctx.fillStyle=P3?`color(display-p3 ${enc(L).toFixed(3)} 0 0)`:`rgb(${Math.round(255*enc(L))},0,0)`; ctx.fillRect(x-w/2,g_.cyp-h/2,w,h); }
-      const R=ntR("6"), f=e=>{ const o=R[e]; if(!o) return `${e}: –`; const bs=S_eyeBS(e), seen=o.log.filter(x=>x.a!=="none"), toBS=seen.filter(x=>(x.a==="R"?1:-1)===bs).length;
-        return `${e}: arcs seen on <b>${seen.length} of ${o.log.length}</b> flashes${seen.length?`, toward the blind spot on ${toBS} of ${seen.length}`:""}`; };
-      let res=`<span>${f("OD")} · ${f("OS")}</span>`;
-      if(R.OD&&R.OS){ const a=R.OD.log.filter(x=>x.a!=="none").length/R.OD.log.length, b=R.OS.log.filter(x=>x.a!=="none").length/R.OS.log.length; if(Math.abs(a-b)>=0.5) res+=`<span><b>Seen much more often with ${a>b?"OD":"OS"}</b>: in a person who sees them clearly with one eye, absence in the other has been linked to optic nerve damage (experimental)</span>`; }
-      const readout=`<span>${MB.active?`flash ${MB.n+1} of 10 · bar ${MB.tr.side<0?"left":"right"} of fixation`:"stopped"}</span>${res}`;
-      return {readout,warns:["Experimental and subjective. Needs a dark-adapted eye (5 minutes in the dark, screen at minimum brightness except for the test) and a screen whose black is truly black; one eye at a time with the other covered."],
-        eq:`black screen, dim fixation dot; red bar ${(0.3).toFixed(1)}° × 2.5°, 1.5° to the left or right of fixation, flashed for 1 s every 3.5–4.5 s
-red level ${S.mbLvl||35}% of the red primary; 10 flashes per eye
-expected: arcs from the bar toward the blind spot (OD: to the right, OS: to the left), above and below fixation`,
-        opt:`<p>Purkinje described faint blue arcs that appear when a small red light is seen near fixation in the dark; Moreland studied them in detail. The arcs trace the paths of the nerve fibres leaving the stimulated patch of retina, arching above and below the fovea toward the optic disc. Their cause is thought to be the activity of those fibres affecting their neighbours, so they are a rare chance to see the nerve fibre layer at work. With the bar on the far side of fixation from the blind spot you should see two arcs curving around fixation; on the near side, a short blue streak running straight toward the blind spot.</p><p>They are faint, many people never notice them, and nothing here is validated clinically. Asking for the direction (rather than “seen or not”) guards against guessing, because the correct direction differs between the eyes.</p>`,
-        rows:`<tr><th>Pattern</th><th>Interpretation (experimental)</th></tr><tr><td>Arcs toward the blind spot in both eyes</td><td>Normal</td></tr><tr><td>Seen in one eye only</td><td>Possible nerve fibre damage in the other, if the person reliably sees them in the first</td></tr><tr><td>Never seen in either eye</td><td>Common; uninformative</td></tr>`,
-        steps:`<li>Dark room, 5 minutes with eyes closed or in the dark. No glasses or filters needed; cover the eye not tested, and set it above.</li><li>Press S and look at the dim grey dot. A red bar flashes beside it. Watch for faint bluish arcs or a streak coming off the bar: did they go left (← / tap left), right (→ / tap right), or did you see none (↓ / tap bottom)? 10 flashes. Then the other eye.</li>` }; } };
+    hud(){ return !MB.active?"S start":MB.phase==="answer"?"what did you see? 1 both arcs · 2 upper only · 3 lower only · 4 arcs the other way · 5 nothing":"look at the dim dot"; },
+    key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ mbStart(); return true; }
+      if(MB.active&&MB.phase==="answer"){ const m={"1":"1","2":"2","3":"3","4":"4","5":"5",ArrowDown:"5",n:"5",N:"5"}[k]; if(m){ mbResp(m); return true; } } return false; },
+    draw(env){ this.env=env; const g_=ntCv(env,"#000"), ctx=g_.ctx, ppd=ntPPD(env), s=Math.max(2,0.08*ppd), bs=S_eyeBS(S.eye["6"]);
+      if(!(MB.active&&MB.phase==="answer")){ ctx.fillStyle="rgb(40,40,40)"; ctx.fillRect(g_.cxp-s/2,g_.cyp-s/2,s,s); }
+      if(MB.active&&MB.phase==="show"&&MB.tr.kind!=="blank"){ const w=Math.max(2,0.3*ppd), h=ntDegPx(env,2.5), x=g_.cxp-bs*ntDegPx(env,MB.tr.ecc), L=(+S.mbLvl||35)/100, LV=rgLevels(), gL=Math.min(1,L*LV.g/LV.r);
+        ctx.fillStyle=MB.tr.kind==="red"?(P3?`color(display-p3 ${enc(L).toFixed(3)} 0 0)`:`rgb(${Math.round(255*enc(L))},0,0)`):(P3?`color(display-p3 0 ${enc(gL).toFixed(3)} 0)`:`rgb(0,${Math.round(255*enc(gL))},0)`);
+        ctx.fillRect(x-w/2,g_.cyp-h/2,w,h); }
+      if(MB.active&&MB.phase==="answer"){ const bw=Math.min(ctx.canvas.width*0.15,(ctx.canvas.width*0.92-4*Math.round(ctx.canvas.width*0.012))/5); mbPics(ctx,env,g_.cxp,g_.cyp-bw*0.55,bs); }   // pictures replace the bar, centred on fixation
+      const R=ntR("6"), f=e=>{ const q=mbScore(R[e]); if(!q) return `${e}: –`; if(q.old) return `${e}: arcs seen on ${q.seen} of ${q.n} flashes (older version: rerun for upper and lower arcs)`;
+        return `${e}: upper arc <b>${q.U}/${q.n}</b> · lower arc <b>${q.D}/${q.n}</b> (at 1.5°: ${q.byE[0].U}/${q.byE[0].D} of ${q.byE[0].n}, at 3°: ${q.byE[1].U}/${q.byE[1].D} of ${q.byE[1].n}) · catches answered “arcs” ${q.fa}/${q.nc} · wrong way ${q.wrong} → ${q.verdict}`; };
+      let res=`<span>${f("OD")}</span><span>${f("OS")}</span>`;
+      const qa=mbScore(R.OD), qb=mbScore(R.OS);
+      if(qa&&qb&&!qa.old&&!qb.old&&qa.reliable&&qb.reliable){ const a=(qa.U+qa.D)/(2*qa.n), b=(qb.U+qb.D)/(2*qb.n); if(Math.abs(a-b)>=0.5) res+=`<span><b>Seen much more often with ${a>b?"OD":"OS"}</b>: when one eye sees them clearly, weak or absent arcs in the other have been linked to optic nerve damage (experimental)</span>`; }
+      const T_=MB.tr, readout=`<span>${MB.active?`flash ${MB.n+1} of ${MB.N}${MB.phase==="answer"?" · pick the picture that matches (1–5)":""}`:"stopped"}</span>${res}`;
+      return {readout,warns:["Experimental and subjective; not a diagnostic test. Needs a dark room, a few minutes' dark adaptation, the screen's black truly black (OLED or a good LCD at low backlight) and one eye at a time with the other covered. Answer what you saw, not what you expect: some flashes are catch trials."],
+        eq:`black screen, dim fixation dot; bar 0.3° × 2.5°, on the side of fixation away from the blind spot (${S.eye["6"]}: ${bs>0?"left":"right"}), 1.5° or 3° out, flashed ${(+(S.mbDur||500)/1000).toFixed(1)} s every 2.7–4 s
+red bar ${S.mbLvl||35}% of the red primary; catch flashes: an equally bright green bar (no arcs expected: they need long wavelengths) or nothing
+20 flashes per eye: 12 red (6 at each distance), 4 green, 4 blank, in random order
+answer: both arcs / upper only / lower only / arcs the wrong way / nothing → upper and lower arcs scored separately
+the arc seen above fixation comes from fibres of the inferior retina (superior visual field), and the reverse
+unreliable if more than 25% of catches get “arcs” or more than 20% of red flashes get “wrong way”; a hemifield difference is flagged when the two arcs differ on half the red flashes or more`,
+        opt:`<p>Purkinje described faint blue arcs that appear when a small red light is seen just beside fixation in the dark; Moreland studied them in detail. They trace the paths of the nerve fibres leaving the stimulated patch of retina, arching above and below the fovea toward the optic disc, and are thought to come from those fibres' activity affecting their neighbours: a rare chance to see the nerve fibre layer at work. They need long-wavelength light (red or orange), are brightest right at the bar's onset and fade within a second, so the bar is flashed.</p><p>Each arc belongs to one half of the retina, so the test asks for the upper and lower arcs separately: nerve fibre damage tends to respect the horizontal line (glaucoma often starts in one half). In glaucoma, not seeing the arcs has been associated with larger cups, worse mean defect and an abnormal glaucoma hemifield test (Pagano and colleagues, American Ophthalmological Society thesis). Green bars of equal brightness and blank flashes are catch trials, and one answer picture shows arcs going the wrong way; picking those means guessing, which makes the run unreliable.</p><p>Many healthy people never see the arcs, so absence alone means little. The useful findings are an arc that's reliably seen on one side and not the other, or in one eye and not the other, with clean catch trials.</p>`,
+        rows:`<tr><th>Pattern</th><th>Interpretation (experimental)</th></tr><tr><td>Both arcs, both eyes, catches clean</td><td>Normal</td></tr><tr><td>One arc reliably missing</td><td>Possible nerve fibre damage in that half of the retina (arc above fixation = inferior retina); correlate with fields and OCT</td></tr><tr><td>Seen in one eye only</td><td>Possible nerve fibre damage in the other, if reliably seen in the first</td></tr><tr><td>Never seen in either eye</td><td>Common; uninformative</td></tr><tr><td>Arcs on catch flashes</td><td>Unreliable run</td></tr>`,
+        steps:`<li>Dark room, a few minutes in the dark first. Screen brightness low. No glasses or filters needed; cover the eye not tested, and set it above.</li><li>Press S and keep looking at the dim grey dot. A bar flashes beside it. Watch at the moment it appears for faint bluish arcs leaving its top and bottom.</li><li>Pick the picture that matches what you saw: 1 both arcs, 2 upper only, 3 lower only, 4 arcs going the other way, 5 nothing (tap the button on a tablet). Some flashes are catch trials, so “nothing” is often the right answer. 20 flashes, about 2 minutes. Then the other eye.</li>` }; } };
 
   // ---------------- 7: Haidinger's brushes ----------------
   // Macular pigment absorbs blue light polarised along one direction more than the other (it is dichroic, with its
@@ -6997,7 +7035,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     "9":()=>({run:AN.active,ans:true,start:"s",z:[["ArrowLeft","Left panel sharper"],["ArrowRight","Right panel sharper"]],x:[["ArrowDown","Same"],[" ","Look again"]],how:"Each eye sees one panel. Look at the centre dot; the letters show briefly after a short rest. Tap the LEFT half if the left panel's letters were sharper, the RIGHT half if the right panel's were, Same if equal."}),
     "0":()=>({run:TL.active,ans:TL.phase==="answer",start:"s",v:1,z:[["ArrowUp","Disc IN FRONT"],["ArrowDown","Disc BEHIND"]],how:"Look at the centre dot. A dotty patch flashes with a disc floating in front or behind: tap the TOP half for in front, the BOTTOM half for behind."}),
     "8":()=>(S.ctMethod==="cam"?{run:CVT.active,ans:false,start:"s",z:[],how:"Look at the cross the whole time, head still. It jumps to five dots first, then stays in the middle."}:CVT.tr&&CVT.tr.ax==="V"?{run:CVT.active,ans:CVT.phase==="answer",start:"s",v:1,z:[["ArrowUp","Left line HIGHER"],["ArrowDown","Left line LOWER"]],how:"Look at the cross. Two lines flash. One above the other: tap LEFT or RIGHT for where the top one was. Side by side: tap TOP if the left one was higher, BOTTOM if lower."}:{run:CVT.active,ans:CVT.phase==="answer",start:"s",z:[["ArrowLeft","Top line LEFT"],["ArrowRight","Top line RIGHT"]],how:"Look at the cross. Two lines flash. One above the other: tap LEFT or RIGHT for where the top one was. Side by side: tap TOP if the left one was higher, BOTTOM if lower."}),
-    "6":()=>({run:MB.active,ans:MB.phase==="answer",start:"s",z:[["ArrowLeft","Arcs went LEFT"],["ArrowDown","None seen"],["ArrowRight","Arcs went RIGHT"]],how:"Look at the dim dot. A red bar flashes beside it. Tap LEFT or RIGHT for the way faint blue arcs went, or the MIDDLE if you saw none."}),
+    "6":()=>({run:MB.active,ans:MB.phase==="answer",start:"s",z:[],x:MB_PICS.map(([k,l])=>[k,k+" "+l]),how:"Look at the dim dot. A bar flashes beside it. Then tap the picture that matches what you saw: both arcs, upper only, lower only, arcs the other way, or nothing."}),
     "7":()=>({run:HB.active,ans:true,start:"s",v:1,z:[["ArrowUp","Centred on the dot"],["ArrowLeft","Off to the LEFT"],["ArrowRight","Off to the RIGHT"],["ArrowDown","Not seen"]],how:"Look at the black dot and rotate the tablet back and forth. Then tap a band, top to bottom: hourglass centred on the dot · centred to the left · centred to the right · not seen."}),
     y:()=>({run:VT.active,ans:VT.phase==="answer",start:"s",z:[["ArrowLeft","Top line LEFT"],["ArrowRight","Top line RIGHT"]],how:"Keep the dots single and look at the gap. After each jump two short lines flash: tap LEFT if the top one was left of the bottom one, RIGHT if it was right. Guess when unsure."}),
     h:()=>({run:HO.active,ans:HO.phase==="answer",start:"s",z:[["ArrowLeft","Top line LEFT"],["ArrowRight","Top line RIGHT"]],how:"Look at the centre of the cross. Two short lines flash, one above the other: tap LEFT if the top one was left of the bottom one, RIGHT if it was right. Guess when unsure."}),

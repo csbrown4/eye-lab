@@ -414,7 +414,7 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
       </label>
       <label data-modes="p" class="pm-amp">Age (for norms)<input id="pmAge" type="number" min="5" max="90" step="1" placeholder="years"></label>
       <label data-modes="p">Trials
-        <div class="btns"><button type="button" id="pmCam">Start camera</button><button type="button" id="pmReset">Clear trials</button></div>
+        <div class="btns"><button type="button" id="pmCam">Start camera</button><button type="button" id="pmReset">Clear trials</button></div><p class="ldstat camstat"></p>
       </label>
       <label data-modes="F">Method
         <select id="fdMethod"><option value="flash">Flashed nonius, adaptive (precise)</option><option value="card">Graded pairs card (Sheedy-style)</option></select>
@@ -615,7 +615,7 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
       <label data-modes="e">Test
         <select id="emType"><optgroup label="Camera eye tracking"><option value="cpur">Pursuit: gain, phase, catch-up saccades</option><option value="csac">Saccades: latency and accuracy</option><option value="canti">Antisaccades: errors and latency</option><option value="c9">Nine-gaze motility (with the lenses, experimental)</option></optgroup><optgroup label="Without a camera"><option value="pro">Saccades: prosaccade identification</option><option value="anti">Saccades: antisaccade identification</option><option value="pur">Pursuit: dynamic visual acuity</option><option value="name">Rapid number naming</option></optgroup></select>
       </label>
-      <label data-modes="e" data-emt="cpur csac canti c9">Camera<div class="btns"><button type="button" id="emCam">Start camera</button><button type="button" id="emTime">Timing check</button></div></label>
+      <label data-modes="e" data-emt="cpur csac canti c9">Camera<div class="btns"><button type="button" id="emCam">Start camera</button><button type="button" id="emTime">Timing check</button></div><span class="ldstat camstat" style="display:block;margin-top:6px;text-transform:none;letter-spacing:0;font-weight:400"></span></label>
       <label data-modes="e" data-emt="cpur csac canti">Direction<select id="etAxis"><option value="H">Horizontal</option><option value="V">Vertical</option></select></label>
       <label data-modes="e" data-emt="cpur">Speed<select id="etFreq"><option value="0.2">0.2 Hz (slow)</option><option value="0.4">0.4 Hz (standard)</option><option value="0.6">0.6 Hz (fast)</option></select></label>
       <label data-modes="e" data-emt="cpur csac canti c9">Size<select id="etAmp"><option value="auto">Largest that fits the screen</option><option value="10">±10°</option><option value="15">±15°</option></select></label>
@@ -4041,7 +4041,7 @@ tolerance = largest level with threshold ≤ 2 × the matched (0) threshold`,
   function ctNoise(seg,deg){ const L=seg.filter(s=>s.k==="B"&&s.n>=5).map(s=>deg("od",s.od)[0]-deg("os",s.os)[0]); if(L.length<2) return null; const m=L.reduce((a,b)=>a+b,0)/L.length; return 100*Math.tan(Math.sqrt(L.reduce((a,b)=>a+(b-m)**2,0)/(L.length-1))*Math.PI/180); }
   NT["8"]={ name:"Cover test",
     ctl:`<label data-modes="8">Method<select data-ntk="ctMethod"><option value="soft">Dichoptic cover, flashed lines (subjective)</option><option value="cam">Camera cover test (objective, experimental)</option></select></label>
-      <label data-modes="8" data-ntm="cam" data-ntmk="ctMethod">Camera<div class="btns"><button type="button" data-nta="8:cam">Start camera</button></div></label>
+      <label data-modes="8" data-ntm="cam" data-ntmk="ctMethod">Camera<div class="btns"><button type="button" data-nta="8:cam">Start camera</button></div><span class="ldstat camstat" style="display:block;margin-top:6px;text-transform:none;letter-spacing:0;font-weight:400"></span></label>
       <label data-modes="8">Run<div class="btns"><button type="button" data-nta="8:start" class="primary">Start (S)</button><button type="button" data-nta="8:stop">Stop</button></div></label>`,
     stop:ctStop, clear(){ S.ntRes&&(S.ntRes["8"]={}); }, act(a){ if(a==="start") ctStart(); else if(a==="cam"){ try{ ldStart(); }catch(e){} } else { ctStop(); draw(); } },
     hud(){ if(S.ctMethod==="cam") return CVT.active?"look at the cross; keep your head still":"S start"; const T_=CVT.tr; return !CVT.active?"S start":CVT.phase==="answer"?(T_.ax==="H"?"top line was: ← left · → right of the bottom line":"left line was: ↑ higher · ↓ lower than the right line"):"look at the cross"; },
@@ -6218,6 +6218,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     $("check").textContent=S.check?"Done calibrating":"Calibrate glasses"; $("check").setAttribute("aria-pressed",S.check);
     { const rgOn=RG_MODES.includes(m); $("filtBlock").hidden=!(S.check&&rgOn); $("ctlTest").hidden=S.check&&rgOn; }
     { const M_=TMETA[m]||{}; $("tGroup").textContent=M_.g||""; $("tName").textContent=M_.n||""; $("tDesc").textContent=M_.d||""; $("tKit").innerHTML=(m==="e"&&S.emType[0]==="c"?(S.emType==="c9"?["rg","cam"]:["cam"]):(M_.k||[])).map(x=>x==="cam"?'<span class="tag">◉ Camera</span>':x==="rg"?`<span class="tag"><i class="dot dr"></i><i class="dot dg"></i>${pairTxt()} glasses</span>`:KITS[x]).join(""); document.title="Screen Thorington Card"; }
+    { const ls=$("ldStat"); if(ls) document.querySelectorAll(".camstat").forEach(e=>{ if(e.textContent!==ls.textContent) e.textContent=ls.textContent; }); }
     setv("rgPup",S.rgPup||"model"); setv("rgAge",S.asAge||30); setv("rgLight",S.asLight||"indoor"); setv("rgLook",String(S.rgLook??400));
     setv("pd",S.pd); setv("fpAxis",S.fpAxis); setv("fpDur",S.fpDur); setv("vfLvl",S.vfLvl); setv("rdType",S.rdType); setv("ctType",S.ctType); setv("emType",S.emType); setv("dDuo",S.dDuo?"1":"0"); setv("hVtx",S.hVtx); setv("coLens",S.coLens); setv("coPupil",S.coPupil); setv("coPh0",S.coPh0); setv("coPh1",S.coPh1); setv("coPhL",S.coPhL); ["dcPh","dcAP","dcRes","dcRec","dcSym"].forEach(id=>setv(id,(S.dc||{})[id]??"")); setv("tvPh",S.tvPh); setv("tvDur",S.tvDur); setv("mxHz",S.mxHz); setv("vnDur",S.vnDur); setv("vnLOD",S.vnL.OD); setv("vnLOS",S.vnL.OS); setv("bsEye",S.bsEye); setv("bsPupil",S.bsPupil);
     syncTabs();
@@ -6520,7 +6521,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     const fl=await mod.FaceLandmarker.createFromOptions(fs,{baseOptions:{modelAssetPath:TV_MODEL,delegate:"CPU"},runningMode:"VIDEO",numFaces:1,minFaceDetectionConfidence:0.5,minTrackingConfidence:0.5,outputFaceBlendshapes:false});
     let last=0, n=0;
     return { send:async ({image})=>{ const t=Math.max(last+1,Math.round(performance.now())); last=t; const res=fl.detectForVideo(image,t); if(++n===1) ldStage("tracking (first frame done)"); else if(n===60) ldStage("tracking (60 frames done)"); ldResults({image,multiFaceLandmarks:res.faceLandmarks||[]}); }, close:()=>{ try{ fl.close(); }catch(e){} } }; }
-  const ldSet=t=>{ $("ldStat").textContent=t; };
+  const ldSet=t=>{ $("ldStat").textContent=t; document.querySelectorAll(".camstat").forEach(e=>e.textContent=t); };   // shown next to every Start camera button, not only in Setup
   const med=a=>{ const b=[...a].sort((x,y)=>x-y), n=b.length; return n? (n%2?b[(n-1)/2]:(b[n/2-1]+b[n/2])/2) : NaN; };
   const mad=a=>{ const m_=med(a); return 1.4826*med(a.map(v=>Math.abs(v-m_))); };
   function ldTarget(){ // target (centre of the test field) in camera coordinates, mm: +x = camera's right (viewer's left), +y down

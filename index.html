@@ -4221,7 +4221,7 @@ unreliable if more than 25% of catches get “arcs” or more than 20% of red fl
     const pt=(deg,rr)=>{ const th=deg*Math.PI/180, sx=temporalLeft?-1:1; return [cx+sx*rr*Math.cos(th),cy-rr*Math.sin(th)]; };
     NFL_SEC.forEach(([n,a,b])=>{ const a0=a, a1=b<a?b+360:b, mid=(a0+a1)/2, [x0,y0]=pt(a0,R), [x1,y1]=pt(a1+1,R), v=vals[n], col=v==null?"var(--line)":v>=85?"#3a9a5b":v>=70?"#e0a020":"#d0342c";
       s+=`<path d="M${cx},${cy} L${x0.toFixed(1)},${y0.toFixed(1)} A${R},${R} 0 ${a1-a0>180?1:0} ${temporalLeft?1:0} ${x1.toFixed(1)},${y1.toFixed(1)} Z" fill="${col}" fill-opacity=".75" stroke="var(--panel)" stroke-width="1.5"/>`;
-      const [tx,ty]=pt(mid,R*0.62); s+=`<text x="${tx.toFixed(1)}" y="${(ty+3).toFixed(1)}" text-anchor="middle" font-size="9" fill="${v==null?"currentColor":"#fff"}">${n}${v!=null?" "+Math.round(v):""}</text>`; });
+      const [tx,ty]=pt(mid,R*0.66), fc=v==null?"currentColor":"#fff"; s+=`<text x="${tx.toFixed(1)}" y="${(ty-1).toFixed(1)}" text-anchor="middle" font-size="8.5" font-weight="600" fill="${fc}">${n}</text>`+(v!=null?`<text x="${tx.toFixed(1)}" y="${(ty+8).toFixed(1)}" text-anchor="middle" font-size="7.5" fill="${fc}">${Math.round(v)}</text>`:""); });
     return s+`<text x="75" y="128" text-anchor="middle" font-size="8.5" fill="currentColor">${title}</text><text x="75" y="140" text-anchor="middle" font-size="8" fill="currentColor" opacity=".7">${eye} disc, as on the OCT printout</text></svg>`; }
 
   // ---------------- μ: hemifield balance along nerve fibre bundles ----------------
@@ -4270,8 +4270,8 @@ unreliable if more than 25% of catches get “arcs” or more than 20% of red fl
       [[p.x,p.y,true],[p.x,-p.y,false]].forEach(([x,y,isUp])=>{ const bad=sig&&(isUp===worseUp), path=nflPath(x,y,eye);
         s+=`<path d="${path.map((q,i)=>(i?"L":"M")+P(q).map(v=>v.toFixed(1)).join(" ")).join("")}" fill="none" stroke="${bad?"#d0342c":"#4a6fd0"}" stroke-opacity="${bad?0.9:0.35}" stroke-width="${bad?2:1}"/>`;
         const [X,Y]=P([x,y]); s+=`<circle cx="${X}" cy="${Y}" r="${HB2_R*sc}" fill="${bad?"#d0342c":"#888"}"/>`; });
-      const [X,Y]=P([p.x,p.y]); s+=`<text x="${X+8}" y="${Y-6}" fill="currentColor">${p.mu>=0?"+":""}${p.mu.toFixed(1)}</text>`; });
-    return s+`<text x="4" y="12" fill="currentColor" opacity=".7">${eye} field as the patient sees it · lines: nerve fibre paths to the disc</text></svg>`; }
+      const wk=p.mu>=0?[p.x,p.y]:[p.x,-p.y], [X,Y]=P(wk); if(Math.abs(p.mu)>=0.5) s+=`<text x="${X+8}" y="${Y+(wk[1]>0?-6:13)}" fill="${sig?"#d0342c":"currentColor"}">−${Math.abs(p.mu).toFixed(1)}</text>`; });   // the number sits on the weaker spot of each pair
+    return s+`<text x="4" y="12" fill="currentColor" opacity=".7">${eye} field as the patient sees it · lines: nerve fibre paths to the disc</text><text x="4" y="${H_-4}" fill="currentColor" opacity=".7">number = dB weaker than the mirror spot</text></svg>`; }
   NT["μ"]={ name:"Hemifield balance",
     ctl:`<label data-modes="μ">Run<div class="btns"><button type="button" data-nta="μ:start" class="primary">Start (S)</button><button type="button" data-nta="μ:stop">Stop</button></div></label>`,
     stop:hb2Stop, clear(){ S.ntRes&&(S.ntRes["μ"]={}); }, act(a){ if(a==="start") hb2Start(); else { hb2Stop(); draw(); } },

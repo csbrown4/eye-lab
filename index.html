@@ -588,7 +588,7 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
       <label data-modes="N">PD (mm)<input id="pd" type="number" min="45" max="80" step="0.5"></label>
       <label data-modes="N">Near phoria for comparison <span class="u">(Δ, eso +)</span><input id="tvPh" type="number" step="0.5" placeholder="e.g. -1"></label>
       <label data-modes="N">Run<div class="btns"><button type="button" id="tvStart" class="primary">Start (S)</button><button type="button" id="tvStop">Stop</button></div></label>
-      <label data-modes="I">Measure<select id="coMode"><option value="lag">Accommodative lag (steady)</option><option value="cac">CA/C ratio (open loop, flashed)</option></select></label>
+      <label data-modes="I">Measure<select id="coMode"><option value="lag">Accommodative lag</option><option value="cac">CA/C ratio (open loop, flashed)</option></select></label>
       <label data-modes="I" id="ccPW">Prism in front now<select id="ccP"><option value="0">No prism</option><option value="-4">4 Δ BI total</option><option value="-6">6 Δ BI total</option><option value="-8">8 Δ BI total</option><option value="-10">10 Δ BI total</option><option value="-12">12 Δ BI total</option><option value="6">6 Δ BO total (check)</option></select></label>
       <label data-modes="I" id="ccLW">Lens in front now<select id="ccL"><option value="0">None (habitual)</option><option value="1">+1.00 D (scale check)</option><option value="-1">−1.00 D (scale check)</option><option value="1.5">+1.50 D (scale check)</option></select></label>
       <label data-modes="I" id="ccDW">Flash<select id="ccDur"><option value="150">150 ms (most open)</option><option value="200">200 ms</option><option value="300">300 ms</option><option value="400">400 ms</option><option value="600">600 ms (easiest to judge)</option></select></label>
@@ -596,7 +596,12 @@ body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resC
       <label data-modes="I" id="coLensW">Lens held in front
         <select id="coLens"><option value="0">None</option><option value="2">+2.00 D flipper</option><option value="-2">−2.00 D flipper</option></select>
       </label>
-      <label data-modes="I590">Pupil diameter (mm)<input id="coPupil" type="number" min="2" max="8" step="0.25"></label>
+      <label data-modes="I9">Pupil<select id="rgPup"><option value="model">Estimated from age and room light (default)</option><option value="entered">Measured (enter it below)</option></select></label>
+      <label data-modes="I9">Your age<input id="rgAge" type="number" min="5" max="100" step="1"></label>
+      <label data-modes="I9">Room lighting<select id="rgLight"><option value="dark">Dark room (screen only)</option><option value="dim">Dim room</option><option value="indoor">Normal indoor lighting</option><option value="bright">Bright room / daylight</option></select></label>
+      <label data-modes="I590">Measured pupil (mm)<input id="coPupil" type="number" min="2" max="8" step="0.25"></label>
+      <label data-modes="I59">Look<select id="rgLook"><option value="400">0.4 s after a 1 s rest (recommended)</option><option value="700">0.7 s after a 1 s rest</option><option value="0">Steady (no accommodation control)</option></select></label>
+      <label data-modes="IUd">Red/green brightness<div class="btns"><button type="button" id="rgLumBtn">Match brightness</button></div></label>
             <label data-modes="I">Run<div class="btns"><button type="button" id="coStart" class="primary">Start (S)</button></div></label>
       <label data-modes="f">Axis
         <select id="fpAxis"><option value="H">Horizontal phoria</option><option value="V">Vertical phoria</option></select>
@@ -1402,7 +1407,7 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
     const mu=[],sg=[]; for(let i=0;i<o.n;i++) mu.push(o.lo+(o.hi-o.lo)*i/(o.n-1)); for(let j=0;j<o.ns;j++) sg.push(o.sLo*Math.pow(o.sHi/o.sLo,j/(o.ns-1)));
     const post=new Float64Array(o.n*o.ns).fill(1/(o.n*o.ns)), lapse=o.lapse??0.04; let n=0;
     const ad={ o, trials:()=>n,
-      update(x,r){ let s=0; for(let i=0;i<o.n;i++) for(let j=0;j<o.ns;j++){ const k=i*o.ns+j, p=lapse/2+(1-lapse)*normCdf((x-mu[i])/sg[j]); post[k]*= r?p:1-p; s+=post[k]; } for(let k=0;k<post.length;k++) post[k]/=s; n++; },
+      update(x,r){ let s=0; for(let i=0;i<o.n;i++) for(let j=0;j<o.ns;j++){ const k=i*o.ns+j, p=lapse/2+(1-lapse)*normCdf((x-mu[i])/sg[j]); post[k]*= r===null?Math.sqrt(p*(1-p)):r?p:1-p; s+=post[k]; } for(let k=0;k<post.length;k++) post[k]/=s; n++; },   // r = null: answered "same"
       est(){ let m=0,m2=0,ls=0; for(let i=0;i<o.n;i++) for(let j=0;j<o.ns;j++){ const w=post[i*o.ns+j]; m+=w*mu[i]; m2+=w*mu[i]*mu[i]; ls+=w*Math.log(sg[j]); } return {mu:m, sd:Math.sqrt(Math.max(0,m2-m*m)), spread:Math.exp(ls)}; },
       next(){ const e=ad.est(), w=Math.max(e.sd,0.6*e.spread); return Math.max(o.lo,Math.min(o.hi,e.mu+(Math.random()*2-1)*w)); },
       done(){ const e=ad.est(); return n>=o.maxT || (n>=o.minT && e.sd<=o.sdStop); } };
@@ -1653,7 +1658,7 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
   // red and green primaries by dominant wavelength: Display P3 615 / 544 nm, sRGB 611 / 549 nm
   const CO_LAM = P3 ? [615,544] : [611,549], LCA=thibos(CO_LAM[0])-thibos(CO_LAM[1]);   // ≈ 0.34 D (P3), 0.30 D (sRGB)
   const CO={active:false,s:0,step:0.3,last:0,rev:[],text:[]};
-  function coTrial(){ CO.text=[randLetters(3),randLetters(3),randLetters(3),randLetters(3)]; CO.ori=Math.random()<0.5?1:0; draw(); }
+  function coTrial(){ CO.text=[randLetters(3),randLetters(3),randLetters(3),randLetters(3)]; CO.ori=Math.random()<0.5?1:0; if(CO.active&&S.coMode!=="cac"){ CO.ready=false; lookRun(CO,"I"); } else draw(); }   // rest on the same letters in neutral grey, then a short look in colour
   // Geometric optics. A defocus of D dioptres through a pupil p spreads a point into a uniform disc p·D radians across.
   // The eye focuses green ΔD (= LCA) more strongly than red, so with focus lagging L behind the target the green
   // letters carry defocus L − ΔD/2 and the red letters L + ΔD/2. The screen adds a real disc blur of s dioptres
@@ -1663,7 +1668,7 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
   // fitted constants, no base blur. The eye's other aberrations add the same spread to both sides and cancel.
   // The pupil sets the size of the drawn disc; if the entered pupil is wrong by a factor r, L is off by r².
   const coSmax=()=>Math.sqrt(2*LCA*1.25);                // largest added blur (D): staircase spans lags of ±1.25 D
-  function coStart(){ CO.active=true; const K=coSmax()**2; CO.ad=PSE({lo:-K,hi:K,n:161,sLo:0.01,sHi:0.4,ns:10,minT:16,maxT:40,sdStop:0.025}); CO.s=CO.ad.next(); coTrial(); }
+  function coStart(){ lookStop(CO); CO.active=true; const K=coSmax()**2; CO.ad=PSE({lo:-K,hi:K,n:161,sLo:0.01,sHi:0.4,ns:10,minT:16,maxT:40,sdStop:0.025}); CO.s=CO.ad.next(); coTrial(); }
   // disc blur of the given diameter (px) on a Float32 mask: rows of the disc summed from running row totals, with the
   // fractional ends interpolated so sub-pixel diameters are exact
   function discBlur(src,W_,H_,diam){ const r=diam/2; if(r<0.35) return src;
@@ -1673,10 +1678,11 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
     const out=new Float32Array(W_*H_);
     for(let y=0;y<H_;y++) for(let x=0;x<W_;x++){ let a=0; for(const [dy,c] of rows){ const yy=y+dy; if(yy<0||yy>=H_) continue; const o=yy*(W_+1); a+=at(o,x+0.5+c)-at(o,x+0.5-c); } out[y*W_+x]=a/wsum; }
     return out; }
-  function coLag(k){ return k/(2*LCA*asbSCE(+S.coPupil||4)); }   // Stiles–Crawford: the eye's own blur is smaller than a uniform pupil's
-  function coResp(greenClearer){ if(!CO.active) return;
-    CO.ad.update(CO.s, !greenClearer);   // blur on green (s > 0) makes "red clearer" more likely
-    if(CO.ad.done()){ const e=CO.ad.est(), sm=e.mu; S.coRes=S.coRes||{}; S.coRes[String(S.coLens)]=Math.round(100*coLag(sm))/100; S.coResEdge=Math.abs(coLag(sm))>1.05; CO.active=false; save(); }
+  function coLag(k){ return k/(2*LCA*asbSCE(rgPup("I").P)); }   // Stiles–Crawford: the eye's own blur is smaller than a uniform pupil's
+  function coResp(greenClearer){ if(!CO.active||!CO.ready) return; lookStop(CO);   // greenClearer null: "same"
+    CO.ad.update(CO.s, greenClearer===null?null:!greenClearer);   // blur on green (s > 0) makes "red clearer" more likely
+    if(CO.ad.done()){ const e=CO.ad.est(), sm=e.mu, pu=rgPup("I"), L=coLag(sm), rel=Math.hypot(pupScaleRel(pu.P,pu.sd),LCA_REL), sdT=Math.hypot(Math.abs(coLag(e.sd)),rel*Math.abs(L));
+      S.coRes=S.coRes||{}; S.coRes[String(S.coLens)]=Math.round(100*L)/100; S.coResSd=S.coResSd||{}; S.coResSd[String(S.coLens)]=Math.round(100*Math.max(0.05,sdT))/100; S.coResEdge=Math.abs(L)>1.05; CO.active=false; save(); }
     else CO.s=Math.round(1000*CO.ad.next())/1000;
     coTrial(); }
 
@@ -1697,9 +1703,9 @@ Sheard prism = (2 × phoria − reserve) ÷ 3;  Percival = (greater − 2 × les
       if(ts-on>=want-CC.fdt/2){ CC.shown=ts-on; CC.phase="answer"; draw(); return; } CC.raf=requestAnimationFrame(tick); };
     CC.raf=requestAnimationFrame(tick); }
   function ccResp(greenClearer){ if(!CC.active||CC.phase!=="answer") return;
-    CC.ad.update(CC.s, !greenClearer);
-    if(CC.ad.done()){ const e=CC.ad.est(), sm=e.mu, toL=b=>b*Math.abs(b)/(2*LCA*asbSCE(+S.coPupil||4)), L=toL(sm), sdL=Math.max(0.03,(toL(sm+e.sd)-toL(sm-e.sd))/2);   // interval, not slope: L is flat at b = 0
-      S.ccRes=S.ccRes||{}; (S.ccRes[ccCond()]=S.ccRes[ccCond()]||[]).push({L:+L.toFixed(3),sd:+sdL.toFixed(3),pupil:S.coPupil,dist:S.dist.I,dur:+S.ccDur||150,when:Date.now(),secs:Math.round((Date.now()-CC.t0)/1000)});
+    CC.ad.update(CC.s, greenClearer===null?null:!greenClearer);
+    if(CC.ad.done()){ const e=CC.ad.est(), sm=e.mu, toL=b=>b*Math.abs(b)/(2*LCA*asbSCE(rgPup("I").P)), L=toL(sm), sdL=Math.max(0.03,(toL(sm+e.sd)-toL(sm-e.sd))/2);   // interval, not slope: L is flat at b = 0
+      S.ccRes=S.ccRes||{}; (S.ccRes[ccCond()]=S.ccRes[ccCond()]||[]).push({L:+L.toFixed(3),sd:+sdL.toFixed(3),pupil:+rgPup("I").P.toFixed(1),pupSrc:rgPup("I").src,dist:S.dist.I,dur:+S.ccDur||150,when:Date.now(),secs:Math.round((Date.now()-CC.t0)/1000)});
       ccStop(); save(); draw(); beep(660,200); return; }
     CC.s=Math.round(1000*CC.ad.next())/1000; CC.phase="fix"; draw(); ccSchedule(1100+Math.random()*500); }
   function ccSummary(){ const R=S.ccRes||{}, avg=a=>{ if(!a||!a.length) return null; const w=a.map(x=>1/(x.sd*x.sd)), W=w.reduce((p,q)=>p+q,0); return {L:a.reduce((p,x,i)=>p+w[i]*x.L,0)/W, se:Math.sqrt(1/W), n:a.length}; };
@@ -3643,7 +3649,7 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
   // r = true when the response says the side that k > 0 blurs looked WORSE (P(r) rises with k)
   function as2Update(G,t,k,r){ const nM=G.M.length,nA=G.A.length,blk=nM*nA*nA,L=G.L;
     for(let a=0;a<nM;a++) for(let b=0;b<nA;b++) for(let c=0;c<nA;c++){ const pk=as2Pred(t,G.M[a],G.A[b],G.A[c],G.Q0,G.dD), j=(a*nA+b)*nA+c;
-      for(let si=0;si<3;si++){ const p=AS2_LAM/2+(1-AS2_LAM)*as2Phi((k-pk)/G.S[si]), lp=Math.log(r?p:1-p);
+      for(let si=0;si<3;si++){ const p=AS2_LAM/2+(1-AS2_LAM)*as2Phi((k-pk)/G.S[si]), lp=r===0.5?0.5*(Math.log(p)+Math.log(1-p)):Math.log(r?p:1-p);   // r = 0.5: answered "same"
         for(let sj=0;sj<3;sj++){ const s=t.type===1?si*3+sj:sj*3+si; L[s*blk+j]+=lp; } } }
     G.n++; G.hist.push({t,k,r}); }
   function as2Weights(G){ const L=G.L; let m=-Infinity; for(let i=0;i<L.length;i++) if(L[i]>m) m=L[i]; const W=new Float64Array(L.length); let s=0; for(let i=0;i<L.length;i++){ const w=Math.exp(L[i]-m); W[i]=w; s+=w; } for(let i=0;i<L.length;i++) W[i]/=s; return W; }
@@ -3654,7 +3660,7 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
     return {M:m,A1:a,A2:b,ls1:s1,ls2:s2}; }
   // ---- final estimate: MAP over continuous parameters (Nelder–Mead) + Laplace (numerical Hessian) for uncertainties
   function as2LogPost(G,x,freeQ){ const [M,A1,A2,ls1,ls2,lq]=x, Q=freeQ?Math.exp(lq):G.Q0, s1=Math.exp(ls1), s2=Math.exp(ls2); let lp=0;
-    for(const h of G.hist){ const pk=as2Pred(h.t,M,A1,A2,Q,G.dD), p=AS2_LAM/2+(1-AS2_LAM)*as2Phi((h.k-pk)/(h.t.type===1?s1:s2)); lp+=Math.log(h.r?p:1-p); }
+    for(const h of G.hist){ const pk=as2Pred(h.t,M,A1,A2,Q,G.dD), p=AS2_LAM/2+(1-AS2_LAM)*as2Phi((h.k-pk)/(h.t.type===1?s1:s2)); lp+=h.r===0.5?0.5*(Math.log(p)+Math.log(1-p)):Math.log(h.r?p:1-p); }
     lp+=-0.5*((M-0.5)/1.3)**2-0.5*(A1*A1+A2*A2)-0.5*((ls1-Math.log(0.09))/1)**2-0.5*((ls2-Math.log(0.09))/1)**2; if(freeQ) lp+=-0.5*((lq-Math.log(G.Q0))/1.0)**2; return lp; }
   function as2NM(f,x0,step,iters){ const n=x0.length; let P=[x0.slice()]; for(let i=0;i<n;i++){ const x=x0.slice(); x[i]+=step[i]; P.push(x); } let F=P.map(f);
     for(let it=0;it<iters;it++){ const o=[...P.keys()].sort((a,b)=>F[b]-F[a]); P=o.map(i=>P[i]); F=o.map(i=>F[i]);      // maximise
@@ -3678,9 +3684,10 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
     let axP=0.5*Math.atan2(A2,A1)*180/Math.PI; axP=((axP%180)+180)%180; let tabo=Math.round(180-axP)%180; if(tabo<=0) tabo+=180;
     const meri=phi=>{ const c=Math.cos(2*phi*Math.PI/180), s=Math.sin(2*phi*Math.PI/180), g=[1,c,s]; let v=0; for(let i=0;i<3;i++) for(let j=0;j<3;j++) v+=g[i]*g[j]*V[i][j]; return {D:M+A1*c+A2*s,sd:Math.sqrt(Math.max(0,v))}; };
     return {A0:M,A0sd:Math.sqrt(Math.max(0,V[0][0])),A1,A2,amp,cyl:-2*amp,axP,tabo,Dmax:M+amp,Dmin:M-amp,seC,seAx,Q,qRelSE:freeQ?Math.sqrt(Math.max(0,V[5][5])):null,s1:Math.exp(x[3]),s2:Math.exp(x[4]),meri,freeQ}; }
-  if(S.asMethV!==2){ S.asMeth="chrom"; if(S.asPup==="self") S.asPup="entered"; S.asMethV=2; }
+  if(S.asMethV!==2&&S.asMethV!==3){ S.asMeth="chrom"; if(S.asPup==="self") S.asPup="entered"; S.asMethV=2; }
+  if(S.asMethV===2){ if(S.asPup==="entered") S.asPup="model"; S.asMethV=3; }   // v136: few people can measure their pupil, so the model is the default
   S.asLumM="mdb";
-  [["asTrials",40],["asMeth","chrom"],["asAge",30],["asLight","indoor"],["asCol","RG"],["asPup","entered"],["asLumM","mdb"],["asLumUse","match"],["asLumCal",{}]].forEach(([k,v])=>{ if(S[k]==null) S[k]=v; });
+  [["asTrials",40],["asMeth","chrom"],["asAge",30],["asLight","indoor"],["asCol","RG"],["asPup","model"],["asLumM","mdb"],["asLumUse","match"],["asLumCal",{}],["rgLook",400],["rgPup","model"]].forEach(([k,v])=>{ if(S[k]==null) S[k]=v; });
   const AS2_LAMBDA=P3?[615,544,465]:[611,549,464], AS2_Y=P3?[0.2290,0.6917,0.0793]:[0.2126,0.7152,0.0722];
   const AS2_PAIR={RG:{L:0,S:1,n:"red / green"},RB:{L:0,S:2,n:"red / blue"},GB:{L:1,S:2,n:"green / blue"}};
   const AS2_CN=["red","green","blue"];
@@ -3694,29 +3701,54 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
   // Pupil model (Watson & Yellott 2012 unified formula), monocular, plus the near reflex. Field-average luminance by
   // room lighting (the test screen itself is mostly black). Individual spread about ±0.9 mm (1 SD).
   const AS_LIGHT={dark:[1,"Dark room (screen only)"],dim:[5,"Dim room"],indoor:[30,"Normal indoor lighting"],bright:[150,"Bright room / daylight"]};
-  function asPupModel(){ const L=(AS_LIGHT[S.asLight]||AS_LIGHT.indoor)[0], a=4000, F=L*a*0.1, x=Math.pow(F/846,0.41), Dsd=7.75-5.75*x/(x+2), y=+S.asAge||30;
-    const Du=Dsd+(y-28.58)*(0.02132-0.009562*Dsd), near=0.3*Math.min(4,100/(S.dist["5"]||40));     // ~0.3 mm per dioptre of accommodation
+  function pupModelAt(distCm){ const L=(AS_LIGHT[S.asLight]||AS_LIGHT.indoor)[0], a=4000, F=L*a*0.1, x=Math.pow(F/846,0.41), Dsd=7.75-5.75*x/(x+2), y=+S.asAge||30;
+    const Du=Dsd+(y-28.58)*(0.02132-0.009562*Dsd), near=0.3*Math.min(4,100/(distCm||40));     // ~0.3 mm per dioptre of accommodation
     return {P:Math.max(2,Math.min(8,Du-near)),sd:0.9}; }
+  function asPupModel(){ return pupModelAt(S.dist["5"]||40); }
   const asPe=()=>S.asPup==="model"?asPupModel().P:(+S.coPupil||4);
   const asC=()=>asbSCE(asPe());
+  // ---- shared by every test that compares red and green focus (5 astigmatism, 9 anisometropia, I chromatic lag,
+  // U near duochrome, d distance duochrome): the lessons from the Astig Finder ----
+  // (1) Pupil: few people can measure it, so the default is the model (age, room light, near reflex) and its ±0.9 mm
+  //     spread is carried into the result; a measured pupil can still be chosen.
+  function rgPup(mode){ if((S.rgPup||"model")==="entered"){ const P=+S.coPupil||4; return {P,sd:Math.max(0.3,0.1*P),src:"entered"}; }
+    const m=pupModelAt(S.dist[mode]||40); return {P:m.P,sd:m.sd,src:"model"}; }
+  // relative spread of anything that scales with the eye's own blur, c(P)·P², for a pupil P ± sd
+  function pupScaleRel(P,sd){ const g=Q=>asbSCE(Q)*Q*Q; return (g(Math.min(8,P+sd))-g(Math.max(2,P-sd)))/(2*g(P)); }
+  const LCA_REL=0.10;                                   // the eye's own chromatic aberration varies about ±10% between people
+  // (2) Brightness: the standard observer can be far off on a real screen (one match needed green at about 2× the
+  //     standard level), and the brighter colour looks sharper. One red/green match is shared by every test.
+  const rgLumKey=()=>"RG"+(P3?"-p3":"-srgb");
+  function rgLevels(){ const std=AS2_Y[0]/AS2_Y[1], cal=(S.asLumCal||{})[rgLumKey()], use=!!cal&&S.asLumUse!=="std"; let g=std*(use?cal.f:1), r=1; if(g>1){ r=1/g; g=1; } return {r,g,cal:use?cal:null}; }   // linear red and green levels at equal brightness
+  function rgLumTxt(){ const L=rgLevels(); return L.cal?`red/green brightness: your own match (green ${L.cal.f.toFixed(2)}× the standard level)`:`red/green brightness: <b>standard observer, not matched to you</b> (press “Match brightness”; True Tone and Night Shift off)`; }
+  function rgLumGo(){ ASL.ret={mode:S.mode,col:S.asCol}; S.asCol="RG"; const b=document.querySelector('[data-m="5"]'); if(b&&S.mode!=="5") b.click(); aslStart(); }
+  function rgLumBack(){ const r=ASL.ret; if(!r) return; ASL.ret=null; S.asCol=r.col; save(); const b=document.querySelector(`[data-m="${r.mode}"]`); if(b&&r.mode!=="5") b.click(); else draw(); }
+  // (3) Accommodation: focus starts to follow what's on screen after ~0.35 s, and red can look sharper after half a
+  //     second of steady viewing. So each judgement gets a rest with nothing new to focus on, then a short look
+  //     (default 0.4 s; Space looks again). The answer is the first impression, the same for every trial.
+  const LOOK_REST=1000;
+  function lookRun(st,mode,rest){ clearTimeout(st.ft); clearTimeout(st.rt); st.show=false; const tok=st.tok=(st.tok||0)+1, ms=+(S.rgLook??400); draw();
+    st.rt=setTimeout(()=>{ if(st.tok!==tok||S.mode!==mode) return; st.show=true; st.ready=true; draw();
+      if(ms>0) st.ft=setTimeout(()=>{ if(st.tok!==tok) return; st.show=false; if(S.mode===mode) draw(); },ms); }, rest!=null?rest:ms>0?LOOK_REST:250); }
+  function lookStop(st){ clearTimeout(st.ft); clearTimeout(st.rt); st.tok=(st.tok||0)+1; st.show=false; }
+  const lookTxt=()=>+(S.rgLook??400)>0?`each look ${(+(S.rgLook??400)/1000).toFixed(1)} s after a 1 s rest (Space: look again)`:"steady view (no timing control)";
   function as2Conds(){ const L=[]; [0,30,60,90,120,150].forEach(o=>L.push({type:1,phi:(o+90)%180,ori:o}));
     if(S.asMeth!=="chrom") [0,60,120].forEach(a=>["L","S"].forEach(col=>L.push({type:2,phiA:(a+90)%180,phiB:a,oriA:a,oriB:(a+90)%180,col})));
     return L; }
   function asStart(){ aslStop(); AS.active=true; AS.cfg=as2Cfg(); AS.G=as2New(AS.cfg.dD,asC()); AS.order=[]; AS.rolls=[]; asTrial(); }
-  function asStop(){ AS.active=false; }
+  function asStop(){ AS.active=false; lookStop(AS); }
   function asTrial(){ const G=AS.G; if(G.n>=(+S.asTrials||40)){ asFinish(); return; }
     if(!AS.order.length) AS.order=as2Conds().sort(()=>Math.random()-0.5);
     const t=AS.order.pop(), sm=as2Sample(G,as2Weights(G),Math.random), K=4;
     const k=Math.max(-K,Math.min(K,as2Pred(t,sm.M,sm.A1,sm.A2,G.Q0,G.dD)));
     const Dm=ph=>sm.M+sm.A1*Math.cos(2*ph*Math.PI/180)+sm.A2*Math.sin(2*ph*Math.PI/180);
     const eye=t.type===1?Math.abs(Dm(t.phi))+G.dD/2:Math.max(Math.abs(Dm(t.phiA)),Math.abs(Dm(t.phiB)))+G.dD/2;   // expected eye blur, for the line spacing
-    AS.tr={t,k:Math.round(1000*k)/1000,left:Math.random()<0.5,eye,rep:0,flashed:false}; asFlash(); }   // drawn straight away: the old pair stays on screen until the new one is ready (no black gap)
-  function asFlash(){ if(!AS.active||!AS.tr) return; AS.show=true; AS.tr.flashed=true; draw(); }   // steady until answered (flash removed)
-  function asReplay(){ if(AS.active&&AS.tr&&AS.tr.flashed){ AS.tr.rep++; asFlash(); } }
+    AS.tr={t,k:Math.round(1000*k)/1000,left:Math.random()<0.5,eye,rep:0}; AS.ready=false; lookRun(AS,"5"); }   // rest (centre dot only), then a short look
+  function asReplay(){ if(AS.active&&AS.tr&&AS.ready){ AS.tr.rep++; lookRun(AS,"5",700); } }
   function asStar(ctx,cx,cy,r,lw){ ctx.save(); ctx.strokeStyle="#9a9a9a"; ctx.lineWidth=lw; ctx.beginPath(); for(let i=0;i<8;i++){ const a=i*Math.PI/8; ctx.moveTo(cx-r*Math.cos(a),cy-r*Math.sin(a)); ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a)); } ctx.stroke(); ctx.restore(); }
   // leftSharper: the answer. r = "the side that k > 0 blurs looked worse"
-  function asResp(leftSharper){ if(!AS.active||!AS.tr||!AS.tr.flashed) return; clearTimeout(AS.ft); AS.show=false; const T_=AS.tr, t=T_.t;
-    const r=t.type===1?(leftSharper===T_.left):(leftSharper===!T_.left);     // T1: left = long colour if T_.left; T2: left = set A if T_.left
+  function asResp(leftSharper){ if(!AS.active||!AS.tr||!AS.ready) return; lookStop(AS); const T_=AS.tr, t=T_.t;   // leftSharper null: "same"
+    const r=leftSharper===null?0.5:t.type===1?(leftSharper===T_.left):(leftSharper===!T_.left);     // T1: left = long colour if T_.left; T2: left = set A if T_.left
     if(typeof LD!=="undefined"&&LD.on&&LD.rollT&&performance.now()-LD.rollT<600) AS.rolls.push(LD.roll);
     as2Update(AS.G,t,T_.k,r); asTrial(); }
   function as2Pupil(Q,Pe){ let lo=1,hi=10; for(let i=0;i<40;i++){ const m=(lo+hi)/2; if(asbSCE(m)*m*m<Q*Pe*Pe) lo=m; else hi=m; } return (lo+hi)/2; }
@@ -3728,7 +3760,7 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
     const pts=[0,30,60,90,120,150].map(o=>{ const phi=(o+90)%180, m=f.meri(phi); return {ori:o,phi,D:+m.D.toFixed(2),sd:+(1.5*m.sd).toFixed(2),edge:Math.abs(m.D)>2.3}; });
     const tm=phi=>{ let v=Math.round(((180-(phi-(rl||0)))%180+180)%180); return v===0?180:v; };   // meridian in TABO (examiner's view), head tilt removed
     pts.forEach(p=>p.tm=tm(p.phi));
-    const fit={...f}; delete fit.meri; fit.axScreen=fit.axP; fit.roll=rl;
+    const fit={...f}; delete fit.meri; fit.axScreen=fit.axP; fit.roll=rl; fit.invalid=Math.abs(f.A0)>1.25;   // beyond ~1.25 D the eye's blur outgrows the lines and a blurrier patch can look sharper
     if(rl!=null){ fit.axP=(((fit.axP-rl)%180)+180)%180; let tb=Math.round(180-fit.axP)%180; if(tb<=0) tb+=180; fit.tabo=tb; }
     const r=ntR("5"); r[S.eye["5"]]={pts,fit,self,pupil:+Pe.toFixed(1),pupSrc:S.asPup,pupSd:S.asPup==="model"?asPupModel().sd:null,col:S.asCol,lum:AS.cfg.cal?AS.cfg.cal.f:null,meth:S.asMeth,dD:+G.dD.toFixed(3),n:G.n,dist:S.dist["5"],when:Date.now()};
     AS.active=false; save(); draw(); beep(660,200); }
@@ -3744,7 +3776,7 @@ threshold elevation = 20·log10(threshold masked / threshold alone) dB, for each
   function aslSet(){ ASL.set.push(ASL.v); ASL.i++; if(ASL.i<ASL.N){ aslNext(); return; }
     const b=as2Base(), L=ASL.set.map(v=>Math.log(v/b.std)), m=L.reduce((a,c)=>a+c,0)/L.length, sd=Math.sqrt(L.reduce((a,c)=>a+(c-m)**2,0)/(L.length-1));
     S.asLumCal=S.asLumCal||{}; S.asLumCal[asLumKey()]={f:+Math.exp(m).toFixed(3),sd:+sd.toFixed(3),m:S.asLumM,n:L.length,when:Date.now()};
-    aslStop(); save(); draw(); beep(660,200); }
+    aslStop(); save(); draw(); beep(660,200); rgLumBack(); }
   function aslImgs(env,ctx){ const b=as2Base(), R=Math.round(ntDegPx(env,1.25)), pw=2*R+2, ck=[ASL.v,R,S.asCol,P3,S.asLumM].join();
     if(ASL.img&&ASL.img.ck===ck) return ASL.img;
     const mk=mode=>{ const img=ntImg(ctx,pw,pw), D=img.data, va=Math.round(255*enc(ASL.v)), vf=255;
@@ -3796,15 +3828,15 @@ result f = geometric mean of ${ASL.N} settings / standard; used as the ${an} lev
     stop(){ asStop(); aslStop(); }, clear(){ S.ntRes&&(S.ntRes["5"]={}); }, act(a){ if(a==="start") asStart(); else if(a==="lum") aslStart(); else if(a==="lumclr"){ if(S.asLumCal) delete S.asLumCal[asLumKey()]; aslStop(); save(); draw(); } else { asStop(); aslStop(); draw(); } },
     hud(){ return ASL.active?"↑ brighter · ↓ dimmer (Shift: big steps) · Space: matched · Esc: stop":!AS.active?"S start · B brightness match":"which side's lines are sharper: ← left · → right"; },
     key(k,e,up){ if(up) return false;
-      if(ASL.active){ if(k==="ArrowUp"||k==="ArrowDown"){ aslAdj(k==="ArrowUp"?1:-1,e&&e.shiftKey); return true; } if(k===" "||k==="Enter"){ aslSet(); return true; } if(k==="Escape"){ aslStop(); draw(); return true; } if(k==="ArrowLeft"||k==="ArrowRight"){ aslPoke(); return true; } }
+      if(ASL.active){ if(k==="ArrowUp"||k==="ArrowDown"){ aslAdj(k==="ArrowUp"?1:-1,e&&e.shiftKey); return true; } if(k===" "||k==="Enter"){ aslSet(); return true; } if(k==="Escape"){ aslStop(); draw(); rgLumBack(); return true; } if(k==="ArrowLeft"||k==="ArrowRight"){ aslPoke(); return true; } }
       if(k==="b"||k==="B"){ aslStart(); return true; }
-      if(k==="s"||k==="S"){ asStart(); return true; } if(AS.active&&(k==="ArrowLeft"||k==="ArrowRight")){ asResp(k==="ArrowLeft"); return true; } return false; },
+      if(k==="s"||k==="S"){ asStart(); return true; } if(AS.active&&(k==="ArrowLeft"||k==="ArrowRight")){ asResp(k==="ArrowLeft"); return true; } if(AS.active&&k==="ArrowDown"){ asResp(null); return true; } if(AS.active&&k===" "){ asReplay(); return true; } return false; },
     draw(env){ this.env=env; if(ASL.active) return aslDrawNT(env);
       const g_=ntCv(env,"#000"), ctx=g_.ctx, P_=asPanels(env,ctx), gap=ntDegPx(env,0.6), cfg=AS.cfg||as2Cfg();
       if(!AS.active||AS.show){ ctx.putImageData(P_.left,Math.round(g_.cxp-gap/2-P_.pw),Math.round(g_.cyp-P_.ph/2)); ctx.putImageData(P_.right,Math.round(g_.cxp+gap/2),Math.round(g_.cyp-P_.ph/2)); }
       { const s=Math.max(2,0.08*ntPPD(env)); ctx.fillStyle="#777"; ctx.fillRect(g_.cxp-s/2,g_.cyp-s/2,s,s); }   // centre dot: judge both patches from here
       const r=ntR("5"), eyeR=r[S.eye["5"]], dcm=S.dist["5"], mDist=100/dcm, pf=v=>(v>=0?"+":"")+v.toFixed(2);
-      const fitTxt=(e,o_)=>{ if(!o_||!o_.fit) return `${e}: –`; const F=o_.fit, cylM=2*F.amp, zC=cylM/Math.max(0.05,F.seC), small=cylM<0.25||zC<1.5, weak=!small&&zC<2.5;
+      const fitTxt=(e,o_)=>{ if(!o_||!o_.fit) return `${e}: –`; if(o_.fit.invalid) return `${e}: <b>out of range</b>: mean focus ${o_.fit.A0>=0?"behind":"in front of"} the screen by ${Math.abs(o_.fit.A0).toFixed(2)} D. Beyond about 1.25 D the eye's blur is larger than the lines, where a blurrier patch can look sharper, so no valid cylinder. Move the screen to where the lines look reasonably clear (closer for a myope) and repeat.`; const F=o_.fit, cylM=2*F.amp, zC=cylM/Math.max(0.05,F.seC), small=cylM<0.25||zC<1.5, weak=!small&&zC<2.5;
         let t=`${e}: <b>${small?(cylM>=0.25?`no clear astigmatism (${pf(F.cyl)} × ${F.tabo} is within its own noise)`:`${pf(F.cyl)} × ${F.tabo}: under 0.25 D, not clinically significant`):`${pf(F.cyl)} × ${F.tabo}`}</b> (± ${F.seC.toFixed(2)} D${small?"":`, axis ± ${Math.round(F.seAx)}°`})${weak?" · <b>borderline</b>: repeat, or run 80 answers":""} · mean focus ${F.A0>=0?"behind":"in front of"} the screen by ${Math.abs(F.A0).toFixed(2)} D`;
         if(o_.pupSrc==="model"&&!(o_.self&&o_.self.ok)){ const P=o_.pupil, sc=Q=>asbSCE(P)*P*P/(asbSCE(Q)*Q*Q), lo=Math.abs(F.cyl)*sc(P+o_.pupSd), hi=Math.abs(F.cyl)*sc(Math.max(2,P-o_.pupSd));
           t+=` · pupil from the model: ${P.toFixed(1)} ± ${o_.pupSd} mm, so the cylinder could be ${lo.toFixed(2)}–${hi.toFixed(2)} D from the pupil alone`; }
@@ -3819,10 +3851,10 @@ result f = geometric mean of ${ASL.N} settings / standard; used as the ${an} lev
         :`orientation comparison in ${AS2_CN[T_.t.col==="L"?cfg.L:cfg.S]}: ${T_.t.oriA}° vs ${T_.t.oriB}° lines · blur ${Math.sqrt(Math.abs(T_.k)).toFixed(2)} D on the ${T_.k>0?T_.t.oriA:T_.t.oriB}° set · answer ${AS.G.n+1} of ${+S.asTrials||40}`;
       const warns=["Experimental. One eye at a time, the other covered; no glasses or filters (spectacles or contact lenses give the residual astigmatism over them). Keep your eye on the dot between the patches and judge both from there (colour differences off-centre only shift the mean focus, not the cylinder; and focus doesn't chase either patch's lines). Keep the head upright.",
         "The cylinder's size is uncalibrated: pupil, this eye's own colour focus and the screen's real colours all scale it (about ±30%, and it has tended to read low). The axis is not affected."];
-      if(S.asPup!=="self") warns.push("The cylinder's size scales with the square of any error in the entered pupil (the axis doesn't). Measure it in this light, looking at the screen.");
+      if(S.asPup==="entered") warns.push("The cylinder's size scales with the square of any error in the entered pupil (the axis doesn't). Measure it in this light, looking at the screen."); else if(S.asPup==="model") warns.push("Pupil from the model (age and room light): the result shows how much the cylinder could change from the pupil alone.");
       if(S.asCol!=="RG") warns.push(`Experimental colour pair: the ${AS2_CN[cfg.S]} panel is dim and seen with coarser vision, so answers may be noisier; the focus difference used is ${cfg.dD.toFixed(2)} D.`);
       const lc=(S.asLumCal||{})[asLumKey()], b_=as2Base();
-      const lumTxt=`<span>Brightness (${AS2_PAIR[S.asCol].n}, this screen): ${lc?`your match sets ${AS2_CN[b_.adj]} at ${lc.f.toFixed(2)}× the standard-observer level (± ${Math.round(100*lc.sd/Math.sqrt(lc.n))}%, ${lc.m==="hfp"?"flicker":"border"} method) · ${S.asLumUse==="std"?"<b>not used</b> (standard observer selected)":"used"}`:"standard observer (no match made: press B to match it to your eye)"}</span>`;
+      const lumTxt=`<span>${lookTxt()} · ↓ when both look the same</span><span>Brightness (${AS2_PAIR[S.asCol].n}, this screen): ${lc?`your match sets ${AS2_CN[b_.adj]} at ${lc.f.toFixed(2)}× the standard-observer level (± ${Math.round(100*lc.sd/Math.sqrt(lc.n))}%, ${lc.m==="hfp"?"flicker":"border"} method) · ${S.asLumUse==="std"?"<b>not used</b> (standard observer selected)":"used"}`:"standard observer (no match made: press B to match it to your eye)"}</span>`;
       return {readout:`<span>${desc}</span>${lumTxt}${res}`,warns,
         eq:`colours: ${AS2_PAIR[S.asCol].n} (${AS2_LAMBDA[cfg.L]} / ${AS2_LAMBDA[cfg.S]} nm), equal luminance; focus difference ΔD = ${cfg.dD.toFixed(3)} D (Thibos 1992)
 D(φ) = M + A1·cos2φ + A2·sin2φ (focus error at the middle of the two colours, + = behind the screen); long colour D + ΔD/2, short D − ΔD/2
@@ -3835,7 +3867,7 @@ cylinder = −2√(A1² + A2²) · axis = meridian of max D · TABO = 180° − 
 lines ≥ 14′ apart, spacing 2.2 × the larger of the screen and expected eye blur`,
         opt:`<p><b>The ruler.</b> The eye focuses shorter wavelengths more strongly: green about ${(thibos(AS2_LAMBDA[0])-thibos(AS2_LAMBDA[1])).toFixed(2)} D more than red, blue about ${(thibos(AS2_LAMBDA[0])-thibos(AS2_LAMBDA[2])).toFixed(2)} D more than red. Lines are blurred only by the focus across them, so lines at one orientation test one meridian.</p><p><b>Two comparisons.</b> In the colour comparison, the same lines in both colours are matched for sharpness by blurring one; that measures each meridian's focus directly. In the orientation comparison, perpendicular line sets in one colour are matched, like a clinical fan-and-block chart; done in both colours, the difference measures the cylinder and the ratio measures the mean focus without needing the pupil. Both feed one model. In simulations with an ideal observer the two methods are equally accurate (power-vector error ≈ 0.2 D at 40 answers); the orientation comparisons are also exposed to orientation-specific perceptual effects (the oblique effect, adaptation to your own astigmatism) that the colour comparisons cancel, so colour comparisons are the default.</p><p><b>Limits.</b> The cylinder's size depends on the pupil (unless self-calibrated, which needs a cylinder of about 0.5 D or more and assumes the colour judgement has no built-in bias) and on this eye's own chromatic aberration (about ±10% between people); the axis depends on neither but needs the head upright. Research method: confirm with a refraction.</p>`,
         rows:`<tr><th>Result</th><th>Meaning</th></tr><tr><td>Under 0.25 D, or within its ±</td><td>No meaningful astigmatism</td></tr><tr><td>With-the-rule (axis near 180)</td><td>Most common in young eyes</td></tr><tr><td>Against-the-rule (axis near 90)</td><td>Common after about 50</td></tr><tr><td>Borderline</td><td>Repeat with 80 answers</td></tr>`,
-        steps:`<li>No filters, no glasses. Cover the eye not being tested, and set it above. Enter the pupil measured in this light (or choose self-calibrating).</li><li>Screen distance: anything you can see reasonably clearly.</li><li>Press S. Two patches of lines appear. Look at each in turn and answer which side's lines are sharper: ← / tap left, → / tap right. Guess when they look the same. ${+S.asTrials||40} answers.</li><li>Repeat for the other eye.</li>` }; } };
+        steps:`<li>No filters, no glasses. Cover the eye not being tested, and set it above. Match the red/green brightness once for this screen (B; True Tone and Night Shift off). Pupil: the model is used unless you choose a measured one.</li><li>Screen distance: where the lines look reasonably clear (the result is flagged out of range beyond about 1.25 D of focus error).</li><li>Press S. Keep your eyes on the centre dot. After a short rest the two patches show briefly: which side's lines were sharper, ← / tap left, → / tap right, or ↓ if they looked the same. First impression; Space to look again. ${+S.asTrials||40} answers.</li><li>Repeat for the other eye.</li>` }; } };
   function asChart(o){ if(!o.fit) return ""; const W_=380,H_=150,pl=36,pb=22,pt=8,pr=8, F=o.fit, Ds=o.pts.map(p=>[p.D-p.sd,p.D+p.sd]).flat().concat([F.Dmax,F.Dmin]), lo=Math.min(...Ds)-0.1, hi=Math.max(...Ds)+0.1;
     const X=a=>pl+(W_-pl-pr)*a/180, Y=v=>H_-pb-(H_-pb-pt)*(v-lo)/(hi-lo); let s=`<svg viewBox="0 0 ${W_} ${H_}" style="width:100%;max-width:${W_}px;display:block;margin-top:6px" font-size="10" fill="currentColor">`;
     [0,45,90,135,180].forEach(a=>{ s+=`<line x1="${X(a)}" y1="${pt}" x2="${X(a)}" y2="${H_-pb}" stroke="currentColor" stroke-opacity=".12"/><text x="${X(a)}" y="${H_-6}" text-anchor="middle">${a}°</text>`; });
@@ -3858,17 +3890,17 @@ lines ≥ 14′ apart, spacing 2.2 × the larger of the screen and expected eye 
   const AN={active:false,ad:null,tr:null,cache:null};
   const anSmax=()=>1.6;
   const anRedEye=()=>{ const aRed=/red/i.test(LA().name); return aRed?S.eye["9"]:(S.eye["9"]==="OD"?"OS":"OD"); };
-  function anStart(){ AN.active=true; const K=anSmax()**2; AN.ad=PSE({lo:-K,hi:K,n:161,sLo:0.02,sHi:0.8,ns:10,minT:22,maxT:40,sdStop:0.05}); AN.text=null; anTrial(); }
-  function anStop(){ AN.active=false; }
-  function anTrial(){ if(AN.ad.done()){ const e=AN.ad.est(), r=ntR("9"); r[anRedEye()]={k:+e.mu.toFixed(3),sd:+e.sd.toFixed(3),n:AN.ad.trials(),pupil:S.coPupil,dist:S.dist["9"],when:Date.now()}; AN.active=false; save(); draw(); beep(660,200); return; }
-    AN.tr={k:Math.round(1000*AN.ad.next())/1000}; AN.text=[randLetters(3),randLetters(3),randLetters(3),randLetters(3)]; draw(); }
-  function anResp(osSharper){ if(!AN.active) return; AN.ad.update(AN.tr.k,osSharper); anTrial(); }
+  function anStart(){ lookStop(AN); AN.active=true; const K=anSmax()**2; AN.ad=PSE({lo:-K,hi:K,n:161,sLo:0.02,sHi:0.8,ns:10,minT:22,maxT:40,sdStop:0.05}); AN.text=null; anTrial(); }
+  function anStop(){ AN.active=false; lookStop(AN); }
+  function anTrial(){ if(AN.ad.done()){ const e=AN.ad.est(), r=ntR("9"); const pu=rgPup("9"); r[anRedEye()]={k:+e.mu.toFixed(3),sd:+e.sd.toFixed(3),n:AN.ad.trials(),pupil:+pu.P.toFixed(1),pupSd:pu.sd,pupSrc:pu.src,dist:S.dist["9"],lum:rgLevels().cal?rgLevels().cal.f:null,when:Date.now()}; AN.active=false; lookStop(AN); save(); draw(); beep(660,200); return; }
+    AN.tr={k:Math.round(1000*AN.ad.next())/1000}; AN.text=[randLetters(3),randLetters(3),randLetters(3),randLetters(3)]; AN.ready=false; lookRun(AN,"9"); }
+  function anResp(osSharper){ if(!AN.active||!AN.ready) return; lookStop(AN); AN.ad.update(AN.tr.k,osSharper); anTrial(); }   // null: "same"
   function anSolve(r){ const a=r.OD, b=r.OS; if(!a||!b) return null; const k1=a.k, k2=b.k, dk=k2-k1, se=Math.hypot(a.sd,b.sd);
     // ∂Δ/∂k1 = −2ΔD·k2/dk², ∂Δ/∂k2 = 2ΔD·k1/dk²
-    const cS=asbSCE(+S.coPupil||4), m=dk/(4*LCA*cS), mse=se/(4*LCA*cS), D=Math.abs(dk)>1e-6?-LCA*(k1+k2)/dk:NaN, Dse=Math.abs(dk)>1e-6?2*LCA/dk**2*Math.hypot(k2*a.sd,k1*b.sd):NaN;
+    const pu=rgPup("9"), cS=asbSCE(pu.P), rel=Math.hypot(pupScaleRel(pu.P,pu.sd),LCA_REL), m=dk/(4*LCA*cS), mse=Math.hypot(se/(4*LCA*cS),rel*Math.abs(dk/(4*LCA*cS))), D=Math.abs(dk)>1e-6?-LCA*(k1+k2)/dk:NaN, Dse=Math.abs(dk)>1e-6?2*LCA/dk**2*Math.hypot(k2*a.sd,k1*b.sd):NaN;
     return {m,mse,D,Dse}; }
-  function anPanels(env,ctx,SD){ const d=env.d, dev=env.dev, pxPerD=(S.coPupil/1000)*d/dev, hp=Math.max(ntDegPx(env,25/60),anSmax()*pxPerD/0.6), pw=Math.round(hp*7.5), ph=Math.round(hp*5.2);
-    const k=AN.active&&AN.tr?AN.tr.k:0, txt=AN.text||["EHN","KZC","DOS","RVH"], ck=[k,txt.join(),env.W,env.H,d,S.coPupil,S.eye["9"]].join();
+  function anPanels(env,ctx,SD){ const d=env.d, dev=env.dev, PU=rgPup("9").P, pxPerD=(PU/1000)*d/dev, hp=Math.max(ntDegPx(env,25/60),anSmax()*pxPerD/0.6), pw=Math.round(hp*7.5), ph=Math.round(hp*5.2);
+    const k=AN.active&&AN.tr?AN.tr.k:0, txt=AN.text||["EHN","KZC","DOS","RVH"], ck=[k,txt.join(),env.W,env.H,d,PU,S.eye["9"]].join();
     if(AN.cache&&AN.cache.ck===ck) return AN.cache;
     const mk=t=>maskFrom(pw,ph,o=>{ o.font=`700 ${(hp/digitRatio).toFixed(2)}px "Atkinson Hyperlegible",sans-serif`; o.textAlign="center"; const gy=hp*1.7, y1=Math.round(ph/2-gy/2+hp/2); o.fillText(t[0].split("").join(" "),pw/2,y1); o.fillText(t[1].split("").join(" "),pw/2,y1+gy); });
     const rA=ntRA("9"), s=Math.sqrt(Math.abs(k)), blurOD=k>0, Mfirst=mk([txt[0],txt[1]]), Msecond=mk([txt[2],txt[3]]);
@@ -3881,27 +3913,31 @@ lines ≥ 14′ apart, spacing 2.2 × the larger of the screen and expected eye 
     stop:anStop, clear(){ S.ntRes&&(S.ntRes["9"]={}); }, act(a){ if(a==="start") anStart(); else { anStop(); draw(); } },
     hud(){ return !AN.active?"S start":`letters sharper: ← left panel · → right panel`; },
     key(k,e,up){ if(up) return false; if(k==="s"||k==="S"){ anStart(); return true; }
-      if(AN.active&&(k==="ArrowLeft"||k==="ArrowRight")){ const leftIsOD=ntRA("9"), osSharper=(k==="ArrowLeft")!==leftIsOD; anResp(osSharper); return true; } return false; },
+      if(AN.active&&(k==="ArrowLeft"||k==="ArrowRight")){ const leftIsOD=ntRA("9"), osSharper=(k==="ArrowLeft")!==leftIsOD; anResp(osSharper); return true; }
+      if(AN.active&&k==="ArrowDown"){ anResp(null); return true; } if(AN.active&&k===" "&&AN.ready){ lookRun(AN,"9",700); return true; } return false; },
     draw(env){ this.env=env; const SD=rgSolver(), g_=ntCv(env,bytesCss(SD.px(0,0))), ctx=g_.ctx, P_=anPanels(env,ctx,SD), gap=ntDegPx(env,0.8);
       const xA=Math.round(g_.cxp-gap/2-P_.pw), xB=Math.round(g_.cxp+gap/2), y0=Math.round(g_.cyp-P_.ph/2), W_=xB+P_.pw-xA;
       // eye A sees its panel (black letters on its full field), eye B sees nothing there; and the reverse on the right
-      ntPut(g_,ntField(g_,{x:xA,y:y0,w:W_,h:P_.ph},(X,Y)=>{ const i=X-xA, j=Y-y0; return i<P_.pw?1-Math.min(1,P_.A[j*P_.pw+i]):0; },(X,Y)=>{ const i=X-xB, j=Y-y0; return i>=0?1-Math.min(1,P_.B[j*P_.pw+i]):0; },SD));
+      const vis=!AN.active||AN.show;   // during the rest each eye sees its plain field (no letters to focus on), then the letters briefly
+      ntPut(g_,ntField(g_,{x:xA,y:y0,w:W_,h:P_.ph},(X,Y)=>{ const i=X-xA, j=Y-y0; return i<P_.pw?(vis?1-Math.min(1,P_.A[j*P_.pw+i]):1):0; },(X,Y)=>{ const i=X-xB, j=Y-y0; return i>=0?(vis?1-Math.min(1,P_.B[j*P_.pw+i]):1):0; },SD));
       const s=Math.max(2,0.06*ntPPD(env)); ctx.fillStyle=bytesCss(SD.px(1,1)); ctx.fillRect(g_.cxp-s/2,g_.cyp-s/2,s,s);
       const r=ntR("9"), sol=anSolve(r), red=anRedEye(), f=o=>o?`k = ${o.k.toFixed(3)} ± ${o.sd.toFixed(3)}`:"–", pf=v=>(v>=0?"+":"")+v.toFixed(2);
       let res=`<span>red over OD: ${f(r.OD)} · red over OS: ${f(r.OS)}</span>`;
       if(sol){ res+=`<span>accommodative lag <b>${sol.m.toFixed(2)} ± ${sol.mse.toFixed(2)} D</b> · anisometropia <b>${Math.abs(sol.D)<Math.max(0.12,sol.Dse)?"none measurable":`${Math.abs(sol.D).toFixed(2)} D, ${sol.D>0?"OD":"OS"} more hyperopic (less myopic)`}</b> (± ${isFinite(sol.Dse)?sol.Dse.toFixed(2):"–"} D)</span>`;
+        if(Math.abs(sol.D)/2+Math.abs(sol.m)+LCA/2>anSmax()) res+=`<span><b>Out of range</b>: an eye's focus error (${(Math.abs(sol.D)/2+Math.abs(sol.m)).toFixed(2)} D) is beyond what the letters and the added blur cover (${anSmax().toFixed(1)} D), so the comparison isn't valid. Repeat with each eye's usual correction on, which measures the residual difference.</span>`;
         if(sol.m<0.15) res+=`<span><b>The lag is too small (${sol.m.toFixed(2)} D) for a reliable answer</b>: the method divides by it. Move the screen closer (25–33 cm) and repeat both runs.</span>`; }
       const readout=`<span>${AN.active?`run with red over ${red} · trial ${AN.ad.trials()+1} · blur ${Math.sqrt(Math.abs(AN.tr.k)).toFixed(2)} D on ${AN.tr.k>0?"OD":AN.tr.k<0?"OS":"neither"}'s panel`:"stopped"}</span>${res}`;
-      return {readout,warns:ntWarnLeak().concat(["Experimental. Two runs are needed: one with the red lens over OD and one over OS (flip the glasses and change “lens over” to match). Near distance (25–33 cm) so the eyes lag behind the screen.", sol?"":"Measure the pupil in this light and enter it: the scale goes with its square."]).filter(Boolean),
+      return {readout,warns:ntWarnLeak().concat(["Experimental. Two runs are needed: one with the red lens over OD and one over OS (flip the glasses and change “lens over” to match). Near distance (25–33 cm) so the eyes lag behind the screen.", "The anisometropia comes from a ratio of the two runs, so it doesn't depend on the pupil; the lag does (pupil from the model unless you choose a measured one, ± included). "+lookTxt()+"; ↓ when both look the same."]).filter(Boolean),
         eq:`ΔD (red − green focus, ${P3?"P3":"sRGB"} primaries) = ${LCA.toFixed(3)} D; red seen by the red-lens eye, green by the other
 eye focus errors: OD = m + Δ/2 ± ΔD/2, OS = m − Δ/2 ∓ ΔD/2  (+ red, − green; m = shared lag, Δ = D_OD − D_OS)
 equal sharpness with screen blur s on one panel: k = s_OD² − s_OS² = e_OS² − e_OD²
 red over OD: k1 = −(Δ + ΔD)·2m · red over OS: k2 = −(Δ − ΔD)·2m
 m = (k2 − k1) / (4ΔD) · Δ = −ΔD·(k1 + k2) / (k2 − k1)
-letters ${degArc(env,P_.hp).toFixed(0)}′ high; disc ${((S.coPupil/1000)*env.d/env.dev).toFixed(1)} px per dioptre at pupil ${S.coPupil} mm`,
+letters ${degArc(env,P_.hp).toFixed(0)}′ high; disc ${((rgPup("9").P/1000)*env.d/env.dev).toFixed(1)} px per dioptre at pupil ${rgPup("9").P.toFixed(1)} mm (${rgPup("9").src==="model"?"model":"measured"})
+lag ± includes the pupil (± ${rgPup("9").sd.toFixed(1)} mm) and the eye's chromatic aberration (± 10%); Δ is a ratio, free of both`,
         opt:`<p>Two eyes behind red and green filters see two different colours, and the eye focuses those colours ${LCA.toFixed(2)} D apart. That gives each eye a known offset in focus, which flips sign when the glasses are flipped. Comparing how sharp each eye's letters look, with a measured blur added to one side until they match, gives one equation per run; the two runs together give both the shared accommodative lag and the difference in focus between the eyes, which is the anisometropia, without a single lens.</p><p>Why near: the equations divide by the lag. If accommodation lands exactly on the screen there is nothing to measure; at 25–33 cm most eyes lag 0.3–0.8 D. Why it is approximate: it compares the two eyes' sharpness with each other, so any other difference between them (amblyopia, media, aberrations) shifts the result; the scale also depends on the entered pupil. Research method.</p>`,
         rows:`<tr><th>Anisometropia</th><th>Meaning</th></tr><tr><td>Under 0.5 D</td><td>Normal</td></tr><tr><td>1 D or more</td><td>Clinically significant; amblyopia risk in children over about 1–1.5 D (hyperopic) or 3 D (myopic)</td></tr>`,
-        steps:`<li>Red-green glasses on, glasses calibrated (leak cancelled). Screen at 25–33 cm. Measure the pupil and enter it.</li><li>Run 1: set “lens over” to match the glasses and press S. Each eye sees one panel of letters. Which panel's letters are sharper, left (← / tap left) or right (→ / tap right)? Guess when equal. About 20–35 answers.</li><li>Flip the glasses, change “lens over”, and run again. The result appears when both runs are done.</li>` }; } };
+        steps:`<li>Red-green glasses on, glasses calibrated (leak cancelled). Screen at 25–33 cm. Pupil: the model is used unless you choose a measured one (only the lag depends on it).</li><li>Run 1: set “lens over” to match the glasses and press S. Look at the centre dot. After a short rest each eye's letters show briefly: which panel's letters were sharper, left (← / tap left) or right (→ / tap right), or ↓ if the same? First impression; Space to look again. About 20–35 answers.</li><li>Flip the glasses, change “lens over”, and run again. The result appears when both runs are done.</li>` }; } };
 
   // ---------------- 0: anisometropia tolerance (monovision blur, aniseikonia) ----------------
   // Stereoacuity is the most sensitive everyday cost of an interocular difference. One eye's image is blurred by a
@@ -5288,7 +5324,7 @@ deviation = pointer − target, in Δ on the tangent plane`;
       }
 
       else if(m==="U"){ // near duochrome
-        const Rd=c3(1,0), Gd=c3(0,0.61), Bk="#000";
+        const LV=rgLevels(), Rd=c3(enc(LV.r),0), Gd=c3(0,enc(LV.g)), Bk="#000";
         const pw=Math.max(30,h*14), ph=Math.max(22,h*10);
         g.appendChild(el("rect",{x:-pw,y:-ph/2,width:pw,height:ph,style:fillC(Rd)}));
         g.appendChild(el("rect",{x:0,y:-ph/2,width:pw,height:ph,style:fillC(Gd)}));
@@ -5297,13 +5333,14 @@ deviation = pointer − target, in Δ on the tangent plane`;
           g.appendChild(el("text",{x:x,y:-h*1.4,"text-anchor":"middle",fill:Bk,"letter-spacing":(h*0.7).toFixed(3)},a));
           g.appendChild(el("text",{x:x,y:h*2.6,"text-anchor":"middle",fill:Bk,"letter-spacing":(h*0.7).toFixed(3)},b));
         });
-        readout=`<span>letters ${h.toFixed(2)} mm at ${S.dist.U} cm</span><span>panel primaries: P3 red, P3 green at 61% (luminance-matched)</span>`;
-        eq=`P3 luminance: red Y = 0.229, green Y = 0.692
-green scaled to 0.229 / 0.692 = 0.33 linear ≈ 61% encoded`;
+        g.appendChild(el("circle",{cx:0,cy:h*0.6,r:Math.max(0.35,h*0.18),fill:Bk}));   // judge both sides at once from where the colours meet
+        readout=`<span>letters ${h.toFixed(2)} mm at ${S.dist.U} cm</span><span>${rgLumTxt()}</span>`;
+        eq=`${P3?"P3":"sRGB"} luminance: red Y = ${AS2_Y[0].toFixed(3)}, green Y = ${AS2_Y[1].toFixed(3)} → standard equal-luminance green = ${(AS2_Y[0]/AS2_Y[1]).toFixed(2)} linear
+in use: red ${LV.r.toFixed(2)}, green ${LV.g.toFixed(2)} linear (${LV.cal?`your brightness match, ×${LV.cal.f.toFixed(2)}`:"standard observer"})`;
         opt=`<p>The eye focuses short wavelengths more strongly than long ones, so a target's green image sits in front of its red image. At near, if accommodation lags behind the target the whole image lies behind the retina, the green image ends up nearer to it, and green letters look sharper.</p>
-        <p>The display's red and green primaries are close to, but not exactly, standard duochrome wavelengths, so treat this as a guide. Green is dimmed to match red's luminance so brightness doesn't bias the answer.</p>`;
+        <p>The display's red and green primaries are close to, but not exactly, standard duochrome wavelengths, so treat this as a guide. The brighter side looks sharper, so red and green are set to equal brightness for your eye once you've made a brightness match (the standard-observer setting can be well off on a real screen). Judge at a glance: after about half a second of steady viewing, focus drifts and red often starts to look sharper.</p>`;
         rows=`<tr><th>Clearer side</th><th>At near suggests</th></tr><tr><td>Green</td><td>Under-accommodating (lag); more plus may help</td></tr><tr><td>Red</td><td>Over-accommodating or too much plus</td></tr><tr><td>Equal</td><td>Focused on the target</td></tr>`;
-        steps=`<li>Monocular, through the near Rx or add being checked. No coloured filters.</li><li>Ask which side's letters are blacker and sharper.</li><li>Adjust in ±0.25 D steps until equal or red just clearer.</li>`;
+        steps=`<li>Match the red/green brightness once for this screen (True Tone and Night Shift off).</li><li>Monocular, through the near Rx or add being checked. No coloured filters.</li><li>Look away, then glance at the dot where the colours meet: which side's letters are blacker and sharper at first sight? Don't stare; look away and back to recheck.</li><li>Adjust in ±0.25 D steps until equal or red just clearer.</li>`;
       }
       else if(m==="V"||m==="K"){ // software vergence (ranges/facility) and vergence adaptation
         const showScale = m==="K" && AD.phase!=="adapt";
@@ -5737,7 +5774,8 @@ each eye's image scaled by the brightness match (red ${S.rLvl}%, green ${S.gLvl}
         const Wd=Math.round(W*dpr), Hd=Math.round(H*dpr); if(cv.width!==Wd) cv.width=Wd; if(cv.height!==Hd) cv.height=Hd;
         const ctx=p3ctx(cv); ctx.fillStyle="#000"; ctx.fillRect(0,0,Wd,Hd);
         const CCm = S.coMode==="cac";
-        if(!CCm) warns.push("Enter your real pupil size: the lag scales with its square. About ±0.15–0.25 D per run; the fused cross cylinder is the clinical reference.");
+        const PU=rgPup("I"), LV=rgLevels();
+        if(!CCm) warns.push(`Pupil ${PU.src==="model"?`from the model (${PU.P.toFixed(1)} ± ${PU.sd.toFixed(1)} mm)`:`as measured (${PU.P.toFixed(1)} mm)`}: the lag scales with c(P)·P², so its ± includes the pupil and the eye's own chromatic aberration (± 10%). The sign (lag or lead) doesn't depend on either. The fused cross cylinder is the clinical reference.`);
         if(CCm && CC.phase!=="probe"){
           // blur-free fusion field: difference-of-Gaussian blobs (σ 0.5° and 0.8°, peak ≈ 0.3 c/deg) on a mid-dark grey.
           // A full dioptre of defocus blurs by only ~0.07° (σ, 5 mm pupil), so these look the same in or out of focus.
@@ -5753,44 +5791,48 @@ each eye's image scaled by the brightness match (red ${S.rLvl}%, green ${S.gLvl}
         if(!CO.text.length) CO.text=[randLetters(3),randLetters(3),randLetters(3),randLetters(3)];
         // letter size: big enough that the largest blur disc (pupil × s max) is under 0.6 of the letter height, so the
         // letters stay legible across the whole range; never under the screen's minimum legible size
-        const pxPerD=(S.coPupil/1000)*d/dev;               // blur-disc diameter in device px per dioptre
+        const pxPerD=(PU.P/1000)*d/dev;                    // blur-disc diameter in device px per dioptre
         const amin=a=>d*Math.tan(a/60*Math.PI/180)/dev, hpLag=Math.max(h/dev, amin(20), coSmax()*pxPerD/0.6);
         const hp=CCm?Math.max(h,d*Math.tan(1.0*Math.PI/180))/dev:hpLag;
         const pw=Math.round(Math.max(30/dev,hp*7.5)), ph=Math.round(Math.max(22/dev,hp*5.2));
-        const gLin = P3 ? 0.2290/0.6917 : 0.2126/0.7152;  // red / green luminance of the primaries → equal-luminance fields
+        const neutral = !CCm && CO.active && !CO.show;   // rest: the same letters on neutral grey (accommodation keeps its normal near response), then the colours briefly
         const sOpt = CCm ? CC.s : CO.s;
         // added blur in dioptres for this panel: lag mode runs on k = signed s², CA/C mode on signed s
         const blurD=isGreen=>{ if(CCm) return ((sOpt>0)===isGreen&&sOpt!==0)?Math.abs(sOpt):0; return ((sOpt>0)===isGreen&&sOpt!==0)?Math.sqrt(Math.abs(sOpt)):0; };
-        const panel=(texts,isGreen)=>{
+        const panel=(texts,isGreen,neu)=>{
           const oc=document.createElement("canvas"); oc.width=pw; oc.height=ph; const o=oc.getContext("2d");
           o.font=`700 ${(hp/digitRatio).toFixed(2)}px "Atkinson Hyperlegible",sans-serif`; o.textAlign="center"; o.textBaseline="alphabetic"; o.fillStyle="#fff";
           const gapY=hp*1.7, y1=Math.round(ph/2-gapY/2+hp/2), y2=Math.round(y1+gapY);
           o.fillText(texts[0].split("").join(" "),pw/2,y1); o.fillText(texts[1].split("").join(" "),pw/2,y2);
           const src=o.getImageData(0,0,pw,ph).data; let M=new Float32Array(pw*ph); for(let i=0;i<M.length;i++) M[i]=src[i*4+3]/255;
-          const bd=blurD(isGreen); if(bd>0) M=discBlur(M,pw,ph,bd*pxPerD);
+          const bd=neu?0:blurD(isGreen); if(bd>0) M=discBlur(M,pw,ph,bd*pxPerD);
           let img; try{ img=ctx.createImageData(pw,ph,{colorSpace:P3?"display-p3":"srgb"}); }catch(e){ img=ctx.createImageData(pw,ph); }
           const D_=img.data;
+          const yN=AS2_Y[0]*LV.r;   // neutral grey at the red panel's luminance
           for(let i=0;i<M.length;i++){ const v=Math.max(0,1-Math.min(1,M[i]));
-            D_[i*4]= isGreen?0:Math.round(255*enc(v)); D_[i*4+1]= isGreen?Math.round(255*enc(v*gLin)):0; D_[i*4+2]=0; D_[i*4+3]=255; }
+            if(neu){ const q=Math.round(255*enc(v*yN)); D_[i*4]=q; D_[i*4+1]=q; D_[i*4+2]=q; D_[i*4+3]=255; continue; }
+            D_[i*4]= isGreen?0:Math.round(255*enc(v*LV.r)); D_[i*4+1]= isGreen?Math.round(255*enc(v*LV.g)):0; D_[i*4+2]=0; D_[i*4+3]=255; }
           return img; };
         if(CCm){ if(CC.phase==="probe"){ ctx.putImageData(panel([CO.text[0],CO.text[1]],false),Math.round(cx*dpr-pw),Math.round(cy0*dpr-ph/2)); ctx.putImageData(panel([CO.text[2],CO.text[3]],true),Math.round(cx*dpr),Math.round(cy0*dpr-ph/2)); } }
-        else { ctx.putImageData(panel([CO.text[0],CO.text[1]],false),Math.round(cx*dpr-pw),Math.round(cy0*dpr-ph/2)); ctx.putImageData(panel([CO.text[2],CO.text[3]],true),Math.round(cx*dpr),Math.round(cy0*dpr-ph/2)); }
-        const res=S.coRes||{}, dem=100/S.dist.I, fmtL=v=>v==null?"–":`${v>=0?"lag":"lead"} ${Math.abs(v).toFixed(2)} D`, Lmax=coLag(coSmax()**2);
+        else { ctx.putImageData(panel([CO.text[0],CO.text[1]],false,neutral),Math.round(cx*dpr-pw),Math.round(cy0*dpr-ph/2)); ctx.putImageData(panel([CO.text[2],CO.text[3]],true,neutral),Math.round(cx*dpr),Math.round(cy0*dpr-ph/2)); }
+        const res=S.coRes||{}, rsd=S.coResSd||{}, dem=100/S.dist.I, fmtL=(v,sd)=>v==null?"–":`${v>=0?"lag":"lead"} ${Math.abs(v).toFixed(2)}${sd!=null?` ± ${sd.toFixed(2)}`:""} D`, Lmax=coLag(coSmax()**2);
         const hArc=Math.atan(hp*dev/d)*180/Math.PI*60;
-        readout=`<span>${CO.active?`trial ${CO.ad.trials()+1} · added blur ${Math.sqrt(Math.abs(CO.s)).toFixed(2)} D on ${CO.s>0?"green":CO.s<0?"red":"neither"} (balances a ${fmtL(coLag(CO.s))}) · estimate ${fmtL(coLag(CO.ad.est().mu))}`:"stopped"}</span><span>lens ${S.coLens>0?"+":""}${S.coLens.toFixed(2)} D · demand <b>${(dem-S.coLens).toFixed(2)} D</b></span><span>no lens: <b>${fmtL(res["0"])}</b> · +2.00: <b>${fmtL(res["2"])}</b> · −2.00: <b>${fmtL(res["-2"])}</b>${S.coResEdge?" · <b>last result beyond ±1 D: outside the valid range</b>":""}</span>`;
+        readout=`<span>${CO.active?`trial ${CO.ad.trials()+1} · added blur ${Math.sqrt(Math.abs(CO.s)).toFixed(2)} D on ${CO.s>0?"green":CO.s<0?"red":"neither"} (balances a ${fmtL(coLag(CO.s))}) · estimate ${fmtL(coLag(CO.ad.est().mu))}`:"stopped"}</span><span>lens ${S.coLens>0?"+":""}${S.coLens.toFixed(2)} D · demand <b>${(dem-S.coLens).toFixed(2)} D</b></span><span>no lens: <b>${fmtL(res["0"],rsd["0"])}</b> · +2.00: <b>${fmtL(res["2"],rsd["2"])}</b> · −2.00: <b>${fmtL(res["-2"],rsd["-2"])}</b>${S.coResEdge?" · <b>last result beyond ±1 D: outside the valid range</b>":""}</span>`;
         eq=`chromatic difference of refraction (Thibos 1992): D(λ) = 1.685 − 633.46 / (λ − 214.1)
 ${P3?"Display P3":"sRGB"} primaries, dominant wavelengths ${CO_LAM[0]} / ${CO_LAM[1]} nm → ΔD = ${LCA.toFixed(3)} D (green focused more strongly)
 lag L: green letters carry defocus L − ΔD/2, red letters L + ΔD/2
 defocus D through pupil p → uniform blur disc p·D rad wide; the screen adds a real disc of s D to one side
 discs convolve and their spreads add, so equal sharpness ⇔ s_green² − s_red² = (L+ΔD/2)² − (L−ΔD/2)² = 2·ΔD·L
 staircase on k = ±s²  →  L = k / (2 × ${LCA.toFixed(3)})   (linear, nothing fitted); valid range ±1.0 D (checked with exact defocus + diffraction optics and three different sharpness criteria: within 0.05 D, about 10% low at a 3 mm pupil)
-letters ${hArc.toFixed(0)}′ high, black on equal-luminance red and green; disc ${pxPerD.toFixed(1)} px per dioptre at pupil ${S.coPupil} mm`;
+letters ${hArc.toFixed(0)}′ high, black on red and green of equal brightness (${LV.cal?`your match: green ${LV.cal.f.toFixed(2)}× standard`:"standard observer"}); disc ${pxPerD.toFixed(1)} px per dioptre at pupil ${PU.P.toFixed(1)} mm (${PU.src==="model"?"model":"measured"})
+lag ± = staircase ± combined with the pupil (± ${PU.sd.toFixed(1)} mm → ± ${Math.round(100*pupScaleRel(PU.P,PU.sd))}% of the lag) and the eye's chromatic aberration (± 10%)
+each look ${(+(S.rgLook??400)/1000).toFixed(1)} s in colour after 1 s on the same letters in neutral grey: focus holds its response to the target, not to the colours`;
         opt=`<p>The eye is a lens with chromatic aberration: it focuses green light about ${LCA.toFixed(2)} D more strongly than red (for this screen's primaries). That is a ruler built into every eye. If accommodation lags behind the screen, focus sits beyond it, the green image is nearer the retina than the red one, and green letters look sharper; with a lead, red looks sharper. A duochrome stops at "which is sharper". This test measures how much: it adds a real defocus blur (a uniform disc, exactly what a lens of that power does through your pupil) to the sharper side until the two sides look equally sharp. Blur spreads add, so the blur needed gives the lag directly: L = s² / (2·ΔD). No lines, no models fitted to data.</p>
-        <p>What limits it: the added disc is sized from the pupil you enter, so the lag scales with the square of any pupil error (measure it in this light). ΔD varies about ±10% between eyes and depends on the true spectra of the screen's primaries (taken here as their dominant wavelengths). Beyond ±1 D the answer starts to depend on which detail you judge, so results there are flagged. Around zero lag both sides are nearly equally sharp, so expect about ±0.15–0.25 D per run; averaging two runs helps. The fused cross cylinder is the clinical reference.</p>
+        <p>What limits it: the added disc is sized from the pupil (the model's estimate unless you enter a measured one), so the lag scales with the square of any pupil error; that is included in the ±. The colours are shown only briefly after the same letters in neutral grey, because focus drifts toward one colour within about half a second of steady viewing; and red and green are set to equal brightness for your eye by the brightness match, because the brighter side looks sharper. ΔD varies about ±10% between eyes and depends on the true spectra of the screen's primaries (taken here as their dominant wavelengths). Beyond ±1 D the answer starts to depend on which detail you judge, so results there are flagged. Around zero lag both sides are nearly equally sharp, so expect about ±0.15–0.25 D per run; averaging two runs helps. The fused cross cylinder is the clinical reference.</p>
         <p>Holding ±2.00 D flippers in front gives the accommodative response to a known change, which turns the stimulus AC/A into a response AC/A in the panel below.</p>`;
         rows=`<tr><th>Lag at 40 cm</th><th>Typical meaning</th></tr><tr><td>About +0.25 to +0.75 D</td><td>Normal lag</td></tr><tr><td>More than about +0.75 D</td><td>High lag: under-accommodating (accommodative insufficiency, or hyperopia not fully compensated)</td></tr><tr><td>Lead (negative)</td><td>Over-accommodating: accommodative excess or spasm, or too much minus</td></tr>`;
-        steps=`<li>No filters. Habitual near correction. Both eyes open is fine. Measure the pupil in this room light (pupillometer or a ruler in a mirror) and enter it.</li>
-        <li>Press S (tap the screen on a tablet). Look between the two panels. Are the black letters sharper on the red side (← / tap left) or the green side (→ / tap right)? Guess if they look the same; the guesses are part of the method.</li>
+        steps=`<li>No filters. Habitual near correction. Both eyes open is fine. Match the red/green brightness once for this screen (True Tone and Night Shift off). Set your age and the room lighting for the pupil model, or enter a measured pupil.</li>
+        <li>Press S (tap the screen on a tablet). Look between the two panels: the letters show in grey, then briefly in red and green. Were the black letters sharper on the red side (← / tap left) or the green side (→ / tap right), or the same (↓)? First impression; Space to look again.</li>
         <li>About 20–40 answers; it stops on its own and stores the lag for the current lens. Repeat holding +2.00 and −2.00 flippers (set the lens first) for the response AC/A.</li>`;
         if(CCm){ const sm=ccSummary(), pd=(S.pd||62)/10, cond=+(S.ccP||0), fmtP=P=>P===0?"no prism":`${Math.abs(P)} Δ ${P<0?"BI":"BO"}`, fmtK=k=>{ const [pp,ll]=k.split("L"); return fmtP(+pp)+(ll?` + ${+ll>0?"+":""}${(+ll).toFixed(2)} D lens`:""); };
           const runs=Object.keys(S.ccRes||{}).sort().map(k=>`${fmtK(k)}: ${(S.ccRes[k]).map(x=>`${x.L>=0?"lag":"lead"} ${Math.abs(x.L).toFixed(2)}±${x.sd.toFixed(2)}`).join(", ")}`).join(" · ");
@@ -5805,12 +5847,12 @@ CA/C = (L with prism − L without) / P   [D/Δ]   ×  PD(cm) → D/MA;  runs at
           opt=`<p>CA/C is how much accommodation is pulled along by convergence. To measure it, convergence has to change while blur can't steer accommodation: the "open loop". Here the eyes fuse a field of difference-of-Gaussian blobs, which hold vergence but contain no fine detail, so defocus doesn't change how they look. Accommodation is sampled with the chromatic optometer only in ${S.ccDur||150} ms flashes, shorter than the ~0.3–0.4 s it takes accommodation to react, so the probe doesn't steer it either. With real base-in prism the eyes converge less, accommodation relaxes by CA/C × the convergence change, and the lag grows.</p>
           <p>What limits accuracy: on its own, the lag scale rests on the eye's chromatic aberration (about ±10% between people) and on the pupil you enter (squared). The scale check removes both: in open loop a +1.00 D lens must move the reading by exactly 1.00 D, so the measured movement calibrates everything at once, at the pupil you actually have in this field. What remains is the pupil changing between conditions (convergence narrows it slightly, a few % for 8 Δ); repeated flashes and prism adaptation (vergence adapts to prism within a minute or two, which weakens the change) both bias CA/C low, so runs are short and should go baseline → prism → baseline. Open-loop CA/C is usually higher than clinical closed-loop methods (cross-cylinder): roughly 0.4–0.6 D/MA (about 0.06–0.10 D/Δ) in young adults, falling with age.</p>`;
           rows=`<tr><th>CA/C (open loop)</th><th>Roughly</th></tr><tr><td>0.4–0.6 D/MA (≈ 0.06–0.10 D/Δ)</td><td>Typical young adult</td></tr><tr><td>High, with low AC/A</td><td>Convergence-driven accommodation: convergence excess patterns, pseudo-myopia at near</td></tr><tr><td>Low, with high AC/A</td><td>Accommodation-driven: convergence excess from accommodation, divergence problems</td></tr><tr><td>Both ratios</td><td>Their product is usually well under 1; near 1 means the cross-links are unstable</td></tr>`;
-          steps=`<li>Habitual distance correction, no filters. Dim room. Measure your pupil in this grey field (pupillometer or ruler in a mirror) and enter it: the result scales with its square.</li>
+          steps=`<li>Habitual distance correction, no filters. Dim room. Pupil: the model is used unless you enter a measured one; the scale check below removes the pupil error either way.</li>
           <li>Set the prism menu to "No prism" and press S. Look at the middle of the grey blobs. Each time letters flash, say which side looked clearer: ← red or → green (guess if equal). About 20–30 flashes.</li>
           <li>Put ${8} Δ base-in in front (4 BI each eye, or the Risley), set the menu to match, keep the blobs single (if they double, use less prism), press S again straight away.</li>
           <li>Take the prism out, menu back to "No prism", run once more. The page combines both baselines. Any prism from 4–12 Δ BI works; base-out gives the opposite change as a check.</li>
           <li>Scale check (recommended): no prism, hold a +1.00 D trial lens in front of each eye (or one lens before both), set "Lens in front now" to match, run once. Accommodation can't react in this open-loop view, so the reading must move by exactly 1.00 D toward lead; whatever it moves by instead calibrates the scale, which removes the pupil and chromatic-aberration errors together.</li>`;
-          if(S.coPupil<3.5) warns.push("Pupil under 3.5 mm: chromatic blur is small and the lag reading gets coarse. Dim the room further.");
+          if(PU.P<3.5) warns.push("Pupil under 3.5 mm: chromatic blur is small and the lag reading gets coarse. Dim the room further.");
         }
         const p0=parseFloat(S.coPh0), p1=parseFloat(S.coPh1), Lp=S.coPhL, o_=$("coOut");
         if(o_){ let t=""; if(isFinite(p0)&&isFinite(p1)){ const stim=(p1-p0)/(-Lp); t+=`Stimulus AC/A <b>${stim.toFixed(1)} Δ/D</b> (assumes accommodation changed by the full ${Math.abs(Lp)} D). `;
@@ -6053,13 +6095,14 @@ shown for T ms (locked to frames; the time actually shown is scored) then replac
         stage.style.background="#fff"; $("exit").style.color="#999";
         g.appendChild(el("rect",{x:-cx*k,y:-cy0*k,width:vw,height:vh,fill:"#fff"}));
         if(!DA.text) DA.text=randLetters(5);
-        if(S.dDuo){ const pw=Math.max(hgt*9,20), ph=Math.max(hgt*3,12);
-          g.appendChild(el("rect",{x:-pw,y:-ph/2,width:pw,height:ph,fill:P3?"color(display-p3 1 0 0)":"#f00"})); g.appendChild(el("rect",{x:0,y:-ph/2,width:pw,height:ph,fill:P3?"color(display-p3 0 0.61 0)":"#0a0"}));
+        if(S.dDuo){ const pw=Math.max(hgt*9,20), ph=Math.max(hgt*3,12), LV=rgLevels(), cR=enc(LV.r), cG=enc(LV.g);
+          g.appendChild(el("rect",{x:-pw,y:-ph/2,width:pw,height:ph,fill:P3?`color(display-p3 ${cR.toFixed(3)} 0 0)`:`rgb(${Math.round(255*cR)},0,0)`})); g.appendChild(el("rect",{x:0,y:-ph/2,width:pw,height:ph,fill:P3?`color(display-p3 0 ${cG.toFixed(3)} 0)`:`rgb(0,${Math.round(255*cG)},0)`}));
+          g.appendChild(el("circle",{cx:0,cy:-ph/2+Math.max(hgt*0.35,1.5),r:Math.max(0.6,hgt*0.12),fill:"#000"}));
           g.appendChild(el("text",{x:-pw/2,y:hgt/2,fill:"#000","font-size":lf.toFixed(3),"font-weight":"700","text-anchor":"middle","letter-spacing":(hgt*0.8).toFixed(3)},DA.text.slice(0,3)));
           g.appendChild(el("text",{x:pw/2,y:hgt/2,fill:"#000","font-size":lf.toFixed(3),"font-weight":"700","text-anchor":"middle","letter-spacing":(hgt*0.8).toFixed(3)},DA.text.slice(2,5)));
         } else g.appendChild(el("text",{x:0,y:hgt/2,fill:Wt,"font-size":lf.toFixed(3),"font-weight":"700","text-anchor":"middle","letter-spacing":(hgt*1).toFixed(3)},DA.text.split("").join(" ")));
         const dpx=hgt/dev, sn6=6*mar, d6=S.dist.d/100;
-        readout=`<span>logMAR <b>${S.dLog.toFixed(1)}</b> · 6/${sn6<10?sn6.toFixed(1):Math.round(sn6)} · 20/${Math.round(20*mar)}</span><span>letter ${hgt.toFixed(2)} mm (${dpx.toFixed(0)} device px) at ${S.dist.d} cm</span>`;
+        readout=`<span>logMAR <b>${S.dLog.toFixed(1)}</b> · 6/${sn6<10?sn6.toFixed(1):Math.round(sn6)} · 20/${Math.round(20*mar)}</span><span>letter ${hgt.toFixed(2)} mm (${dpx.toFixed(0)} device px) at ${S.dist.d} cm</span>${S.dDuo?`<span>${rgLumTxt()} · judge at first sight from the dot</span>`:""}`;
         if(dpx<9) warns.push("Letters this small are under 9 device pixels and won't render cleanly. Move further back to test this line.");
         if(S.dist.d<250) warns.push("For distance acuity sit at least 3 m away; nearer than that, accommodation and the near-correction question confuse the result.");
         eq=`letter height = d · tan(5 × MAR′) → ${hgt.toFixed(2)} mm at ${S.dist.d} cm
@@ -6067,7 +6110,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
         opt=`<p>A logMAR line at the exact size for the set distance. At 3 m letters are scaled to the same visual angle as a 6 m chart, so acuity is directly comparable; the only difference is ${(1/d6-1/6).toFixed(2)} D of extra accommodative demand, which matters for refraction end-points (the eye reads about that much less myopic) but not for acuity itself.</p>
         <p>The phoria tests also work at distance: set the distance on Flashed phoria or Schober to 300 cm. Expect about 0.5–1 Δ more eso than at 6 m (the extra accommodation × AC/A, plus a little proximal vergence), and note that the 13″ screen only spans about ±4.7 Δ at 3 m and ±7 Δ at 2 m.</p>`;
         rows=`<tr><th>logMAR</th><th>Snellen 6 m</th></tr>`+[1.0,0.7,0.5,0.3,0.2,0.1,0,-0.1,-0.2].map(l=>`<tr${Math.abs(l-S.dLog)<0.01?' style="font-weight:700"':''}><td>${l.toFixed(1)}</td><td>6/${(6*Math.pow(10,l)).toFixed(l>0.5?0:1)}</td></tr>`).join("");
-        steps=`<li>Set the real distance (3 m is the minimum that's comparable with 6 m charts). One eye at a time.</li><li>← larger, → smaller (0.1 logMAR). N for new letters. Smallest line read with no more than one error.</li><li>D toggles the duochrome for refraction end-points.</li>`;
+        steps=`<li>Set the real distance (3 m is the minimum that's comparable with 6 m charts). One eye at a time.</li><li>← larger, → smaller (0.1 logMAR). N for new letters. Smallest line read with no more than one error.</li><li>D toggles the duochrome for refraction end-points. Match the red/green brightness once first; then glance at the dot where the colours meet and take the first impression (staring lets focus drift toward red).</li>`;
       }
 
     svg.appendChild(g);
@@ -6142,6 +6185,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     $("check").textContent=S.check?"Done calibrating":"Calibrate glasses"; $("check").setAttribute("aria-pressed",S.check);
     { const rgOn=RG_MODES.includes(m); $("filtBlock").hidden=!(S.check&&rgOn); $("ctlTest").hidden=S.check&&rgOn; }
     { const M_=TMETA[m]||{}; $("tGroup").textContent=M_.g||""; $("tName").textContent=M_.n||""; $("tDesc").textContent=M_.d||""; $("tKit").innerHTML=(m==="e"&&S.emType[0]==="c"?(S.emType==="c9"?["rg","cam"]:["cam"]):(M_.k||[])).map(x=>x==="cam"?'<span class="tag">◉ Camera</span>':x==="rg"?`<span class="tag"><i class="dot dr"></i><i class="dot dg"></i>${pairTxt()} glasses</span>`:KITS[x]).join(""); document.title="Screen Thorington Card"; }
+    setv("rgPup",S.rgPup||"model"); setv("rgAge",S.asAge||30); setv("rgLight",S.asLight||"indoor"); setv("rgLook",String(S.rgLook??400));
     setv("pd",S.pd); setv("fpAxis",S.fpAxis); setv("fpDur",S.fpDur); setv("vfLvl",S.vfLvl); setv("rdType",S.rdType); setv("ctType",S.ctType); setv("emType",S.emType); setv("dDuo",S.dDuo?"1":"0"); setv("hVtx",S.hVtx); setv("coLens",S.coLens); setv("coPupil",S.coPupil); setv("coPh0",S.coPh0); setv("coPh1",S.coPh1); setv("coPhL",S.coPhL); ["dcPh","dcAP","dcRes","dcRec","dcSym"].forEach(id=>setv(id,(S.dc||{})[id]??"")); setv("tvPh",S.tvPh); setv("tvDur",S.tvDur); setv("mxHz",S.mxHz); setv("vnDur",S.vnDur); setv("vnLOD",S.vnL.OD); setv("vnLOS",S.vnL.OS); setv("bsEye",S.bsEye); setv("bsPupil",S.bsPupil);
     syncTabs();
     $("eOD").setAttribute("aria-pressed",S.eye[m]==="OD"); $("eOS").setAttribute("aria-pressed",S.eye[m]==="OS");
@@ -6745,6 +6789,11 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
   $("ccPD").addEventListener("input",e=>{ const v=parseFloat(e.target.value); if(v>=45&&v<=80){ S.pd=v; save(); draw(); } });
   sel("coLens","coLens",v=>+v); sel("coPhL","coPhL",v=>+v); $("coStart").onclick=blurAfter(()=>{ S.coMode==="cac"?ccStart():coStart(); });
   $("coPupil").addEventListener("input",e=>{ const v=parseFloat(e.target.value); if(v>=2&&v<=8){ S.coPupil=v; draw(); save(); } });
+  $("rgPup").addEventListener("change",e=>{ S.rgPup=e.target.value; save(); draw(); });
+  $("rgAge").addEventListener("input",e=>{ const v=parseFloat(e.target.value); if(v>=5&&v<=100){ S.asAge=v; save(); draw(); } });
+  $("rgLight").addEventListener("change",e=>{ S.asLight=e.target.value; save(); draw(); });
+  $("rgLook").addEventListener("change",e=>{ S.rgLook=+e.target.value; save(); draw(); });
+  $("rgLumBtn").addEventListener("click",()=>rgLumGo());
   ["coPh0","coPh1"].forEach(id=>$(id).addEventListener("input",e=>{ S[id]=e.target.value; draw(); save(); }));
   ["dcPh","dcAP","dcRes","dcRec","dcSym"].forEach(id=>$(id).addEventListener(id==="dcSym"?"change":"input",e=>{ S.dc=S.dc||{}; S.dc[id]=e.target.value; save(); renderDC(); }));
   document.addEventListener("keydown",e=>{
@@ -6759,8 +6808,8 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     if(m==="C"&&S.cyMethod==="rg"&&(k==="s"||k==="S")){ cyfStart(); e.preventDefault(); e.stopImmediatePropagation(); return; }
     if(m==="C"&&CYF.active){ if(k==="ArrowLeft"||k==="ArrowRight") cyfResp(k==="ArrowRight"); else if(k===" ") flashRun(CYF,"cy","C"); e.preventDefault(); e.stopImmediatePropagation(); return; }
     if(m==="D"&&S.stMethod==="fine"){ if(k==="s"||k==="S") fsStart(); else if(k==="ArrowLeft"){ fsResp("L"); e.preventDefault(); } else if(k==="ArrowRight"){ fsResp("R"); e.preventDefault(); } }
-    else if(m==="I"&&S.coMode==="cac"){ if(k==="s"||k==="S") ccStart(); else if(k==="ArrowLeft"){ ccResp(false); e.preventDefault(); } else if(k==="ArrowRight"){ ccResp(true); e.preventDefault(); } }
-    else if(m==="I"){ if(k==="s"||k==="S") coStart(); else if(k==="ArrowLeft"){ coResp(false); e.preventDefault(); } else if(k==="ArrowRight"){ coResp(true); e.preventDefault(); } }
+    else if(m==="I"&&S.coMode==="cac"){ if(k==="s"||k==="S") ccStart(); else if(k==="ArrowLeft"){ ccResp(false); e.preventDefault(); } else if(k==="ArrowRight"){ ccResp(true); e.preventDefault(); } else if(k==="ArrowDown"){ ccResp(null); e.preventDefault(); } }
+    else if(m==="I"){ if(k==="s"||k==="S") coStart(); else if(k==="ArrowLeft"){ coResp(false); e.preventDefault(); } else if(k==="ArrowRight"){ coResp(true); e.preventDefault(); } else if(k==="ArrowDown"){ coResp(null); e.preventDefault(); } else if(k===" "&&CO.active&&CO.ready){ lookRun(CO,"I",700); e.preventDefault(); } }
   },true);
   $("stage").addEventListener("click",e=>{ if(S.mode==="D"&&S.stMethod==="fine"){ const r=$("stage").getBoundingClientRect(); fsResp(e.clientX-r.left<r.width/2?"L":"R"); } });
   // ---- v23 handlers ----
@@ -6948,8 +6997,8 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     "1":()=>({run:PF.active||PF.demo,ans:PF.phase==="answer",start:"s",v:1,z:[["ArrowUp","Moving band IN FRONT"],["ArrowDown","Moving band BEHIND"]],how:"Eyes on the dot. A dotty band slides between two still bands; when it stops, tap the TOP half if it was in front of them, the BOTTOM half if behind."}),
     "3":()=>({run:SB.active,ans:SB.active,start:"s",v:1,z:[["ArrowUp","Only TOP line (hold)"],["ArrowLeft","DOUBLE (hold)"],["ArrowDown","Only BOTTOM line (hold)"]],how:"Look at the centre dot. Hold the top while only the top line is there, the bottom while only the bottom line is there, the middle while things look double. Let go when normal."}),
     "4":()=>({run:DC.active,ans:true,start:"s",z:[["ArrowLeft","LEFT more turned"],["ArrowRight","RIGHT more turned"]],how:"Two dotted surfaces turned like doors. Tap the side whose surface is turned more (right edge further away). Guess if equal."}),
-    "5":()=>ASL.active?({run:true,ans:true,start:"s",v:1,z:[["ArrowUp",`${AS2_CN[as2Base().adj]} brighter`],["ArrowDown",`${AS2_CN[as2Base().adj]} dimmer`]],x:[[" ","Matched"]],how:""}):({run:AS.active,ans:true,start:"s",z:[["ArrowLeft","Left lines sharper"],["ArrowRight","Right lines sharper"]],how:"Look at each patch in turn. Tap the LEFT half if the left lines are sharper, the RIGHT half if the right lines are. Guess if they look the same."}),
-    "9":()=>({run:AN.active,ans:true,start:"s",z:[["ArrowLeft","Left panel sharper"],["ArrowRight","Right panel sharper"]],how:"Each eye sees one panel. Tap the LEFT half if the left panel's letters are sharper, the RIGHT half if the right panel's are. Guess if equal."}),
+    "5":()=>ASL.active?({run:true,ans:true,start:"s",v:1,z:[["ArrowUp",`${AS2_CN[as2Base().adj]} brighter`],["ArrowDown",`${AS2_CN[as2Base().adj]} dimmer`]],x:[[" ","Matched"]],how:""}):({run:AS.active,ans:true,start:"s",z:[["ArrowLeft","Left lines sharper"],["ArrowRight","Right lines sharper"]],x:[["ArrowDown","Same"],[" ","Look again"]],how:"Keep your eyes on the centre dot. After a short rest the patches show briefly: tap the LEFT half if the left lines were sharper, the RIGHT half if the right lines were, Same if equal. First impression."}),
+    "9":()=>({run:AN.active,ans:true,start:"s",z:[["ArrowLeft","Left panel sharper"],["ArrowRight","Right panel sharper"]],x:[["ArrowDown","Same"],[" ","Look again"]],how:"Each eye sees one panel. Look at the centre dot; the letters show briefly after a short rest. Tap the LEFT half if the left panel's letters were sharper, the RIGHT half if the right panel's were, Same if equal."}),
     "0":()=>({run:TL.active,ans:TL.phase==="answer",start:"s",v:1,z:[["ArrowUp","Disc IN FRONT"],["ArrowDown","Disc BEHIND"]],how:"Look at the centre dot. A dotty patch flashes with a disc floating in front or behind: tap the TOP half for in front, the BOTTOM half for behind."}),
     "8":()=>(S.ctMethod==="cam"?{run:CVT.active,ans:false,start:"s",z:[],how:"Look at the cross the whole time, head still. It jumps to five dots first, then stays in the middle."}:CVT.tr&&CVT.tr.ax==="V"?{run:CVT.active,ans:CVT.phase==="answer",start:"s",v:1,z:[["ArrowUp","Left line HIGHER"],["ArrowDown","Left line LOWER"]],how:"Look at the cross. Two lines flash. One above the other: tap LEFT or RIGHT for where the top one was. Side by side: tap TOP if the left one was higher, BOTTOM if lower."}:{run:CVT.active,ans:CVT.phase==="answer",start:"s",z:[["ArrowLeft","Top line LEFT"],["ArrowRight","Top line RIGHT"]],how:"Look at the cross. Two lines flash. One above the other: tap LEFT or RIGHT for where the top one was. Side by side: tap TOP if the left one was higher, BOTTOM if lower."}),
     "6":()=>({run:MB.active,ans:MB.phase==="answer",start:"s",z:[["ArrowLeft","Arcs went LEFT"],["ArrowDown","None seen"],["ArrowRight","Arcs went RIGHT"]],how:"Look at the dim dot. A red bar flashes beside it. Tap LEFT or RIGHT for the way faint blue arcs went, or the MIDDLE if you saw none."}),
@@ -6970,7 +7019,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     C:()=>S.cyMethod==="rg"&&{run:CYF.active,ans:!CYF.show,start:"s",q:"Lines closer together on the…",z:[["ArrowLeft","Closer on the LEFT"],["ArrowRight","Closer on the RIGHT"]],x:[[" ","Repeat"]],how:"After each flash, tap the side where the lines were closer together."},
     r:()=>({run:RD.active,ans:true,start:"s",q:"Compared with the first eye…",z:[["ArrowLeft",S.rdType==="sat"?"Less red":"Dimmer"],["ArrowRight",S.rdType==="sat"?"More red":"Brighter"]],how:`Tap LEFT if it looks ${S.rdType==="sat"?"less red":"dimmer"} than the first eye saw, RIGHT if ${S.rdType==="sat"?"more red":"brighter"}.`}),
     P:()=>!PS.demo&&{run:PS.active,ans:true,start:"s",q:"When the bar moves right, is it…",z:[["n","Nearer"],["f","Further"]],x:[[" ","Can't tell"]],how:"Watch the swinging bar. When it moves RIGHT, tap LEFT if it looks nearer, RIGHT if it looks further."},
-    I:()=>S.coMode==="cac"?{run:CC.active,ans:CC.phase==="answer",start:"s",q:"Clearer on which side?",z:[["ArrowLeft","Red side"],["ArrowRight","Green side"]],how:"Tap the side that looks clearer."}:{run:CO.active,ans:true,start:"s",z:[["ArrowLeft","Red side sharper"],["ArrowRight","Green side sharper"]],how:"Look between the two panels. Tap the LEFT half if the black letters are sharper on the red side, the RIGHT half if sharper on the green side. Guess if they look the same. About 20–40 answers."},
+    I:()=>S.coMode==="cac"?{run:CC.active,ans:CC.phase==="answer",start:"s",q:"Clearer on which side?",z:[["ArrowLeft","Red side"],["ArrowRight","Green side"]],x:[["ArrowDown","Same"]],how:"Tap the side that looks clearer, or Same."}:{run:CO.active,ans:true,start:"s",z:[["ArrowLeft","Red side sharper"],["ArrowRight","Green side sharper"]],x:[["ArrowDown","Same"],[" ","Look again"]],how:"Look between the two panels. The letters show in grey, then briefly in red and green: tap the LEFT half if the black letters were sharper on the red side, the RIGHT half if on the green side, Same if equal. First impression. About 20–40 answers."},
     s:()=>(S.slMethod||"cmp")==="cmp"&&{run:SL.active,ans:SL.phase==="answer",start:"s",q:"Which half of the small disc pulsed more?",z:[["ArrowLeft","Left half"],["ArrowRight","Right half"]],how:"Look at the red dot in the middle. After each look, tap the LEFT or RIGHT half of the screen: whichever half of the small central disc pulsed more. Guess if equal. The first 4 are practice with a beep."},
     x:()=>({run:FCX.active,ans:true,start:"s",info:FCX.active?`${FCX.st.lens>=0?"+":""}${FCX.st.lens.toFixed(2)} D`:"",z:[["ArrowLeft","Horizontal"],[" ","Equal"],["ArrowUp","Vertical"]],how:"Lens on top of the distance Rx as the screen says (the lens to use is shown small at the top and changes after each answer). Look at the centre of the cross for 2 seconds, then tap the LEFT third if the horizontal lines are blacker, the MIDDLE third if both look the same, the RIGHT third if the vertical lines are blacker."}),
     b:()=>{ const mt=S.bcMethod||"ori"; if(mt==="ori") return {run:BC.active,ans:BC.phase==="answer",start:"s",q:"Stripes tilted…",v:1,z:[["ArrowUp","Right end UP"],["ArrowDown","Right end DOWN"]],how:"After each flash, tap the TOP half if the stripes' right end was up, the BOTTOM half if it was down. Guess if flat."};

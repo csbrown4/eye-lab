@@ -6510,7 +6510,14 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
   // The CPU path never touches WebGL. The camera is also opened at 640 × 480 there, to keep memory down.
   const IN_APP=/[?&]app=1/.test(location.search);
   const APP_BRIDGE=window.EyeLabApp||null;                 // Java side (crash breadcrumbs), present only in the app
-  const ldStage=st=>{ try{ APP_BRIDGE&&APP_BRIDGE.stage(st); }catch(e){} };
+  // Crash breadcrumbs in the browser too (the app has its own): if the tab dies while the camera is on, the next load
+  // finds the flag still set and says at which step. A tablet's browser tab crashing leaves no other trace.
+  const CRUMB_K="eyelab_cam";
+  const camMark=on=>{ try{ APP_BRIDGE&&APP_BRIDGE.camOn(on); }catch(e){} try{ if(on) localStorage.setItem(CRUMB_K,JSON.stringify({on:true,stage:"starting",t:Date.now()})); else localStorage.removeItem(CRUMB_K); }catch(e){} };
+  const ldStage=st=>{ try{ APP_BRIDGE&&APP_BRIDGE.stage(st); }catch(e){} try{ const o=JSON.parse(localStorage.getItem(CRUMB_K)||"null"); if(o&&o.on){ o.stage=st; localStorage.setItem(CRUMB_K,JSON.stringify(o)); } }catch(e){} };
+  addEventListener("pagehide",()=>{ try{ localStorage.removeItem(CRUMB_K); }catch(e){} });   // a normal close isn't a crash (a crashed tab never fires this)
+  // phones, tablets and the app: the lighter CPU tracker (no WebGL network) and a 640 × 480 camera
+  const LOW_CAM=IN_APP||/Android|iPad|iPhone/i.test(navigator.userAgent)||matchMedia("(pointer:coarse)").matches;
   const TV_BASE=IN_APP?new URL("mp/",location.href).href:"https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/";
   const TV_MODEL=IN_APP?new URL("mp/face_landmarker.task",location.href).href:"https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
   // CPU delegate: inference runs in WebAssembly; WebGL is used only to turn each video frame into a tensor (MediaPipe
@@ -6696,21 +6703,21 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     requestAnimationFrame(async t=>{ if(!LD.on) return; LD.tSrc="raf";
       if(!LD.busy&&v.readyState>=2&&t-LD.last>28){ LD.busy=true; LD.last=t; LD.frameT=performance.now(); if(ET.lumOn) etLumFrame(v,LD.frameT); try{ await LD.fm.send({image:v}); }catch(e){} LD.busy=false; }
       ldTick(); }); }
-  function ldStop(silent){ try{ APP_BRIDGE&&APP_BRIDGE.camOn(false); }catch(e){} LD.on=false; if(LD.stream) LD.stream.getTracks().forEach(t=>t.stop()); LD.stream=null; LD.d=null; LD.calBuf=null; LD.hI=[];LD.hP=[];LD.hD=[];
+  function ldStop(silent){ camMark(false); LD.on=false; if(LD.stream) LD.stream.getTracks().forEach(t=>t.stop()); LD.stream=null; LD.d=null; LD.calBuf=null; LD.hI=[];LD.hP=[];LD.hD=[];
     $("ldStart").textContent="Start camera"; LD.trk=null; $("ldPrev").hidden=true; ldChip(); if(!silent) ldSet("Camera off."); }
   async function ldStart(){
     if(LD.on){ ldStop(); return; }
     if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ ldSet("This view has no camera access. Open a saved copy of this page directly in Chrome or Safari."); return; }
     // after the app closed during a camera session, ask for a second press rather than walk straight back into it
     if(LD.crashWhy&&!LD.crashAck){ LD.crashAck=true; ldSet(LD.crashWhy+" Press Start camera again to try anyway."); return; }
-    try{ APP_BRIDGE&&APP_BRIDGE.camOn(true); }catch(e){} ldStage("asking for the camera");
+    camMark(true); ldStage("asking for the camera");
     ldSet("Asking for the camera…");
-    try{ LD.stream=await navigator.mediaDevices.getUserMedia({audio:false,video:IN_APP?{facingMode:"user",width:{ideal:640},height:{ideal:480},frameRate:{ideal:30,max:30}}:matchMedia("(pointer:coarse)").matches?{facingMode:"user",width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30,max:30}}:{facingMode:"user",width:{ideal:1920},height:{ideal:1080}}}); }
-    catch(e){ try{ APP_BRIDGE&&APP_BRIDGE.camOn(false); }catch(_){} ldSet(location.protocol==="file:" ? `Camera blocked (${e.name||e}). Allow Chrome to use the camera: macOS System Settings → Privacy & Security → Camera → Chrome on, then restart Chrome; also check the camera icon at the left of the address bar isn't set to Block.` : `Camera blocked (${e.name||e}). The Claude viewer doesn't allow the camera, even in Chrome. Download this page as an .html file and open the file itself in Chrome (the address bar should start with file:///).`); return; }
+    try{ LD.stream=await navigator.mediaDevices.getUserMedia({audio:false,video:LOW_CAM?{facingMode:"user",width:{ideal:640},height:{ideal:480},frameRate:{ideal:30,max:30}}:matchMedia("(pointer:coarse)").matches?{facingMode:"user",width:{ideal:1280},height:{ideal:720},frameRate:{ideal:30,max:30}}:{facingMode:"user",width:{ideal:1920},height:{ideal:1080}}}); }
+    catch(e){ camMark(false); ldSet(location.protocol==="file:" ? `Camera blocked (${e.name||e}). Allow Chrome to use the camera: macOS System Settings → Privacy & Security → Camera → Chrome on, then restart Chrome; also check the camera icon at the left of the address bar isn't set to Block.` : `Camera blocked (${e.name||e}). The Claude viewer doesn't allow the camera, even in Chrome. Download this page as an .html file and open the file itself in Chrome (the address bar should start with file:///).`); return; }
     ldStage("camera opened"); const v=$("ldVid"); v.srcObject=LD.stream; try{ await v.play(); }catch(e){} ldStage("video playing");
     ldSet("Loading the face tracker (about 10 MB the first time)…");
     try{
-      if(IN_APP){ if(!LD.fm) LD.fm=await ldMakeCpuTracker(); }
+      if(LOW_CAM){ if(!LD.fm) LD.fm=await ldMakeCpuTracker(); }
       else {
       if(!window.FaceMesh) await new Promise((res,rej)=>{ const sc=document.createElement("script"); sc.src=FM_BASE+"face_mesh.js"; sc.crossOrigin="anonymous"; sc.onload=res; sc.onerror=()=>rej(new Error("tracker script blocked")); document.head.appendChild(sc); });
       if(!LD.fm){ LD.fm=new window.FaceMesh({locateFile:f=>FM_BASE+f}); LD.fm.setOptions({maxNumFaces:1,refineLandmarks:true,minDetectionConfidence:0.5,minTrackingConfidence:0.5,selfieMode:false}); LD.fm.onResults(ldResults); await LD.fm.initialize(); }
@@ -6720,7 +6727,10 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
   }
   $("ldStart").onclick=()=>ldStart();
   // the app reports how the last session ended, if it ended badly
-  try{ const why=APP_BRIDGE&&APP_BRIDGE.lastCrash(); if(why){ LD.crashWhy=why; setTimeout(()=>ldSet(why),500); }
+  try{ let why=APP_BRIDGE&&APP_BRIDGE.lastCrash();
+    if(!why){ const o=JSON.parse(localStorage.getItem(CRUMB_K)||"null"); if(o&&o.on) why=`The page closed or reloaded last time while the camera was in use (last step: ${o.stage}).`; }
+    try{ localStorage.removeItem(CRUMB_K); }catch(e){}
+    if(why){ LD.crashWhy=why; setTimeout(()=>ldSet(why),500); }
     else if(APP_BRIDGE&&APP_BRIDGE.version) setTimeout(()=>{ if(!LD.on) ldSet(`Camera off. (Eye Lab app build ${APP_BRIDGE.version()}.)`); },500); }catch(e){}
   $("ldCal").onclick=()=>{ if(!LD.on){ ldSet("Start the camera first."); return; } LD.calBuf=[]; };
   $("ldFollow").checked=!!S.ldFollow; $("ldFollow").onchange=e=>{ S.ldFollow=e.target.checked; ldChip(); save(); };

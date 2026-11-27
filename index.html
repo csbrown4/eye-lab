@@ -239,6 +239,7 @@ button.ghost{background:transparent;border-color:var(--line2)}
 #tapGo{position:absolute;inset:0;z-index:8;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:0 5% calc(7% + env(safe-area-inset-bottom,0px));text-align:center;cursor:pointer;-webkit-tap-highlight-color:transparent}
 #tapGo.desk{pointer-events:none;cursor:default}
 #tapGo button{display:none!important}
+#tapGo.after button{display:inline-block!important;margin-bottom:14px}
 #tapGo p b{color:#fff}
 #tapGo button{font:700 22px/1 var(--f-body,system-ui);padding:20px 54px;border-radius:999px;border:0;background:var(--accent,#b0122b);color:#fff;box-shadow:0 6px 24px rgba(0,0,0,.4);cursor:pointer}
 #tapGo p{margin:0;max-width:min(620px,100%);font:500 15px/1.5 var(--f-body,system-ui);color:#cfcfcf;background:rgba(0,0,0,.7);padding:10px 14px;border-radius:10px}
@@ -260,6 +261,9 @@ button.ghost{background:transparent;border-color:var(--line2)}
 body.quiet #actBar, body.quiet #tapX, body.quiet #tapQ, body.quiet #tapL .tz span, body.quiet #tpad, body.quiet #exit,
 body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resCard, body.quiet #stageMsg{display:none!important}
 body.quiet #tapX.keep{display:flex!important}
+#tapStop{position:absolute;top:calc(8px + env(safe-area-inset-top,0px));left:8px;z-index:62;font:600 13px/1 var(--f-body,system-ui);padding:9px 12px;border-radius:999px;border:1px solid #2a2a2a;background:rgba(0,0,0,.35);color:#666;touch-action:none;-webkit-tap-highlight-color:transparent}
+#tapStop[hidden]{display:none}
+body.quiet #stage > #tapStop:not([hidden]){display:block!important}
 #tapX.keep{gap:14px}
 #tapX.keep button{font-size:20px;padding:16px 24px;min-width:64px;color:#ddd;border-color:#555;white-space:nowrap}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -6632,7 +6636,9 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     $("clList").innerHTML=Object.entries(S.customLenses||{}).map(([id,L])=>`<div class="cl-row"><i style="background:${L.css}"></i>${L.name} · passes ${L.vec.map(x=>Math.round(100*x)).join("/")} (R/G/B)${L.lam?` · ${L.lam} nm`:""} <button type="button" data-del="${id}">Remove</button></div>`).join(""); }
   $("eOD").onclick=()=>{S.eye[S.mode]="OD";sync();}; $("eOS").onclick=()=>{S.eye[S.mode]="OS";sync();};
   $("bD").onclick=()=>{S.base="D";sync();}; $("bU").onclick=()=>{S.base="U";sync();};
-  document.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ document.body.classList.remove("nav-open"); if(b.dataset.m!==S.mode){ tvStop(); vnStop(); fsStop(); BS.active=false; CO.active=false; fpStop(); fdStopRun(); STF.active=false; ANF.active=false; CYF.active=false; tClear("an"); tClear("cy"); if(FLD.running) fldStop(); rdStop(); CT.active=false; emStop(); ccStop(); Object.values(NT).forEach(t=>t.stop&&t.stop()); if(ET.plan) etStop(""); EM.naming.running=false; } if(S.mode==="M"&&b.dataset.m!=="M") mapStop(); if(S.mode==="L"&&b.dataset.m!=="L") hlStop(); VG.ramping=false; S.mode=b.dataset.m;S.check=false;sync();});
+  function stopAllTests(){ tvStop(); vnStop(); fsStop(); BS.active=false; CO.active=false; fpStop(); fdStopRun(); STF.active=false; ANF.active=false; CYF.active=false; tClear("an"); tClear("cy"); if(FLD.running) fldStop(); rdStop(); CT.active=false; emStop(); ccStop(); Object.values(NT).forEach(t=>t.stop&&t.stop()); if(ET.plan) etStop(""); EM.naming.running=false; }
+  window.__stopAllTests=stopAllTests;
+  document.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ document.body.classList.remove("nav-open"); if(b.dataset.m!==S.mode) stopAllTests(); if(S.mode==="M"&&b.dataset.m!=="M") mapStop(); if(S.mode==="L"&&b.dataset.m!=="L") hlStop(); VG.ramping=false; S.mode=b.dataset.m;S.check=false;sync();});
   // ---- navigation: collapsible groups, search, recent tests ----
   (function navInit(){ const nav=$("nav"), q=$("navQ"), groups=[...nav.querySelectorAll(".ng[data-g]")];
     groups.forEach(g=>{ const n=g.querySelectorAll(".nb .ni").length, c=g.querySelector(".nc"); if(c) c.textContent=n; if(!n) g.remove(); });
@@ -7433,12 +7439,17 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     const Q=document.createElement("div"); Q.id="tapQ"; Q.hidden=true;
     const G=document.createElement("div"); G.id="tapGo"; G.innerHTML=`<button type="button">Start</button><p></p>`; G.hidden=true;
     const X=document.createElement("div"); X.id="tapX"; X.hidden=true;
+    const SB=document.createElement("button"); SB.type="button"; SB.id="tapStop"; SB.textContent="✕ Stop"; SB.hidden=true;   // a way out of a running test on touch screens
+    SB.addEventListener("pointerdown",e=>{ e.preventDefault(); e.stopPropagation(); try{ window.__stopAllTests(); }catch(_){} afterRun=true; lockUntil=performance.now()+800; draw(); });
+    SB.addEventListener("click",e=>{ e.preventDefault(); e.stopPropagation(); });
+    let afterRun=false, lockUntil=0;
     const PD=document.createElement("div"); PD.id="tapPad"; PD.hidden=true; const I_=document.createElement("div"); I_.id="tapI"; I_.hidden=true;   // answer buttons (letters, digits, directions)
-    st.append(L,Q,G,X,PD,I_); let padSig="";
+    st.append(L,Q,G,X,PD,I_,SB); let padSig="";
     const send=(type,key)=>document.dispatchEvent(new KeyboardEvent(type,{key,bubbles:true,cancelable:true}));
     let cur=null, sig="";
     const TOUCH=()=>(matchMedia("(pointer:coarse)").matches&&!matchMedia("(pointer:fine)").matches)||S.tpad===true;
-    G.addEventListener("click",e=>{ if(!TOUCH()) return; e.preventDefault(); if(cur&&cur.go){ cur.go(); return; } if(cur&&cur.start){ send("keydown",cur.start); send("keyup",cur.start); } });
+    G.addEventListener("click",e=>{ if(!TOUCH()) return; e.preventDefault(); if(performance.now()<lockUntil) return; if(afterRun&&!e.target.closest("button")) return;   // after a run only the Start button restarts
+      afterRun=false; if(cur&&cur.go){ cur.go(); return; } if(cur&&cur.start){ send("keydown",cur.start); send("keyup",cur.start); } });
     const KN={" ":"Space","Enter":"Enter","ArrowLeft":"←","ArrowRight":"→","ArrowUp":"↑","ArrowDown":"↓"}, kn=k=>k==null?"":(KN[k]||String(k).toUpperCase());
     // desktop wording of the same instructions: keys instead of taps
     const deskHow=c=>{ const z=(c.z||[]).concat(c.x||[]); return `Press <b>${kn(c.start)}</b> to start.`+(z.length?` Then answer with the keys: ${z.map(([k,l])=>`<b>${kn(k)}</b> ${l.toLowerCase()}`).join(" · ")}.`:c.pad?" Then type the answer on the keyboard.":""); };
@@ -7457,7 +7468,7 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
       let rc=document.getElementById("resCard"); if(!rc){ rc=document.createElement("div"); rc.id="resCard"; rc.style.cssText="position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:12;max-width:min(680px,90%);padding:12px 16px 12px;border-radius:12px;background:rgba(0,0,0,.88);color:#e4e4e4;font:600 15px/1.45 system-ui;white-space:pre-line;text-align:left"; rc.addEventListener("click",()=>rc.hidden=true); st.appendChild(rc); }
       rc.textContent="Result · tap to close\n"+txt; rc.hidden=false; clearTimeout(rc._t); rc._t=setTimeout(()=>rc.hidden=true,20000); };
     function sync(){ const m=S.mode, f=TAPS[m], c=f?f():null; cur=c||null;
-      const runNow=!!(c&&c.run&&c.start); if(wasRun&&!runNow&&runMode===m) setTimeout(resultCard,250); if(runMode!==m){ const rc=document.getElementById("resCard"); if(rc) rc.hidden=true; } wasRun=runNow; runMode=m;
+      const runNow=!!(c&&c.run&&c.start); if(wasRun&&!runNow&&runMode===m){ setTimeout(resultCard,250); afterRun=true; lockUntil=performance.now()+1500; } if(runMode!==m){ afterRun=false; const rc=document.getElementById("resCard"); if(rc) rc.hidden=true; } wasRun=runNow; runMode=m;
       if(!c){ L.innerHTML=""; L.className=""; Q.hidden=G.hidden=X.hidden=I_.hidden=true; sig=""; document.body.classList.remove("quiet"); document.body.classList.remove("tapmode"); return; }
       const s2=m+"|"+JSON.stringify(c.z||[])+"|"+(c.v?1:0)+JSON.stringify(c.x||[]);
       if(s2!==sig){ sig=s2; L.innerHTML=""; (c.z||[]).forEach(([k,lab])=>{ const z=document.createElement("div"); z.className="tz"; z.innerHTML=`<span>${lab}</span>`; bindHold(z,k); L.appendChild(z); });
@@ -7467,8 +7478,8 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
       document.body.classList.toggle("quiet", run && (!!c.start||!!c.quiet));
       const tch=TOUCH(); G.classList.toggle("desk",!tch); document.body.classList.toggle("tapmode",tch); L.style.display=tch?"":"none";
       G.hidden = run || !c.start; const gp=G.querySelector("p");
-      if(!c.start) gp.innerHTML=""; else if(tch) gp.innerHTML=(c.how?c.how+" ":"")+"<b>Tap anywhere to start.</b>"; else gp.innerHTML=deskHow(c);
-      gp.hidden=false;
+      if(!c.start) gp.innerHTML=""; else if(tch) gp.innerHTML=afterRun?"<b>Finished.</b> Tap <b>Start again</b> to repeat it (tapping elsewhere does nothing).":(c.how?c.how+" ":"")+"<b>Tap anywhere to start.</b>"; else gp.innerHTML=deskHow(c);
+      gp.hidden=false; SB.hidden=!(tch&&run&&c.start); G.classList.toggle("after",!!(afterRun&&tch)); const gb_=G.querySelector("button"); if(gb_) gb_.textContent=afterRun?"Start again":"Start";
       // nothing on screen while a test runs: answers are invisible tap zones (touch) or keys (desktop); only tests answered
       // with more than arrows/space (digits, letters, directions) keep their answer pad
       Q.hidden = true; const kx=!!(tch&&ans&&c.keepX&&(c.x||[]).length); X.hidden = !kx; X.classList.toggle("keep",kx);   // monocular tests keep their extra answer buttons (e.g. Same) on touch screens I_.hidden=!(run&&c.info); if(c.info) I_.textContent=c.info;

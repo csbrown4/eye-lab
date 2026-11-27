@@ -261,9 +261,6 @@ button.ghost{background:transparent;border-color:var(--line2)}
 body.quiet #actBar, body.quiet #tapX, body.quiet #tapQ, body.quiet #tapL .tz span, body.quiet #tpad, body.quiet #exit,
 body.quiet #hud, body.tapmode #hud, body.quiet #stage > button, body.quiet #resCard, body.quiet #stageMsg{display:none!important}
 body.quiet #tapX.keep{display:flex!important}
-#tapStop{position:absolute;top:calc(8px + env(safe-area-inset-top,0px));left:8px;z-index:62;font:600 13px/1 var(--f-body,system-ui);padding:9px 12px;border-radius:999px;border:1px solid #2a2a2a;background:rgba(0,0,0,.35);color:#666;touch-action:none;-webkit-tap-highlight-color:transparent}
-#tapStop[hidden]{display:none}
-body.quiet #stage > #tapStop:not([hidden]){display:block!important}
 #tapX.keep{gap:14px}
 #tapX.keep button{font-size:20px;padding:16px 24px;min-width:64px;color:#ddd;border-color:#555;white-space:nowrap}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
@@ -7439,12 +7436,12 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
     const Q=document.createElement("div"); Q.id="tapQ"; Q.hidden=true;
     const G=document.createElement("div"); G.id="tapGo"; G.innerHTML=`<button type="button">Start</button><p></p>`; G.hidden=true;
     const X=document.createElement("div"); X.id="tapX"; X.hidden=true;
-    const SB=document.createElement("button"); SB.type="button"; SB.id="tapStop"; SB.textContent="✕ Stop"; SB.hidden=true;   // a way out of a running test on touch screens
-    SB.addEventListener("pointerdown",e=>{ e.preventDefault(); e.stopPropagation(); try{ window.__stopAllTests(); }catch(_){} afterRun=true; lockUntil=performance.now()+800; draw(); });
-    SB.addEventListener("click",e=>{ e.preventDefault(); e.stopPropagation(); });
     let afterRun=false, lockUntil=0;
+    // a way out of a running test on touch screens, with nothing drawn on screen: tap with two fingers at once
+    document.addEventListener("touchstart",e=>{ if(e.touches.length<2||!cur||!cur.run||!cur.start) return; e.preventDefault(); e.stopPropagation();
+      try{ window.__stopAllTests(); }catch(_){} afterRun=true; lockUntil=performance.now()+1000; if(navigator.vibrate) try{ navigator.vibrate([20,40,20]); }catch(_){} draw(); },{capture:true,passive:false});
     const PD=document.createElement("div"); PD.id="tapPad"; PD.hidden=true; const I_=document.createElement("div"); I_.id="tapI"; I_.hidden=true;   // answer buttons (letters, digits, directions)
-    st.append(L,Q,G,X,PD,I_,SB); let padSig="";
+    st.append(L,Q,G,X,PD,I_); let padSig="";
     const send=(type,key)=>document.dispatchEvent(new KeyboardEvent(type,{key,bubbles:true,cancelable:true}));
     let cur=null, sig="";
     const TOUCH=()=>(matchMedia("(pointer:coarse)").matches&&!matchMedia("(pointer:fine)").matches)||S.tpad===true;
@@ -7478,8 +7475,8 @@ accommodative demand at ${d6} m: ${(1/d6).toFixed(2)} D (vs 0.17 D at 6 m)`;
       document.body.classList.toggle("quiet", run && (!!c.start||!!c.quiet));
       const tch=TOUCH(); G.classList.toggle("desk",!tch); document.body.classList.toggle("tapmode",tch); L.style.display=tch?"":"none";
       G.hidden = run || !c.start; const gp=G.querySelector("p");
-      if(!c.start) gp.innerHTML=""; else if(tch) gp.innerHTML=afterRun?"<b>Finished.</b> Tap <b>Start again</b> to repeat it (tapping elsewhere does nothing).":(c.how?c.how+" ":"")+"<b>Tap anywhere to start.</b>"; else gp.innerHTML=deskHow(c);
-      gp.hidden=false; SB.hidden=!(tch&&run&&c.start); G.classList.toggle("after",!!(afterRun&&tch)); const gb_=G.querySelector("button"); if(gb_) gb_.textContent=afterRun?"Start again":"Start";
+      if(!c.start) gp.innerHTML=""; else if(tch) gp.innerHTML=afterRun?"<b>Finished.</b> Tap <b>Start again</b> to repeat it (tapping elsewhere does nothing).":(c.how?c.how+" ":"")+"<b>Tap anywhere to start.</b> To stop a test part-way, tap with two fingers."; else gp.innerHTML=deskHow(c);
+      gp.hidden=false; G.classList.toggle("after",!!(afterRun&&tch)); const gb_=G.querySelector("button"); if(gb_) gb_.textContent=afterRun?"Start again":"Start";
       // nothing on screen while a test runs: answers are invisible tap zones (touch) or keys (desktop); only tests answered
       // with more than arrows/space (digits, letters, directions) keep their answer pad
       Q.hidden = true; const kx=!!(tch&&ans&&c.keepX&&(c.x||[]).length); X.hidden = !kx; X.classList.toggle("keep",kx);   // monocular tests keep their extra answer buttons (e.g. Same) on touch screens I_.hidden=!(run&&c.info); if(c.info) I_.textContent=c.info;
